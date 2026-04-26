@@ -1,5 +1,7 @@
 import sys
 import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import json
 import logging
 import random
@@ -79,8 +81,8 @@ class CrackedCodeGUI(QMainWindow):
         self.engine = None
         self.load_config()
         self.setup_atlan_theme()
-        self.init_engine()
         self.init_ui()
+        self.init_engine()
         self.init_matrix()
         self.restore_state()
         logger.info("CrackedCode GUI started")
@@ -88,11 +90,11 @@ class CrackedCodeGUI(QMainWindow):
     def init_engine(self):
         try:
             self.engine = get_engine(self.config)
-            self.term(f"[ENGINE: {self.engine.model} loaded]")
             logger.info(f"Engine model: {self.engine.model}")
+            if hasattr(self, 'terminal'):
+                self.term(f"[ENGINE: {self.engine.model} loaded]")
         except Exception as e:
             logger.error(f"Engine init failed: {e}")
-            self.term(f"[ENGINE ERROR: {e}")
 
     def load_config(self):
         config_path = Path("config.json")
