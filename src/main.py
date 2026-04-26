@@ -214,7 +214,7 @@ def log_task_event(task_id: int, agent: str, event: str, details: str = ""):
 def log_session_start():
     log_info("=" * 60)
     log_info("CrackedCode Session Started")
-    log_info(f"Version: 2.1.4")
+    log_info(f"Version: 2.1.6")
     log_info(f"Platform: {platform.system()} {platform.release()}")
     log_info(f"Python: {platform.python_version()}")
     log_info(f"Debug Mode: {DEBUG_MODE}")
@@ -578,74 +578,349 @@ class VisionEngine:
             return None
 
 
-class TextPromptEngine:
+class Intent(Enum):
+    ASK = "ask"
+    CREATE = "create"
+    MODIFY = "modify"
+    DEBUG = "debug"
+    EXPLAIN = "explain"
+    EXECUTE = "execute"
+    REVIEW = "review"
+    SEARCH = "search"
+    HELP = "help"
+    CHAT = "chat"
+    UNKNOWN = "unknown"
+
+
+class PromptStyle(Enum):
+    CONCISE = "concise"
+    DETAILED = "detailed"
+    TECHNICAL = "technical"
+    FRIENDLY = "friendly"
+    EXPERT = "expert"
+
+
+class ConversationTurn:
+    def __init__(self, user_input: str, intent: Intent, entities: List[str], 
+                 context_needed: bool, user_level: str):
+        self.user_input = user_input
+        self.intent = intent
+        self.entities = entities
+        self.context_needed = context_needed
+        self.user_level = user_level
+        self.timestamp = datetime.now()
+
+
+class EntityTracker:
+    def __init__(self):
+        self.entities: Dict[str, Dict] = {}
+        
+    def add_entity(self, name: str, entity_type: str, value: Any, confidence: float = 1.0):
+        self.entities[name] = {
+            "type": entity_type,
+            "value": value,
+            "confidence": confidence,
+            "last_mentioned": datetime.now()
+        }
+        
+    def get_entity(self, name: str) -> Optional[Any]:
+        return self.entities.get(name, {}).get("value")
+        
+    def find_entities(self, entity_type: str) -> List[Dict]:
+        return [e for e in self.entities.values() if e.get("type") == entity_type]
+        
+    def resolve_pronouns(self, text: str) -> str:
+        text = text.replace("it", "the code")
+        text = text.replace("that", "the previous result")
+        text = text.replace("this", "current context")
+        return text
+
+
+class NaturalPromptEngine:
     def __init__(self):
         self.history: List[Dict] = []
+        self.entities = EntityTracker()
+        self.current_style = PromptStyle.TECHNICAL
+        self.user_level = "intermediate"
         self.max_history = 100
+        self.conversation_flow: List[str] = []
+        self.last_topic = ""
+        self.pending_confirmations: List[str] = []
         
-    def add_to_history(self, role: str, content: str, tokens: int = 0):
-        self.history.append({
-            "role": role,
-            "content": content,
-            "tokens": tokens,
-            "timestamp": datetime.now().isoformat()
-        })
+    def detect_intent(self, user_input: str) -> Intent:
+        input_lower = user_input.lower()
         
-        if len(self.history) > self.max_history:
-            self.history = self.history[-self.max_history:]
+        coding_keywords = ["write", "create", "make", "build", "implement", "add", "new"]
+        debug_keywords = ["fix", "bug", "error", "issue", "broken", "not working", "crash"]
+        explain_keywords = ["what", "how", "why", "explain", "tell me", "describe"]
+        modify_keywords = ["change", "update", "modify", "edit", "refactor", "improve"]
+        search_keywords = ["find", "search", "look", "where", "grep", "locate"]
+        review_keywords = ["review", "check", "analyze", "critique", "audit"]
+        execute_keywords = ["run", "execute", "test", "build", "deploy", "start"]
+        
+        for kw in debug_keywords:
+            if kw in input_lower:
+                return Intent.DEBUG
+        for kw in create_keywords:
+            if kw in input_lower:
+                return Intent.CREATE
+        for kw in explain_keywords:
+            if kw in input_lower:
+                return Intent.EXPLAIN
+        for kw in modify_keywords:
+            if kw in input_lower:
+                return Intent.MODIFY
+        for kw in search_keywords:
+            if kw in input_lower:
+                return Intent.SEARCH
+        for kw in review_keywords:
+            if kw in input_lower:
+                return Intent.REVIEW
+        for kw in execute_keywords:
+            if kw in input_lower:
+                return Intent.EXECUTE
             
-    def get_conversation_context(self, max_turns: int = 10) -> str:
+        if "?" in user_input or "help" in input_lower:
+            return Intent.HELP
+            
+        return Intent.CHAT
+        
+    def extract_entities(self, user_input: str) -> List[str]:
+        import re
+        
+        file_pattern = r'\b[\w/]+\.\w+\b'
+        func_pattern = r'\bdef\s+(\w+)|class\s+(\w+)'
+        api_pattern = r'\bAPI|API|api\b'
+        
+        entities = []
+        
+        entities.extend(re.findall(file_pattern, user_input))
+        
+        entities.extend(re.findall(r'def\s+(\w+)', user_input))
+        entities.extend(re.findall(r'class\s+(\w+)', user_input))
+        
+        if "API" in user_input.upper():
+            entities.append("API")
+            
+        return [e for e in entities if e]
+        
+    def determine_user_level(self, user_input: str) -> str:
+        simple_keywords = ["simple", "basic", "easy", "beginner", "hello", "hi"]
+        expert_keywords = ["optimize", "performance", "architecture", "pattern", "advanced", "security"]
+        
+        if any(kw in user_input.lower() for kw in simple_keywords):
+            return "beginner"
+        elif any(kw in user_input.lower() for kw in expert_keywords):
+            return "expert"
+        return "intermediate"
+        
+    def build_context_window(self, max_turns: int = 10) -> str:
         if not self.history:
             return ""
             
         turns = self.history[-max_turns:]
-        context = ""
+        context_parts = []
         
-        for turn in turns:
-            role = turn["role"]
-            content = turn["content"][:200]
-            time = turn.get("timestamp", "")[11:19]
-            context += f"[{time}] {role.upper()}: {content}\n"
+        for i, turn in enumerate(turns):
+            role_emoji = "👤" if turn["role"] == "user" else "🤖"
+            content = turn["content"]
             
-        return context
-        
-    def clear_history(self):
-        cleared = len(self.history)
-        self.history = []
-        log_info(f"Cleared {cleared} prompts from history")
-        
-    def export_history(self, filepath: str = "conversation_history.json"):
-        try:
-            with open(filepath, 'w') as f:
-                json.dump(self.history, f, indent=2)
-            log_info(f"History exported to {filepath}")
-            return True
-        except Exception as e:
-            log_error(f"Failed to export history: {e}")
-            return False
+            if len(content) > 150:
+                content = content[:150] + "..."
+                
+            context_parts.append(f"{role_emoji} {content}")
             
-    def import_history(self, filepath: str = "conversation_history.json"):
-        try:
-            with open(filepath, 'r') as f:
-                self.history = json.load(f)
-            log_info(f"History imported from {filepath}: {len(self.history)} turns")
+            if turn.get("intent"):
+                context_parts.append(f"  └─ Intent: {turn['intent']}")
+            
+        return "\n".join(context_parts)
+        
+    def generate_system_prompt(self, intent: Intent, context: str = "") -> str:
+        style_guides = {
+            PromptStyle.CONCISE: "Keep responses brief and direct. Show only essential code.",
+            PromptStyle.DETAILED: "Be thorough. Explain the why behind the what.",
+            PromptStyle.TECHNICAL: "Use precise technical terms. Include edge cases.",
+            PromptStyle.FRIENDLY: "Be warm and approachable. Use analogies.",
+            PromptStyle.EXPERT: "Optimize for performance. Assume deep knowledge."
+        }
+        
+        intent_guides = {
+            Intent.CREATE: "Write complete, working code. Include imports and error handling.",
+            Intent.DEBUG: "Identify root cause. Show debugging steps. Consider edge cases.",
+            Intent.EXPLAIN: "Use clear examples. Build understanding incrementally.",
+            Intent.MODIFY: "Show before and after. Explain trade-offs.",
+            Intent.REVIEW: "Be constructive. Provide specific improvements.",
+            Intent.EXECUTE: "Validate command is safe. Report all output.",
+        }
+        
+        prompt = f"You are a skilled coding assistant. "
+        prompt += style_guides.get(self.current_style, "")
+        prompt += "\n"
+        prompt += intent_guides.get(intent, "")
+        
+        if context:
+            prompt += f"\n\nRecent context:\n{context}"
+            
+        if self.entities.entities:
+            prompt += f"\n\nTracked entities: {list(self.entities.entities.keys())}"
+            
+        if self.last_topic:
+            prompt += f"\nCurrent topic: {self.last_topic}"
+            
+        return prompt
+        
+    def enrich_user_input(self, user_input: str) -> str:
+        resolved = self.entities.resolve_pronouns(user_input)
+        
+        self.last_topic = resolved[:50]
+        
+        return resolved
+        
+    def generate_response(self, response: str, intent: Intent, style: PromptStyle = None) -> str:
+        if style is None:
+            style = self.current_style
+            
+        prefixes = {
+            Intent.CREATE: "Here's the code:\n",
+            Intent.DEBUG: "Found the issue:\n",
+            Intent.EXPLAIN: "Here's the breakdown:\n",
+            Intent.MODIFY: "Here are the changes:\n",
+            Intent.REVIEW: "Looking at your code:\n",
+            Intent.EXECUTE: "Running that now...\n",
+            Intent.HELP: "Let me help you with that:\n",
+            Intent.CHAT: "",
+        }
+        
+        prefix = prefixes.get(intent, "")
+        
+        if style == PromptStyle.CONCISE:
+            return prefix + response.split('\n')[0]
+        
+        return prefix + response
+        
+    def should_confirm(self, user_input: str) -> bool:
+        dangerous_keywords = ["delete", "remove", "drop", "rm", "format", "destroy"]
+        
+        if any(kw in user_input.lower() for kw in dangerous_keywords):
             return True
-        except Exception as e:
-            log_error(f"Failed to import history: {e}")
-            return False
+            
+        confirm_needed = ["reboot", "restart", "kill", "stop"]
+        
+        return any(kw in user_input.lower() for kw in confirm_needed)
+        
+    def add_to_history(self, role: str, user_input: str, response: str, 
+                    intent: Intent = Intent.CHAT, tokens: int = 0):
+        turn = {
+            "role": role,
+            "user_input": user_input,
+            "response": response,
+            "intent": intent.value,
+            "tokens": tokens,
+            "timestamp": datetime.now().isoformat(),
+            "entities": self.entities.entities.copy()
+        }
+        
+        self.history.append(turn)
+        
+        if len(self.history) > self.max_history:
+            self.history = self.history[-self.max_history:]
+            
+    def summarize_conversation(self) -> str:
+        if not self.history:
+            return "No conversation history."
+            
+        intents = [t.get("intent", "unknown") for t in self.history]
+        unique_intents = set(intents)
+        
+        summary = f"Conversation Summary:\n"
+        summary += f"  Turns: {len(self.history)}\n"
+        summary += f"  Intents: {', '.join(unique_intents)}\n"
+        summary += f"  Entities: {list(self.entities.entities.keys())}\n"
+        
+        return summary
+        
+    def get_conversation_stats(self) -> Dict:
+        if not self.history:
+            return {"turns": 0, "intents": {}, "entities": 0}
+            
+        intents = {}
+        for t in self.history:
+            i = t.get("intent", "unknown")
+            intents[i] = intents.get(i, 0) + 1
+            
+        return {
+            "turns": len(self.history),
+            "intents": intents,
+            "entities": len(self.entities.entities),
+            "style": self.current_style.value
+        }
+
+
+class NaturalTextPromptEngine:
+    def __init__(self):
+        self.nlp = NaturalPromptEngine()
+        self.active = True
+        
+    def process(self, user_input: str) -> Dict:
+        intent = self.nlp.detect_intent(user_input)
+        entities = self.nlp.extract_entities(user_input)
+        
+        for entity in entities:
+            self.nlp.entities.add_entity(entity, "extracted", entity, 0.8)
+        
+        resolved_input = self.nlp.envelops_user_input(user_input)
+        
+        context = self.nlp.build_context_window()
+        
+        system_prompt = self.nlp.generate_system_prompt(intent, context)
+        
+        return {
+            "original_input": user_input,
+            "resolved_input": resolved_input,
+            "intent": intent.value,
+            "entities": entities,
+            "context": context,
+            "system_prompt": system_prompt
+        }
+        
+    def process_response(self, user_input: str, response: str):
+        intent = self.nlp.detect_intent(user_input)
+        
+        self.nlp.add_to_history("user", user_input, response, intent)
+        
+    def set_style(self, style: PromptStyle):
+        self.nlp.current_style = style
+        
+    def get_stats(self) -> Dict:
+        return self.nlp.get_conversation_stats()
+        
+    def summarize(self) -> str:
+        return self.nlp.summarize_conversation()
+
+
+natural_prompt_engine = None
+
+
+def init_natural_prompt_engine() -> NaturalTextPromptEngine:
+    global natural_prompt_engine
+    natural_prompt_engine = NaturalTextPromptEngine()
+    log_info("Natural prompt engine initialized")
+    return natural_prompt_engine
 
 
 vision_engine = None
 text_prompt_engine = None
+natural_prompt_engine = None
 
 
 def init_engines():
-    global vision_engine, text_prompt_engine
+    global vision_engine, text_prompt_engine, natural_prompt_engine
     
     log_info("Initializing prompt engines...")
     
     vision_engine = VisionEngine()
     text_prompt_engine = TextPromptEngine()
+    natural_prompt_engine = NaturalTextPromptEngine()
     
     if vision_engine.is_ready():
         log_info(f"Vision engine ready: {vision_engine.get_capability()} mode")
@@ -653,8 +928,9 @@ def init_engines():
         log_warning("Vision engine not ready - no vision model")
         
     log_info("Text prompt engine ready")
+    log_info("Natural prompt engine ready")
     
-    return vision_engine, text_prompt_engine
+    return vision_engine, text_prompt_engine, natural_prompt_engine
 
 
 @dataclass
