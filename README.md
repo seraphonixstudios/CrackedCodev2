@@ -1,6 +1,6 @@
 # CrackedCode
 
-SOTA Local Multi-Agent Coding Swarm with Voice I/O
+Local AI Coding Assistant
 
 <p align="center">
   <img src="https://img.shields.io/badge/Version-2.1.3-blue?style=for-the-badge" alt="Version">
@@ -8,7 +8,7 @@ SOTA Local Multi-Agent Coding Swarm with Voice I/O
 
 ## Overview
 
-CrackedCode is a production-grade local AI coding assistant that runs 100% offline using Ollama and local voice I/O. It's a SOTA (State-of-the-Art) multi-agent swarm system with voice prompting capabilities.
+CrackedCode is a local AI coding assistant that runs offline using Ollama.
 
 ### Key Features
 
