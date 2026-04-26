@@ -318,11 +318,6 @@ class CrackedCodeGUI(QMainWindow):
         if self.engine:
             return self.engine.get_status().get("ollama_models", [])
         return []
-        try:
-            import ollama
-            return [m.model for m in ollama.list().models]
-        except Exception as e:
-            return [f"Error: {e}"]
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_F12:
