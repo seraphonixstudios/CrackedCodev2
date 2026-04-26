@@ -1162,7 +1162,7 @@ class BLACKBOARD:
 
 class CrackedCodeConfig:
     DEFAULT_CONFIG = {
-        "model": "qwen3-coder:32b",
+        "model": "qwen3:8b-gpu",
         "whisper_size": "medium.en",
         "tts_voice": "en_US-lessac-medium",
         "sample_rate": 16000,
@@ -1659,7 +1659,8 @@ PROJECT ROOT: {self.config.get('project_root')}
     def is_available(self) -> bool:
         try:
             response = ollama.list()
-            return self.model in [m['name'] for m in response.get('models', [])]
+            model_names = [m.model for m in response.models]
+            return self.model in model_names
         except:
             return False
 
@@ -1908,25 +1909,15 @@ class AgentSwarm:
 
 
 class CrackedCode:
-    VERSION = "2.1.2"
+    VERSION = "2.1.8"
     BANNER = """
-╔══════════════════════════════════════════════════════════════════════════════╗
-║                                                                              ║
-║   █████╗  ██████╗  ██████╗ ████████╗    ██████╗  ██╗     ██╗ ██████╗ ██████╗  █████╗ ║
-║  ██╔══██╗██╔═══██╗██╔═══██╗╚══██╔══╝    ██╔══██╗ ██║     ██║██╔════╝ ██╔══██╗██╔══██╗║
-║  ███████║██║   ██║██║   ██║   ██║       ██████╔╝ ██║     ██║██║  ███╗██████╔╝███████║║
-║  ██╔══██║██║   ██║██║   ██║   ██║       ██╔══██╗ ██║     ██║██║   ██║██╔══██╗██╔══██║║
-║  ██║  ██║╚██████╔╝╚██████╔╝   ██║       ██║  ██║ ███████╗██║██║   ██║██║  ██║██║  ██║║
-║  ╚═╝  ╚═╝ ╚═════╝  ╚═════╝    ╚═╝       ╚═╝  ╚═╝ ╚══════╝╚═╝╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝║
-║                                                                              ║
-║                        CrackedCode Voice System                               ║
-║              SOTA Local Multi-Agent Coding Swarm with Voice I/O             ║
-║                                                                              ║
-╚══════════════════════════════════════════════════════════════════════════════╝
-
-Version: {version}
-Platform: {platform}
-Python: {python}
+============================================================
+  CRACKEDCODE v{version} - Local AI Coding Assistant
+============================================================
+  Platform: {platform}
+  Python: {python}
+  Models: qwen3:8b-gpu, llava:13b-gpu
+============================================================
 """
 
     def __init__(self, config_path: Optional[str] = None):

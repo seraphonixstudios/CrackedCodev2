@@ -22,12 +22,12 @@ def SKIP(name, msg=""):
     print("[SKIP] %s %s" % (name, msg))
 
 
-def test_header(title):
-    print("\n%s\n  %s\n%s\n" % ("="*60, title, "="*60))
+def print_header(name, msg=""):
+    print("\n%s\n  %s\n%s\n" % ("="*60, name, "="*60))
 
 
 def test_modules():
-    test_header("MODULE IMPORTS")
+    print_header("MODULE IMPORTS")
     
     try:
         from src.main import CrackedCodeConfig
@@ -54,7 +54,7 @@ def test_modules():
 
 
 def test_parallel():
-    test_header("PARALLEL EXECUTOR")
+    print_header("PARALLEL EXECUTOR")
     
     try:
         from src.parallel_processor import ParallelExecutor, ExecutionMode
@@ -86,7 +86,7 @@ def test_parallel():
 
 
 def test_pipeline():
-    test_header("PIPELINE")
+    print_header("PIPELINE")
     
     try:
         from src.parallel_processor import PipelineProcessor
@@ -109,7 +109,7 @@ def test_pipeline():
 
 
 def test_unified():
-    test_header("UNIFIED RESOLUTION")
+    print_header("UNIFIED RESOLUTION")
     
     try:
         from src.parallel_processor import UnifiedCoordinator, ResolutionStrategy
@@ -140,7 +140,7 @@ def test_unified():
 
 
 def test_atlan():
-    test_header("ATLANTEAN UI")
+    print_header("ATLANTEAN UI")
     
     try:
         from src.atlan_ui import GlitchEffect, NeuralPulse, HexGrid
@@ -205,7 +205,7 @@ def test_plan_build():
 
 
 def test_config():
-    test_header("CONFIGURATION")
+    print_header("CONFIGURATION")
     
     import json
     
@@ -230,7 +230,7 @@ def test_config():
 
 
 def test_ollama():
-    test_header("OLLAMA CONNECTION")
+    print_header("OLLAMA CONNECTION")
     
     try:
         import ollama
@@ -260,7 +260,7 @@ def main():
     results.append(("Atlantean", test_atlan()))
     results.append(("Plan/Build", test_plan_build()))
     
-    test_header("SUMMARY")
+    print_header("SUMMARY")
     
     passed = sum(1 for _, ok in results if ok)
     total = len(results)
