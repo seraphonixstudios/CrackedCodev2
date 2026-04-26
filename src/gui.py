@@ -4,6 +4,7 @@ import json
 import logging
 import random
 import time
+import traceback
 from pathlib import Path
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
@@ -20,7 +21,7 @@ from PyQt6.QtGui import (
 from PyQt6.QtNetwork import QLocalSocket, QLocalServer
 
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format='%(asctime)s | %(levelname)s | %(name)s | %(message)s'
 )
 logger = logging.getLogger("CrackedCodeGUI")
@@ -259,6 +260,39 @@ class CrackedCodeGUI(QMainWindow):
         sb.addWidget(self.status_lbl)
         sb.addPermanentWidget(QLabel(f"MODEL: {self.config.get('model', 'qwen3:8b-gpu')}"))
         sb.addPermanentWidget(QLabel("PLAN: ON | BUILD: ON"))
+        
+    def toggle_dev_console(self):
+        if hasattr(self, 'dev_console') and self.dev_console.isVisible():
+            self.dev_console.hide()
+            self.term("[DEV CONSOLE: Hidden]")
+        else:
+            if not hasattr(self, 'dev_console'):
+                self.dev_console = QTextEdit()
+                self.dev_console.setWindowTitle("Dev Console (F12)")
+                self.dev_console.setMaximumHeight(150)
+                self.layout().addWidget(self.dev_console)
+            self.dev_console.setPlainText("")
+            self.dev_console.append("=== DEV CONSOLE ===")
+            self.dev_console.append(f"Python: {sys.version}")
+            self.dev_console.append(f"Platform: {sys.platform}")
+            self.dev_console.append(f"Ollama models: {self.get_ollama_models()}")
+            self.dev_console.append(f"Config: {json.dumps(self.config, indent=2)}")
+            self.dev_console.append("="*30)
+            self.dev_console.show()
+            self.term("[DEV CONSOLE: Shown - Press F12 to toggle]")
+
+    def get_ollama_models(self):
+        try:
+            import ollama
+            return [m.model for m in ollama.list().models]
+        except Exception as e:
+            return [f"Error: {e}"]
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key.Key_F12:
+            self.toggle_dev_console()
+        else:
+            super().keyPressEvent(event)
 
     def init_matrix(self):
         self.matrix = MatrixOverlay(self)
@@ -375,11 +409,63 @@ class CrackedCodeGUI(QMainWindow):
 
     def toggle_voice(self):
         if self.mic_btn.isChecked():
-            self.term("[VOICE INPUT ON - Speak now...]")
-            self.status_lbl.setText("LISTENING...")
+            self.start_voice_recording()
         else:
-            self.term("[VOICE INPUT OFF]")
-            self.status_lbl.setText("WAITING")
+            self.stop_voice_recording()
+
+    def start_voice_recording(self):
+        self.term("[VOICE: Push SPACE to talk, release to send]")
+        self.status_lbl.setText("VOICE READY")
+        try:
+            from faster_whisper import WhisperModel
+            self.whisper = WhisperModel("medium.en", device="cuda", compute_type="int8")
+            self.term("[VOICE: Whisper ready]")
+        except ImportError:
+            self.term("[VOICE: pip install faster-whisper]")
+        except Exception as e:
+            self.term(f"[VOICE ERROR: {e}]")
+            self.mic_btn.setChecked(False)
+
+    def stop_voice_recording(self):
+        self.term("[VOICE: Off]")
+        self.status_lbl.setText("WAITING")
+
+    def process_voice(self):
+        try:
+            import sounddevice as sd
+            import numpy as np
+            import io
+            
+            self.term("[LISTENING 3s...]")
+            audio = sd.rec(int(3 * 16000), samplerate=16000, channels=1)
+            sd.wait()
+            
+            buffer = io.BytesIO()
+            import wave
+            with wave.open(buffer, 'wb') as f:
+                f.setnchannels(1); f.setsampwidth(2); f.setframerate(16000)
+                f.writeframes(audio.tobytes())
+            buffer.seek(0)
+            
+            result = self.whisper.transcribe(buffer)
+            text = result[0].strip()
+            
+            if text:
+                self.term(f">>> {text}")
+                self.term_input.setText(text)
+            else:
+                self.term("[NO SPEECH]")
+        except Exception as e:
+            self.term(f"[ERROR: {e}]")
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key.Key_F12:
+            self.toggle_dev_console()
+        elif event.key() == Qt.Key.Key_Space and self.mic_btn.isChecked():
+            self.process_voice()
+            event.accept()
+        else:
+            super().keyPressEvent(event)
 
     def term(self, text):
         self.terminal.append(text)
