@@ -243,6 +243,11 @@ class CrackedCodeGUI(QMainWindow):
         
         tb.addSeparator()
         
+        self.mic_btn = QPushButton("VOICE")
+        self.mic_btn.setCheckable(True)
+        self.mic_btn.clicked.connect(self.toggle_voice)
+        tb.addWidget(self.mic_btn)
+        
         exec_btn = QPushButton("EXECUTE")
         exec_btn.clicked.connect(self.exec_code)
         tb.addWidget(exec_btn)
@@ -351,7 +356,30 @@ class CrackedCodeGUI(QMainWindow):
         cmd = self.term_input.text()
         if cmd:
             self.term(f"$ {cmd}")
+            self.process_prompt(cmd)
             self.term_input.clear()
+
+    def process_prompt(self, text):
+        self.term(f">>> {text}")
+        self.status_lbl.setText("PROCESSING...")
+        
+        if not self.plan_btn.isChecked():
+            self.term("[PLAN MODE OFF - No action taken]")
+            self.status_lbl.setText("WAITING")
+            return
+        
+        self.term("")
+        self.term("="*40)
+        self.term("PROCESSING WITH AI AGENTS...")
+        self.term("="*40)
+
+    def toggle_voice(self):
+        if self.mic_btn.isChecked():
+            self.term("[VOICE INPUT ON - Speak now...]")
+            self.status_lbl.setText("LISTENING...")
+        else:
+            self.term("[VOICE INPUT OFF]")
+            self.status_lbl.setText("WAITING")
 
     def term(self, text):
         self.terminal.append(text)
