@@ -168,15 +168,22 @@ class CrackedCodeGUI(QMainWindow):
     def init_ui(self):
         central = QWidget()
         self.setCentralWidget(central)
-        main = QVBoxLayout(central)
+        main = QHBoxLayout(central)
         main.setContentsMargins(4, 4, 4, 4)
         main.setSpacing(4)
+        
+        left = self.create_sidebar()
+        main.addWidget(left, 1)
+        
+        right = QWidget()
+        rl = QVBoxLayout(right)
+        rl.setContentsMargins(0, 0, 0, 0)
         
         self.create_toolbar()
         
         self.editor = QTextEdit()
-        self.editor.setPlaceholderText("// Enter code here...")
-        main.addWidget(self.editor, 2)
+        self.editor.setPlaceholderText("// Enter code...")
+        rl.addWidget(self.editor, 2)
         
         term = QGroupBox("TERMINAL")
         tl = QVBoxLayout(term)
@@ -187,14 +194,37 @@ class CrackedCodeGUI(QMainWindow):
         tin = QHBoxLayout()
         tin.addWidget(QLabel(">"))
         self.term_input = QLineEdit()
-        self.term_input.setPlaceholderText("command...")
         self.term_input.returnPressed.connect(self.run_term)
         tin.addWidget(self.term_input)
         tl.addLayout(tin)
         
-        main.addWidget(term, 1)
+        rl.addWidget(term, 1)
+        
+        main.addWidget(right, 3)
         
         self.create_status()
+
+    def create_sidebar(self):
+        panel = QFrame()
+        panel.setMaximumWidth(250)
+        l = QVBoxLayout(panel)
+        
+        lbl = QLabel("PROJECT FILES")
+        l.addWidget(lbl)
+        
+        self.files_list = QListWidget()
+        l.addWidget(self.files_list)
+        
+        btn_layout = QHBoxLayout()
+        new_btn = QPushButton("NEW")
+        new_btn.clicked.connect(self.new_proj)
+        open_btn = QPushButton("OPEN")
+        open_btn.clicked.connect(self.open_proj)
+        btn_layout.addWidget(new_btn)
+        btn_layout.addWidget(open_btn)
+        l.addLayout(btn_layout)
+        
+        return panel
 
     def create_toolbar(self):
         tb = QToolBar()
