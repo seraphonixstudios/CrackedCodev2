@@ -228,8 +228,9 @@ class CrackedCodeGUI(QMainWindow):
         panel = QFrame()
         panel.setMaximumWidth(250)
         l = QVBoxLayout(panel)
+        l.setSpacing(4)
         
-        lbl = QLabel("PROJECT FILES")
+        lbl = QLabel("PROJECT")
         l.addWidget(lbl)
         
         self.files_list = QListWidget()
@@ -243,6 +244,25 @@ class CrackedCodeGUI(QMainWindow):
         btn_layout.addWidget(new_btn)
         btn_layout.addWidget(open_btn)
         l.addLayout(btn_layout)
+        
+        l.addWidget(QLabel(""))
+        l.addWidget(QLabel("AGENTS"))
+        
+        self.agents_list = QListWidget()
+        self.agents_list.addItems([
+            "Supervisor",
+            "Architect", 
+            "Coder",
+            "Executor",
+            "Reviewer"
+        ])
+        l.addWidget(self.agents_list)
+        
+        l.addWidget(QLabel(""))
+        l.addWidget(QLabel("TASK"))
+        
+        self.task_lbl = QLabel("Idle")
+        l.addWidget(self.task_lbl)
         
         return panel
 
@@ -339,14 +359,18 @@ class CrackedCodeGUI(QMainWindow):
         f = QFileDialog.getExistingDirectory(self, "NEW PROJECT")
         if f:
             self.config["project_root"] = f
-            self.term(f"PROJECT: {f}")
+            self.term(f"[PROJECT: {f}]")
+            if hasattr(self, 'task_lbl'):
+                self.task_lbl.setText("Creating project...")
             self.scan_project_files(f)
 
     def open_proj(self):
         f = QFileDialog.getExistingDirectory(self, "OPEN PROJECT")
         if f:
             self.config["project_root"] = f
-            self.term(f"OPENED: {f}")
+            self.term(f"[OPENED: {f}]")
+            if hasattr(self, 'task_lbl'):
+                self.task_lbl.setText("Ready")
             self.scan_project_files(f)
 
     def scan_project_files(self, root):
@@ -425,8 +449,11 @@ class CrackedCodeGUI(QMainWindow):
             self.term_input.clear()
 
     def process_prompt(self, text):
-        self.term(f">>> {text}")
+        self.term(f">> {text}")
         self.status_lbl.setText("PROCESSING...")
+        
+        if hasattr(self, 'task_lbl'):
+            self.task_lbl.setText("Processing...")
         
         if not self.plan_btn.isChecked():
             self.term("[PLAN MODE OFF]")
@@ -442,9 +469,13 @@ class CrackedCodeGUI(QMainWindow):
                 if response.error:
                     self.term(f"[ERROR: {response.error}]")
                 self.term(f"[took {response.execution_time:.2f}s]")
+                if hasattr(self, 'task_lbl'):
+                    self.task_lbl.setText("Done")
             except Exception as e:
                 self.term(f"[PROCESS ERROR: {e}]")
                 logger.exception("Process failed")
+                if hasattr(self, 'task_lbl'):
+                    self.task_lbl.setText("Error")
         else:
             self.term("[NO ENGINE]")
         
@@ -485,6 +516,9 @@ class CrackedCodeGUI(QMainWindow):
             self.term("[LISTENING 3s...]")
             self.status_lbl.setText("LISTENING...")
             
+            devices = sd.query_devices()
+            self.term(f"[Device: {devices['default_input_device_name']}]")
+            
             audio = sd.rec(int(3000), samplerate=16000, channels=1, dtype=np.int16)
             sd.wait()
             
@@ -512,7 +546,6 @@ class CrackedCodeGUI(QMainWindow):
             self.term("[VOICE: pip install sounddevice numpy faster-whisper]")
         except Exception as e:
             self.term(f"[ERROR: {e}]")
-            logger.exception("Voice")
             logger.exception("Voice")
 
     def keyPressEvent(self, event):
