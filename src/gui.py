@@ -299,20 +299,20 @@ class CrackedCodeGUI(QMainWindow):
             if not hasattr(self, 'dev_console'):
                 self.dev_console = QTextEdit()
                 self.dev_console.setWindowTitle("Dev Console (F12)")
-                self.dev_console.setMaximumHeight(200)
-                self.layout().addWidget(self.dev_console)
+                self.dev_console.setGeometry(100, 100, 400, 300)
             
             self.dev_console.setPlainText("")
             self.dev_console.append("=== DEV CONSOLE v%s ===" % status.get("version", "?"))
             self.dev_console.append(f"Ollama: {status.get('ollama_available', False)}")
             self.dev_console.append(f"Models: {status.get('ollama_models', [])}")
-            self.dev_console.append(f"Host: {status.get('ollama_host', 'localhost:11434')}")
             self.dev_console.append(f"Model: {status.get('model', 'none')}")
             self.dev_console.append(f"Plan: {status.get('plan', False)}")
             self.dev_console.append(f"Build: {status.get('build', False)}")
             self.dev_console.append(f"History: {status.get('history_length', 0)} turns")
             self.dev_console.append("="*30)
             self.dev_console.show()
+            self.dev_console.raise_()
+            self.dev_console.activateWindow()
 
     def get_ollama_models(self):
         if self.engine:
@@ -462,14 +462,11 @@ class CrackedCodeGUI(QMainWindow):
             self.stop_voice_recording()
 
     def start_voice_recording(self):
-        self.term("[VOICE: Push SPACE to talk, release to send]")
+        self.term("[VOICE: Press SPACE to record]")
         self.status_lbl.setText("VOICE READY")
         try:
-            from faster_whisper import WhisperModel
-            self.whisper = WhisperModel("medium.en", device="cuda", compute_type="int8")
-            self.term("[VOICE: Whisper ready]")
-        except ImportError:
-            self.term("[VOICE: pip install faster-whisper]")
+            self.voice_enabled = True
+            self.term("[VOICE: Ready]")
         except Exception as e:
             self.term(f"[VOICE ERROR: {e}]")
             self.mic_btn.setChecked(False)
@@ -477,6 +474,7 @@ class CrackedCodeGUI(QMainWindow):
     def stop_voice_recording(self):
         self.term("[VOICE: Off]")
         self.status_lbl.setText("WAITING")
+        self.voice_enabled = False
 
     def process_voice(self):
         try:
@@ -484,7 +482,7 @@ class CrackedCodeGUI(QMainWindow):
             import numpy as np
             import wave
             
-            self.term("[RECORDING...]")
+            self.term("[RECORDING 3s...]")
             self.status_lbl.setText("RECORDING...")
             
             audio = sd.rec(int(3000), samplerate=16000, channels=1, dtype=np.int16)
@@ -496,22 +494,25 @@ class CrackedCodeGUI(QMainWindow):
                 f.writeframes(audio.tobytes())
             buffer.seek(0)
             
-            result = self.whisper.transcribe(buffer)
-            text = result[0].strip()
-            
-            if text:
-                self.term(f">>> {text}")
-                self.term_input.setText(text)
-                self.process_prompt(text)
-            else:
-                self.term("[NO SPEECH]")
+            if self.engine and self.engine.voice:
+                self.engine.voice.load()
+                result = self.engine.voice.whisper.transcribe(buffer)
+                text = result[0].strip()
                 
-        except ImportError as e:
+                if text:
+                    self.term(f">>> {text}")
+                    self.term_input.setText(text)
+                    self.process_prompt(text)
+                else:
+                    self.term("[NO SPEECH]")
+            else:
+                self.term("[VOICE: Engine not ready]")
+                
+        except ImportError:
             self.term("[VOICE: pip install sounddevice numpy faster-whisper]")
         except Exception as e:
             self.term(f"[ERROR: {e}]")
             logger.exception("Voice")
-            self.term(f"[ERROR: {e}]")
             logger.exception("Voice")
 
     def keyPressEvent(self, event):
