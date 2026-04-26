@@ -169,129 +169,17 @@ class CrackedCodeGUI(QMainWindow):
         central = QWidget()
         self.setCentralWidget(central)
         main = QVBoxLayout(central)
-        main.setContentsMargins(0, 0, 0, 0)
+        main.setContentsMargins(4, 4, 4, 4)
+        main.setSpacing(4)
         
-        self.create_menu()
         self.create_toolbar()
         
-        splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.addWidget(self.create_left())
-        splitter.addWidget(self.create_right())
-        splitter.setSizes([300, 900])
-        main.addWidget(splitter)
-        
-        self.create_status()
-
-    def create_menu(self):
-        mb = self.menuBar()
-        
-        m_file = mb.addMenu("FILE")
-        m_file.addAction("NEW PROJECT", self.new_proj)
-        m_file.addAction("OPEN PROJECT", self.open_proj)
-        m_file.addSeparator()
-        m_file.addAction("SETTINGS", self.show_settings)
-        m_file.addSeparator()
-        m_file.addAction("EXIT", self.close)
-        
-        m_edit = mb.addMenu("EDIT")
-        m_edit.addAction("UNDO")
-        m_edit.addAction("REDO")
-        m_edit.addSeparator()
-        m_edit.addAction("CUT")
-        m_edit.addAction("COPY")
-        m_edit.addAction("PASTE")
-        
-        m_view = mb.addMenu("VIEW")
-        m_view.addAction("TOGGLE LEFT PANEL")
-        m_view.addAction("TOGGLE TERMINAL")
-        m_view.addSeparator()
-        m_view.addAction("FULLSCREEN", self.toggle_full)
-        
-        m_run = mb.addMenu("RUN")
-        m_run.addAction("EXECUTE CODE", self.exec_code)
-        m_run.addAction("DEBUG", self.debug_code)
-        m_run.addSeparator()
-        m_run.addAction("PLAN MODE", lambda: self.set_mode("plan"))
-        m_run.addAction("BUILD MODE", lambda: self.set_mode("build"))
-        
-        m_help = mb.addMenu("HELP")
-        m_help.addAction("DOCS", self.show_docs)
-        m_help.addAction("ABOUT", self.show_about)
-
-    def create_toolbar(self):
-        tb = QToolBar("MAIN")
-        tb.setMovable(False)
-        self.addToolBar(tb)
-        
-        self.plan_btn = QPushButton("[PLAN]")
-        self.plan_btn.setCheckable(True)
-        self.plan_btn.setChecked(True)
-        self.plan_btn.clicked.connect(lambda: self.set_mode("plan"))
-        tb.addWidget(self.plan_btn)
-        
-        self.build_btn = QPushButton("[BUILD]")
-        self.build_btn.setCheckable(True)
-        self.build_btn.setChecked(True)
-        self.build_btn.clicked.connect(lambda: self.set_mode("build"))
-        tb.addWidget(self.build_btn)
-        
-        tb.addSeparator()
-        
-        exec_btn = QPushButton(">> EXECUTE")
-        exec_btn.clicked.connect(self.exec_code)
-        tb.addWidget(exec_btn)
-        
-        tb.addSeparator()
-        
-        tb.addWidget(QLabel("MODEL:"))
-        self.model_combo = QComboBox()
-        self.model_combo.addItems(["qwen3:8b-gpu", "dolphin-llama3:8b-gpu", "llava:13b-gpu"])
-        self.model_combo.setCurrentText(self.config.get("model", "qwen3:8b-gpu"))
-        tb.addWidget(self.model_combo)
-
-    def create_left(self):
-        panel = QFrame()
-        panel.setFrameShape(QFrame.Shape.StyledPanel)
-        l = QVBoxLayout(panel)
-        
-        self.tabs = QTabWidget()
-        
-        files = QWidget()
-        fl = QVBoxLayout(files)
-        self.files_list = QListWidget()
-        fl.addWidget(QLabel("PROJECT FILES"))
-        fl.addWidget(self.files_list)
-        self.tabs.addTab(files, "FILES")
-        
-        agents = QWidget()
-        al = QVBoxLayout(agents)
-        self.agents_list = QListWidget()
-        self.agents_list.addItems([
-            "SUPERVISOR - Orchestrates",
-            "ARCHITECT - Designs structure",
-            "CODER - Writes code",
-            "EXECUTOR - Runs safely",
-            "REVIEWER - Analyzes"
-        ])
-        al.addWidget(QLabel("AGENTS"))
-        al.addWidget(self.agents_list)
-        self.tabs.addTab(agents, "AGENTS")
-        
-        l.addWidget(self.tabs)
-        return panel
-
-    def create_right(self):
-        panel = QFrame()
-        l = QVBoxLayout(panel)
-        l.setContentsMargins(4, 4, 4, 4)
-        
         self.editor = QTextEdit()
-        self.editor.setPlaceholderText("// Enter code here...\n// Press >> EXECUTE or Ctrl+Return to run")
-        l.addWidget(self.editor, 3)
+        self.editor.setPlaceholderText("// Enter code here...")
+        main.addWidget(self.editor, 2)
         
-        term_group = QGroupBox("TERMINAL OUTPUT")
-        tl = QVBoxLayout(term_group)
-        
+        term = QGroupBox("TERMINAL")
+        tl = QVBoxLayout(term)
         self.terminal = QTextEdit()
         self.terminal.setReadOnly(True)
         tl.addWidget(self.terminal)
@@ -299,13 +187,35 @@ class CrackedCodeGUI(QMainWindow):
         tin = QHBoxLayout()
         tin.addWidget(QLabel(">"))
         self.term_input = QLineEdit()
-        self.term_input.setPlaceholderText("enter command...")
+        self.term_input.setPlaceholderText("command...")
         self.term_input.returnPressed.connect(self.run_term)
         tin.addWidget(self.term_input)
         tl.addLayout(tin)
         
-        l.addWidget(term_group, 2)
-        return panel
+        main.addWidget(term, 1)
+        
+        self.create_status()
+
+    def create_toolbar(self):
+        tb = QToolBar()
+        tb.setMovable(False)
+        self.addToolBar(tb)
+        
+        self.plan_btn = QPushButton("PLAN")
+        self.plan_btn.setCheckable(True)
+        self.plan_btn.setChecked(True)
+        tb.addWidget(self.plan_btn)
+        
+        self.build_btn = QPushButton("BUILD")
+        self.build_btn.setCheckable(True)
+        self.build_btn.setChecked(True)
+        tb.addWidget(self.build_btn)
+        
+        tb.addSeparator()
+        
+        exec_btn = QPushButton("EXECUTE")
+        exec_btn.clicked.connect(self.exec_code)
+        tb.addWidget(exec_btn)
 
     def create_status(self):
         sb = QStatusBar()
@@ -330,15 +240,54 @@ class CrackedCodeGUI(QMainWindow):
         if f:
             self.config["project_root"] = f
             self.term(f"PROJECT: {f}")
+            self.scan_project_files(f)
 
     def open_proj(self):
         f = QFileDialog.getExistingDirectory(self, "OPEN PROJECT")
         if f:
             self.config["project_root"] = f
             self.term(f"OPENED: {f}")
+            self.scan_project_files(f)
+
+    def scan_project_files(self, root):
+        self.files_list.clear()
+        path = Path(root)
+        if path.exists():
+            for p in path.rglob("*"):
+                if p.is_file() and p.suffix == ".py":
+                    self.files_list.addItem(str(p.relative_to(path)))
 
     def show_settings(self):
-        self.term("SETTINGS: Coming soon...")
+        self.term("="*50)
+        self.term("LOGIN PAGE IMPLEMENTATION PLAN")
+        self.term("="*50)
+        self.term("")
+        self.term("1. AUTHENTICATION SYSTEM")
+        self.term("   - User database (JSON file with hashed passwords)")
+        self.term("   - Login dialog with username/password fields")
+        self.term("   - Session management with tokens")
+        self.term("   - Optional: OAuth, 2FA support")
+        self.term("")
+        self.term("2. LOGIN PAGE (HTML/CSS/JS)")
+        self.term("   - Embedded webview or PyQt6 QWebEngineView")
+        self.term("   - Atlantean-themed login form")
+        self.term("   - Remember me checkbox")
+        self.term("   - Password reset flow")
+        self.term("")
+        self.term("3. SECURITY FEATURES")
+        self.term("   - Password hashing (bcrypt/argon2)")
+        self.term("   - Rate limiting on login attempts")
+        self.term("   - Session timeout")
+        self.term("   - Audit logging")
+        self.term("")
+        self.term("4. INTEGRATION")
+        self.term("   - Pre-launch login check in gui.py")
+        self.term("   - User context in blackboard")
+        self.term("   - Per-user settings persistence")
+        self.term("")
+        self.term("="*50)
+        self.term("Ready to build? Say YES to proceed.")
+        self.term("="*50)
 
     def show_docs(self):
         QDesktopServices.openUrl(QUrl("https://github.com/seraphonixstudios/CrackedCodev2"))
