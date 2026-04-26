@@ -522,6 +522,107 @@ class AtlanInterface:
         self.ui = MatrixUI()
         self.glitch = GlitchEffect()
         self.running = False
+        self.build_mode = False
+        self.plan_mode = True
+        self.execution_history = []
+        
+    def set_mode(self, plan: bool = None, build: bool = None):
+        if plan is not None:
+            self.plan_mode = plan
+        if build is not None:
+            self.build_mode = build
+            
+        mode_display = []
+        if self.plan_mode:
+            mode_display.append("PLAN")
+        if self.build_mode:
+            mode_display.append("BUILD")
+            
+        if not mode_display:
+            mode_display = ["IDLE"]
+            
+        self._print_mode_indicator(" ".join(mode_display))
+        
+    def _print_mode_indicator(self, mode: str):
+        colors = {
+            "PLAN": Fore.CYAN,
+            "BUILD": Fore.GREEN,
+            "IDLE": Fore.RED,
+        }
+        color = colors.get(mode, Fore.WHITE)
+        
+        print(f"\n{color}[◈] MODE: {mode}{Style.RESET_ALL}")
+        
+    def toggle_plan(self):
+        self.plan_mode = not self.plan_mode
+        self._print_mode_indicator("PLAN" if self.plan_mode else "IDLE")
+        
+    def toggle_build(self):
+        self.build_mode = not self.build_mode
+        self._print_mode_indicator("BUILD" if self.build_mode else "IDLE")
+        
+    def plan_phase(self, tasks: List[str]):
+        if not self.plan_mode:
+            return None
+            
+        print(f"\n{Fore.CYAN}◈ PLANNING PHASE:{Style.RESET_ALL}")
+        
+        plan = []
+        for i, task in enumerate(tasks, 1):
+            print(f"  {Fore.CYAN}{i}.{Style.RESET_ALL} {task}")
+            plan.append({"step": i, "task": task, "status": "planned"})
+            
+        print(f"  └─ {len(tasks)} tasks planned")
+        
+        return plan
+        
+    def build_phase(self, plan: List[Dict]):
+        if not self.build_mode:
+            return None
+            
+        print(f"\n{Fore.GREEN}◈ BUILD PHASE:{Style.RESET_ALL}")
+        
+        results = []
+        for step in plan:
+            task = step.get("task", "")
+            print(f"  {Fore.GREEN}▓{Style.RESET_ALL} Executing: {task}")
+            
+            results.append({
+                "step": step.get("step"),
+                "task": task,
+                "status": "built",
+                "completed_at": datetime.now().isoformat()
+            })
+            
+            self.execution_history.append({
+                "mode": "build",
+                "task": task,
+                "timestamp": datetime.now().isoformat()
+            })
+            
+        print(f"  └─ {len(plan)} tasks executed")
+        
+        return results
+        
+    def execute_plan(self, task_description: str, task_count: int = 5):
+        plan = [{"step": i, "task": f"subtask_{i}", "status": "pending"} for i in range(1, task_count + 1)]
+        
+        if self.plan_mode:
+            print(f"\n{Fore.CYAN}◈ PROCESSING: {task_description}{Style.RESET_ALL}")
+            
+            if self.plan_mode:
+                plan = self.plan_phase([p["task"] for p in plan])
+                
+            if self.build_mode and plan:
+                results = self.build_phase(plan)
+                print(f"\n{Fore.GREEN}✓ EXECUTION COMPLETE{Style.RESET_ALL}")
+                return results
+            else:
+                print(f"\n{Fore.YELLOW}⚠ PLAN READY - Toggle build mode to execute{Style.RESET_ALL}")
+                return plan
+        else:
+            print(f"\n{Fore.RED}◈ SYSTEM IN IDLE MODE{Style.RESET_ALL}")
+            return None
         
     def print_banner(self, style: str = "atlan"):
         banners = {
