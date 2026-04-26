@@ -91,8 +91,11 @@ class CrackedCodeGUI(QMainWindow):
         try:
             self.engine = get_engine(self.config)
             logger.info(f"Engine model: {self.engine.model}")
+            status = self.engine.get_status()
+            self.update_status(status)
             if hasattr(self, 'terminal'):
-                self.term(f"[ENGINE: {self.engine.model} loaded]")
+                self.term(f"[ENGINE v{status['version']} loaded]")
+                self.term(f"[OLLAMA: {len(status['ollama_models'])} models]")
         except Exception as e:
             logger.error(f"Engine init failed: {e}")
 
@@ -272,32 +275,49 @@ class CrackedCodeGUI(QMainWindow):
     def create_status(self):
         sb = QStatusBar()
         self.setStatusBar(sb)
-        self.status_lbl = QLabel("SYSTEM ONLINE // WAITING FOR INPUT")
+        self.status_lbl = QLabel("READY")
         sb.addWidget(self.status_lbl)
-        sb.addPermanentWidget(QLabel(f"MODEL: {self.config.get('model', 'qwen3:8b-gpu')}"))
-        sb.addPermanentWidget(QLabel("PLAN: ON | BUILD: ON"))
+        
+        self.ollama_lbl = QLabel("OLLAMA: ...")
+        sb.addPermanentWidget(self.ollama_lbl)
+        
+        self.model_lbl = QLabel("MODEL: none")
+        sb.addPermanentWidget(self.model_lbl)
+        
+    def update_status(self, status: Dict):
+        if hasattr(self, 'ollama_lbl'):
+            self.ollama_lbl.setText(f"OLLAMA: {'ON' if status.get('ollama_available') else 'OFF'}")
+        if hasattr(self, 'model_lbl'):
+            self.model_lbl.setText(f"MODEL: {status.get('model', 'none')}")
         
     def toggle_dev_console(self):
+        status = self.engine.get_status() if self.engine else {}
+        
         if hasattr(self, 'dev_console') and self.dev_console.isVisible():
             self.dev_console.hide()
-            self.term("[DEV CONSOLE: Hidden]")
         else:
             if not hasattr(self, 'dev_console'):
                 self.dev_console = QTextEdit()
                 self.dev_console.setWindowTitle("Dev Console (F12)")
-                self.dev_console.setMaximumHeight(150)
+                self.dev_console.setMaximumHeight(200)
                 self.layout().addWidget(self.dev_console)
+            
             self.dev_console.setPlainText("")
-            self.dev_console.append("=== DEV CONSOLE ===")
-            self.dev_console.append(f"Python: {sys.version}")
-            self.dev_console.append(f"Platform: {sys.platform}")
-            self.dev_console.append(f"Ollama models: {self.get_ollama_models()}")
-            self.dev_console.append(f"Config: {json.dumps(self.config, indent=2)}")
+            self.dev_console.append("=== DEV CONSOLE v%s ===" % status.get("version", "?"))
+            self.dev_console.append(f"Ollama: {status.get('ollama_available', False)}")
+            self.dev_console.append(f"Models: {status.get('ollama_models', [])}")
+            self.dev_console.append(f"Host: {status.get('ollama_host', 'localhost:11434')}")
+            self.dev_console.append(f"Model: {status.get('model', 'none')}")
+            self.dev_console.append(f"Plan: {status.get('plan', False)}")
+            self.dev_console.append(f"Build: {status.get('build', False)}")
+            self.dev_console.append(f"History: {status.get('history_length', 0)} turns")
             self.dev_console.append("="*30)
             self.dev_console.show()
-            self.term("[DEV CONSOLE: Shown - Press F12 to toggle]")
 
     def get_ollama_models(self):
+        if self.engine:
+            return self.engine.get_status().get("ollama_models", [])
+        return []
         try:
             import ollama
             return [m.model for m in ollama.list().models]

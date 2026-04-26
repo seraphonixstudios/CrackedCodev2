@@ -100,24 +100,32 @@ class OllamaBridge:
         self.model = model
         self.ollama = None
         self.client = None
+        self.available_models = []
+        self.host = "http://localhost:11434"
+        self._connected = False
         logger.info(f"OllamaBridge init: {model}")
 
-    def connect(self) -> bool:
+    def detect(self) -> Dict:
+        result = {"available": False, "models": [], "host": self.host, "selected": self.model}
         try:
             import ollama
             self.ollama = ollama
             response = ollama.list()
-            models = [m.model for m in response.models]
+            result["models"] = [m.model for m in response.models]
+            result["available"] = True
             
-            if self.model not in models:
-                logger.warning(f"Model {self.model} not found, available: {models}")
-                self.model = models[0] if models else "qwen3:8b-gpu"
+            if self.model not in result["models"]:
+                self.model = result["models"][0] if result["models"] else "qwen3:8b-gpu"
+                result["selected"] = self.model
             
-            logger.info(f"Ollama connected: {self.model}")
-            return True
+            logger.info(f"Ollama detected: {result['models']}")
+            self._connected = True
         except Exception as e:
-            logger.error(f"Ollama connect failed: {e}")
-            return False
+            logger.error(f"Ollama detection failed: {e}")
+        return result
+
+    def connect(self) -> bool:
+        return self.detect()["available"]
 
     def chat(self, prompt: str, system: str = "", context: Dict = None) -> AgentResponse:
         if not self.ollama:
@@ -273,7 +281,27 @@ class CrackedCodeEngine:
         self.build_enabled = True
         self.voice_enabled = False
         
+        self._health_check()
         logger.info("CrackedCodeEngine initialized")
+
+    def _health_check(self):
+        ollama_status = self.ollama.detect()
+        logger.info(f"Health: Ollama={ollama_status['available']}")
+        logger.info(f"Health: Models={ollama_status['models']}")
+        
+    def get_status(self) -> Dict:
+        ollama = self.ollama.detect()
+        return {
+            "version": "2.3.2",
+            "model": self.model,
+            "plan": self.plan_enabled,
+            "build": self.build_enabled,
+            "voice": self.voice_enabled,
+            "ollama_available": ollama["available"],
+            "ollama_models": ollama["models"],
+            "ollama_host": ollama["host"],
+            "history_length": len(self.session.get("history", []))
+        }
 
     async def process(self, prompt: str) -> AgentResponse:
         request = self.parse_intent(prompt)
