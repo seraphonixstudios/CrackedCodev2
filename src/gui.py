@@ -462,31 +462,13 @@ class CrackedCodeGUI(QMainWindow):
         try:
             import sounddevice as sd
             import numpy as np
-            import threading
             import wave
             
-            self.term("[RECORDING... release SPACE to stop]")
+            self.term("[RECORDING...]")
             self.status_lbl.setText("RECORDING...")
             
-            recording = []
-            stop_flag = threading.Event()
-            
-            def callback(indata, frames, time_info, status):
-                if status:
-                    logger.warning(f"Audio status: {status}")
-                recording.append(indata.copy())
-            
-            with sd.InputStream(samplerate=16000, channels=1, callback=callback) as stream:
-                while not stop_flag.is_set() and self.mic_btn.isChecked():
-                    QTimer.singleShot(100, lambda: None)
-                    if not (QApplication.keyboardModifiers() & Qt.KeyboardModifier.Shift):
-                        break
-            
-            if not recording:
-                self.term("[NO AUDIO]")
-                return
-            
-            audio = np.concatenate(recording)
+            audio = sd.rec(int(3000), samplerate=16000, channels=1, dtype=np.int16)
+            sd.wait()
             
             buffer = io.BytesIO()
             with wave.open(buffer, 'wb') as f:
@@ -504,9 +486,11 @@ class CrackedCodeGUI(QMainWindow):
             else:
                 self.term("[NO SPEECH]")
                 
-        except ImportError:
+        except ImportError as e:
             self.term("[VOICE: pip install sounddevice numpy faster-whisper]")
         except Exception as e:
+            self.term(f"[ERROR: {e}]")
+            logger.exception("Voice")
             self.term(f"[ERROR: {e}]")
             logger.exception("Voice")
 
@@ -514,17 +498,10 @@ class CrackedCodeGUI(QMainWindow):
         if event.key() == Qt.Key.Key_F12:
             self.toggle_dev_console()
         elif event.key() == Qt.Key.Key_Space and self.mic_btn.isChecked():
-            if not hasattr(self, '_recording'):
-                self._recording = True
-                self.process_voice()
+            self.process_voice()
             event.accept()
         else:
             super().keyPressEvent(event)
-
-    def keyReleaseEvent(self, event):
-        if event.key() == Qt.Key.Key_Space:
-            self._recording = False
-        super().keyReleaseEvent(event)
 
     def term(self, text):
         self.terminal.append(text)
