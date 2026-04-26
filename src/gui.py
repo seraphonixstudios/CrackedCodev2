@@ -471,42 +471,47 @@ class CrackedCodeGUI(QMainWindow):
         self.term(">>> DEBUG MODE...")
 
     def run_term(self):
-        cmd = self.term_input.text()
-        if cmd:
-            self.term(f"$ {cmd}")
-            self.process_prompt(cmd)
-            self.term_input.clear()
+        cmd = self.term_input.text().strip()
+        if not cmd:
+            return
+        self.term(f">> {cmd}")
+        self.term_input.clear()
+        self.process_prompt(cmd)
 
     def process_prompt(self, text):
-        self.term(f">> {text}")
         self.status_lbl.setText("PROCESSING...")
         
         if hasattr(self, 'task_lbl'):
             self.task_lbl.setText("Processing...")
         
         if not self.plan_btn.isChecked():
-            self.term("[PLAN MODE OFF]")
+            self.term("[PLAN OFF]")
             self.status_lbl.setText("WAITING")
             return
         
-        import asyncio
-        
-        if self.engine:
-            try:
-                response = asyncio.run(self.engine.process(text))
-                self.term(f"<<< {response.text[:500]}")
-                if response.error:
-                    self.term(f"[ERROR: {response.error}]")
-                self.term(f"[took {response.execution_time:.2f}s]")
-                if hasattr(self, 'task_lbl'):
-                    self.task_lbl.setText("Done")
-            except Exception as e:
-                self.term(f"[PROCESS ERROR: {e}]")
-                logger.exception("Process failed")
-                if hasattr(self, 'task_lbl'):
-                    self.task_lbl.setText("Error")
-        else:
+        if not self.engine:
             self.term("[NO ENGINE]")
+            self.status_lbl.setText("ERROR")
+            return
+        
+        try:
+            import asyncio
+            response = asyncio.run(self.engine.process(text))
+            
+            if response.success:
+                self.term("<<< " + response.text[:500])
+            else:
+                self.term("[ERROR: " + str(response.error) + "]")
+            
+            self.term(f"[took {response.execution_time:.2f}s]")
+            
+            if hasattr(self, 'task_lbl'):
+                self.task_lbl.setText("Done")
+        except Exception as e:
+            self.term("[ERROR: " + type(e).__name__ + "]")
+            print("PROMPT ERROR:", e)
+            if hasattr(self, 'task_lbl'):
+                self.task_lbl.setText("Error")
         
         self.status_lbl.setText("WAITING")
 
