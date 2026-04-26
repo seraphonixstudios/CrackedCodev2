@@ -3,7 +3,7 @@
 Local AI Coding Assistant with Sci-Fi Neural Interface
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.1.8-blue?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Version-2.1.9-blue?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License">
   <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-orange?style=for-the-badge" alt="Platform">
   <img src="https://img.shields.io/badge/Python-3.10%2B-yellow?style=for-the-badge" alt="Python">
@@ -18,21 +18,14 @@ CrackedCode is a 100% local AI coding assistant featuring the Atlantean Neural I
 
 | Version | Features |
 |---------|----------|
+| 2.1.9 | Fix Ollama ListResponse API, test fixture |
 | 2.1.8 | Parallel Processor + Plan/Build Mode |
 | 2.1.7 | Atlantean Sci-Fi Neural Interface |
 | 2.1.6 | Natural conversational prompts |
 | 2.1.5 | Vision/image and text prompt systems |
 | 2.1.4 | Full logging and debugging |
 
-## Quick Start
-
-### Install
-
-```bash
-pip install ollama faster-whisper sounddevice numpy colorama pillow
-```
-
-### Run
+### Running
 
 ```bash
 python src/main.py
