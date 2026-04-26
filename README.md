@@ -3,11 +3,7 @@
 SOTA Local Multi-Agent Coding Swarm with Voice I/O
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.1.1-blue?style=for-the-badge" alt="Version">
-  <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License">
-  <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-orange?style=for-the-badge" alt="Platform">
-  <img src="https://img.shields.io/badge/Python-3.10%2B-yellow?style=for-the-badge" alt="Python">
-  <img src="https://img.shields.io/badge/AI-Local%20Ollama-red?style=for-the-badge" alt="AI">
+  <img src="https://img.shields.io/badge/Version-2.1.3-blue?style=for-the-badge" alt="Version">
 </p>
 
 ## Overview

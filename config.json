@@ -1,7 +1,7 @@
 {
   "name": "CrackedCode",
-  "version": "2.1.2",
-  "description": "SOTA Local Multi-Agent Coding Swarm - 100 Percent Offline",
+  "version": "2.1.3",
+  "description": "Local Multi-Agent Coding Swarm",
   "model": "qwen3-coder:32b",
   "vision_model": "llama3.2-vision:11b",
   "whisper_size": "medium.en",
