@@ -1,0 +1,119 @@
+{
+  "name": "CrackedCode",
+  "version": "2.0.0",
+  "description": "SOTA Local Multi-Agent Coding Swarm with Voice I/O",
+  "logo": "╔══════════════════════════════════════════════════════════════════════════════╗\n║   █████╗  ██████╗  ██████╗ ████████╗    ██████╗  ██╗     ██╗ ██████╗ ██████╗  █████╗ ║\n║  ██╔══██╗██╔═══██╗██╔═══██╗╚══██╔══╝    ██╔══██╗ ██║     ██║██╔════╝ ██╔══██╗██╔══██╗║\n║  ███████║██║   ██║██║   ██║   ██║       ██████╔╝ ██║     ██║██║  ███╗██████╔╝███████║║\n║  ██╔══██║██║   ██║██║   ██║   ██║       ██╔══██╗ ██║     ██║██║   ██║██╔══██╗██╔══██║║\n║  ██║  ██║╚██████╔╝╚██████╔╝   ██║       ██║  ██║ ███████╗██║██║   ██║██║  ██║██║  ██║║\n║  ╚═╝  ╚═╝ ╚═════╝  ╚═════╝    ╚═╝       ╚═╝  ╚═╝ ╚══════╝╚═╝╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝║\n║                                                                              ║\n║                        CrackedCode Voice System                               ║\n║              SOTA Local Multi-Agent Coding Swarm with Voice I/O             ║\n╚══════════════════════════════════════════════════════════════════════════════╝",
+  "model": "qwen3-coder:32b",
+  "whisper_size": "medium.en",
+  "tts_voice": "en_US-lessac-medium",
+  "sample_rate": 16000,
+  "push_to_talk": false,
+  "max_concurrent_agents": 4,
+  "task_timeout": 120,
+  "ollama_host": "http://localhost:11434",
+  "allowed_shell_commands": [
+    "git",
+    "npm",
+    "node",
+    "python",
+    "python3",
+    "pip",
+    "pip3",
+    "ruff",
+    "mypy",
+    "pytest",
+    "cargo",
+    "go",
+    "curl",
+    "wget",
+    "ls",
+    "dir",
+    "cd",
+    "mkdir",
+    "rm",
+    "cp",
+    "mv",
+    "cat",
+    "type",
+    "find",
+    "grep",
+    "rg",
+    "echo"
+  ],
+  "project_root": ".",
+  "log_level": "INFO",
+  "voice_enabled": true,
+  "auto_save_blackboard": true,
+  "debate_rounds": 3,
+  "max_retries": 2,
+  "temperature": 0.1,
+  "num_ctx": 16384,
+  "agents": {
+    "supervisor": {
+      "enabled": true,
+      "model": "qwen3-coder:32b",
+      "system_prompt": "You are the Supervisor Agent - the orchestrator of the CrackedCode Multi-Agent Swarm. Your role is to analyze complex coding tasks and break them into structured subtask plans."
+    },
+    "architect": {
+      "enabled": true,
+      "model": "qwen3-coder:32b",
+      "system_prompt": "You are the Architect Agent - the system design specialist. Design SOTA system architecture using modern patterns (2026 best practices)."
+    },
+    "coder": {
+      "enabled": true,
+      "model": "qwen3-coder:32b",
+      "system_prompt": "You are the Coder Agent - the code generation specialist. Write production-ready code with 2026 best practices."
+    },
+    "executor": {
+      "enabled": true,
+      "model": "qwen3-coder:32b",
+      "system_prompt": "You are the Executor Agent - the command execution specialist. Execute safe shell commands and report results."
+    },
+    "reviewer": {
+      "enabled": true,
+      "model": "qwen3-coder:32b",
+      "system_prompt": "You are the Reviewer Agent - the code critique specialist. Analyze code for bugs, security issues, and performance problems."
+    }
+  },
+  "features": {
+    "voice_io": true,
+    "multi_agent_swarm": true,
+    "debate_protocol": true,
+    "blackboard_memory": true,
+    "tool_use": true,
+    "json_output": true,
+    "parallel_execution": true
+  },
+  "models": {
+    "recommended": [
+      "qwen3-coder:32b",
+      "deepseek-coder-v2:16b",
+      "llama3.3:70b-instruct-q4_K_M",
+      "codellama:34b-instruct"
+    ],
+    "stt": [
+      "tiny",
+      "base",
+      "small",
+      "medium",
+      "large"
+    ],
+    "tts": [
+      "en_US-lessac-medium",
+      "en_US-lessac-large",
+      "en_GB-southern_english_female-medium"
+    ]
+  },
+  "security": {
+    "allow_arbitrary_code": false,
+    "sandbox_commands": true,
+    "max_file_size": 50000,
+    "command_whitelist_only": true
+  },
+  "performance": {
+    "max_workers": 4,
+    "task_timeout": 120,
+    "cache_models": true,
+    "gpu_acceleration": true
+  }
+}
