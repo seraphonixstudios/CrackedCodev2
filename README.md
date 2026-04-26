@@ -3,7 +3,7 @@
 Local AI Coding Assistant with Sci-Fi Neural Interface
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.2.0-blue?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Version-2.2.1-blue?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License">
   <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-orange?style=for-the-badge" alt="Platform">
   <img src="https://img.shields.io/badge/Python-3.10%2B-yellow?style=for-the-badge" alt="Python">
@@ -18,23 +18,21 @@ CrackedCode is a 100% local AI coding assistant featuring the Atlantean Neural I
 
 | Version | Features |
 |---------|----------|
+| 2.2.1 | Simplified UI, Voice + Prompt input |
 | 2.2.0 | PyQt6 Desktop GUI Application |
 | 2.1.9 | Fix Ollama ListResponse API, test fixture |
-| 2.1.8 | Parallel Processor + Plan/Build Mode |
 
 ### Running
 
 ```bash
-python src/main.py        # CLI mode
-
 python src/gui.py        # Desktop GUI (Recommended)
-
-python src/atlan_ui.py   # CLI with Atlantean UI effects
+python src/main.py       # CLI mode
+python src/atlan_ui.py   # CLI with Atlantean UI
 ```
 
 ## Desktop GUI
 
-The desktop GUI provides a full-featured IDE-like experience with PyQt6:
+The desktop GUI (v2.2.1) with simplified layout:
 
 ```bash
 python src/gui.py
@@ -42,14 +40,22 @@ python src/gui.py
 
 ### Features
 
-- **Menu Bar**: File, Edit, View, Run, Help menus
-- **Toolbar**: Quick access to Plan/Build modes and Execute
-- **Left Panel**: File browser and Agent selector tabs
-- **Code Editor**: Syntax-capable text editor
-- **Terminal**: Integrated terminal output
-- **Status Bar**: Current status, model, and mode indicators
-- **Dark Theme**: Professional dark color scheme
+- **Left Sidebar**: Project file browser with NEW/OPEN buttons
+- **Code Editor**: Large text area for code input
+- **Terminal**: Command output + input field
+- **Toolbar**: PLAN/BUILD toggles, VOICE button, EXECUTE
+- **Matrix Overlay**: Animated rain effect (background)
+- **Atlantean Theme**: Green `#00FF41` on black
 - **Single Instance**: Prevents multiple app instances
+
+### Usage
+
+1. **NEW/OPEN** - Select project folder (files appear in sidebar)
+2. **Type prompt** in terminal input line + Enter
+3. **PLAN toggle** - Enable/disable AI processing
+4. **BUILD toggle** - Enable/disable code execution
+5. **VOICE toggle** - Voice input mode
+6. **EXECUTE** - Run code directly
 
 ### Parallel Processor
 
