@@ -457,11 +457,12 @@ class CrackedCodeGUI(QMainWindow):
             self.stop_voice_recording()
 
     def start_voice_recording(self):
-        self.term("[VOICE: Press SPACE to record]")
-        self.status_lbl.setText("VOICE READY")
+        self.term("[VOICE: Conversational mode ON]")
+        self.status_lbl.setText("VOICE MODE")
+        self.voice_enabled = True
+        self.term("[VOICE: Click to speak, click again to process]")
         try:
             self.voice_enabled = True
-            self.term("[VOICE: Ready]")
         except Exception as e:
             self.term(f"[VOICE ERROR: {e}]")
             self.mic_btn.setChecked(False)
@@ -472,13 +473,17 @@ class CrackedCodeGUI(QMainWindow):
         self.voice_enabled = False
 
     def process_voice(self):
+        if not self.voice_enabled:
+            self.term("[VOICE: Enable VOICE first]")
+            return
+            
         try:
             import sounddevice as sd
             import numpy as np
             import wave
             
-            self.term("[RECORDING 3s...]")
-            self.status_lbl.setText("RECORDING...")
+            self.term("[LISTENING 3s...]")
+            self.status_lbl.setText("LISTENING...")
             
             audio = sd.rec(int(3000), samplerate=16000, channels=1, dtype=np.int16)
             sd.wait()
