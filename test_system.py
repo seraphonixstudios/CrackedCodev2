@@ -240,6 +240,24 @@ def test_gui():
         FAIL("GUI", str(e)[:30])
         return False
 
+def test_engine():
+    print_header("ENGINE")
+    
+    try:
+        from src.engine import get_engine, Intent
+        e = get_engine()
+        PASS("Engine")
+        
+        status = e.get_status()
+        print(f"  Model: {status['model']}")
+        print(f"  Plan: {status['plan']}")
+        print(f"  Build: {status['build']}")
+        
+        return True
+    except Exception as e:
+        FAIL("Engine", str(e)[:30])
+        return False
+
 
 def test_ollama():
     print_header("OLLAMA CONNECTION")
@@ -260,12 +278,13 @@ def test_ollama():
 
 
 def main():
-    print("\n%s\n  CRACKEDCODE v2.2.1 - TEST SUITE\n%s\n" % ("="*60, "="*60))
+    print("\n%s\n  CRACKEDCODE v2.3 - TEST SUITE\n%s\n" % ("="*60, "="*60))
     
     results = []
     
     results.append(("Modules", test_modules()))
     results.append(("Config", test_config()))
+    results.append(("Engine", test_engine()))
     results.append(("GUI", test_gui()))
     results.append(("Ollama", test_ollama()))
     results.append(("Pipeline", test_pipeline()))

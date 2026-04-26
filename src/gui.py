@@ -20,6 +20,8 @@ from PyQt6.QtGui import (
 )
 from PyQt6.QtNetwork import QLocalSocket, QLocalServer
 
+from src.engine import get_engine, CrackedCodeEngine, Intent
+
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s | %(levelname)s | %(name)s | %(message)s'
@@ -73,12 +75,23 @@ class CrackedCodeGUI(QMainWindow):
         super().__init__()
         self.config = {}
         self.settings = QSettings("SeraphonixStudios", "CrackedCode")
+        self.engine = None
         self.load_config()
         self.setup_atlan_theme()
+        self.init_engine()
         self.init_ui()
         self.init_matrix()
         self.restore_state()
         logger.info("CrackedCode GUI started")
+
+    def init_engine(self):
+        try:
+            self.engine = get_engine(self.config)
+            self.term(f"[ENGINE: {self.engine.model} loaded]")
+            logger.info(f"Engine model: {self.engine.model}")
+        except Exception as e:
+            logger.error(f"Engine init failed: {e}")
+            self.term(f"[ENGINE ERROR: {e}")
 
     def load_config(self):
         config_path = Path("config.json")
@@ -398,14 +411,26 @@ class CrackedCodeGUI(QMainWindow):
         self.status_lbl.setText("PROCESSING...")
         
         if not self.plan_btn.isChecked():
-            self.term("[PLAN MODE OFF - No action taken]")
+            self.term("[PLAN MODE OFF]")
             self.status_lbl.setText("WAITING")
             return
         
-        self.term("")
-        self.term("="*40)
-        self.term("PROCESSING WITH AI AGENTS...")
-        self.term("="*40)
+        import asyncio
+        
+        if self.engine:
+            try:
+                response = asyncio.run(self.engine.process(text))
+                self.term(f"<<< {response.text[:500]}")
+                if response.error:
+                    self.term(f"[ERROR: {response.error}]")
+                self.term(f"[took {response.execution_time:.2f}s]")
+            except Exception as e:
+                self.term(f"[PROCESS ERROR: {e}]")
+                logger.exception("Process failed")
+        else:
+            self.term("[NO ENGINE]")
+        
+        self.status_lbl.setText("WAITING")
 
     def toggle_voice(self):
         if self.mic_btn.isChecked():
