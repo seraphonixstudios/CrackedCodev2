@@ -284,17 +284,9 @@ class CrackedCodeGUI(QMainWindow):
         
         tb.addSeparator()
         
-        self.mic_btn = QPushButton("VOICE")
-        self.mic_btn.setCheckable(True)
-        
-        try:
-            import sounddevice
-            self.mic_btn.clicked.connect(self.toggle_voice)
-        except ImportError:
-            self.mic_btn.setEnabled(False)
-            self.mic_btn.setText("NO VOICE")
-        
-        tb.addWidget(self.mic_btn)
+        exec_btn = QPushButton("EXECUTE")
+        exec_btn.clicked.connect(self.exec_code)
+        tb.addWidget(exec_btn)
         
         exec_btn = QPushButton("EXECUTE")
         exec_btn.clicked.connect(self.exec_code)
@@ -517,77 +509,6 @@ class CrackedCodeGUI(QMainWindow):
             self.term("[NO ENGINE]")
         
         self.status_lbl.setText("WAITING")
-
-    def toggle_voice(self):
-        if self.voice_enabled:
-            self.process_voice()
-        else:
-            self.start_voice_recording()
-
-    def start_voice_recording(self):
-        if hasattr(self.engine, 'voice'):
-            self.engine.voice.load()
-        self.term("[VOICE: Click button to record]")
-        self.status_lbl.setText("VOICE READY")
-        self.voice_enabled = True
-        self.mic_btn.setChecked(True)
-
-    def stop_voice_recording(self):
-        self.term("[VOICE: Off]")
-        self.status_lbl.setText("WAITING")
-        self.voice_enabled = False
-        self.mic_btn.setChecked(False)
-
-    def process_voice(self):
-        self.stop_voice_recording()
-        
-        try:
-            import sounddevice as sd
-            import numpy as np
-            
-            self.term("[RECORDING 3s...]")
-            self.status_lbl.setText("LISTENING...")
-            
-            audio = sd.rec(3000, samplerate=16000, channels=1)
-            sd.wait()
-            
-            self.term("[PROCESSING...]")
-            
-            if hasattr(self.engine, 'voice'):
-                import io
-                import wave
-                buffer = io.BytesIO()
-                with wave.open(buffer, 'wb') as f:
-                    f.setnchannels(1)
-                    f.setsampwidth(2)
-                    f.setframerate(16000)
-                    f.writeframes(audio.astype('int16').tobytes())
-                buffer.seek(0)
-                
-                result = self.engine.voice.whisper.transcribe(buffer)
-                text = result[0].strip()
-                
-                if text:
-                    self.term("TEXT: " + text)
-                    self.term_input.setText(text)
-                else:
-                    self.term("[NO SPEECH]")
-            
-            self.status_lbl.setText("WAITING")
-            
-        except Exception as e:
-            self.term("[VOICE ERROR]")
-            self.status_lbl.setText("ERROR")
-            print("VOICE ERROR:", e)
-
-    def keyPressEvent(self, event):
-        if event.key() == Qt.Key.Key_F12:
-            self.toggle_dev_console()
-        elif event.key() == Qt.Key.Key_Space and self.mic_btn.isChecked():
-            self.process_voice()
-            event.accept()
-        else:
-            super().keyPressEvent(event)
 
     def term(self, text):
         self.terminal.append(text)
