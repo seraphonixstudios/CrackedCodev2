@@ -286,7 +286,14 @@ class CrackedCodeGUI(QMainWindow):
         
         self.mic_btn = QPushButton("VOICE")
         self.mic_btn.setCheckable(True)
-        self.mic_btn.clicked.connect(self.toggle_voice)
+        
+        try:
+            import sounddevice
+            self.mic_btn.clicked.connect(self.toggle_voice)
+        except ImportError:
+            self.mic_btn.setEnabled(False)
+            self.mic_btn.setText("NO VOICE")
+        
         tb.addWidget(self.mic_btn)
         
         exec_btn = QPushButton("EXECUTE")
@@ -537,40 +544,41 @@ class CrackedCodeGUI(QMainWindow):
         try:
             import sounddevice as sd
             import numpy as np
-            import wave
             
             self.term("[RECORDING 3s...]")
             self.status_lbl.setText("LISTENING...")
             
-            audio = sd.rec(int(3000), samplerate=16000, channels=1, dtype=np.int16)
+            audio = sd.rec(3000, samplerate=16000, channels=1)
             sd.wait()
             
-            buffer = io.BytesIO()
-            with wave.open(buffer, 'wb') as f:
-                f.setnchannels(1)
-                f.setsampwidth(2)
-                f.setframerate(16000)
-                f.writeframes(audio.tobytes())
-            buffer.seek(0)
+            self.term("[PROCESSING...]")
             
             if hasattr(self.engine, 'voice'):
+                import io
+                import wave
+                buffer = io.BytesIO()
+                with wave.open(buffer, 'wb') as f:
+                    f.setnchannels(1)
+                    f.setsampwidth(2)
+                    f.setframerate(16000)
+                    f.writeframes(audio.astype('int16').tobytes())
+                buffer.seek(0)
+                
                 result = self.engine.voice.whisper.transcribe(buffer)
                 text = result[0].strip()
+                
                 if text:
-                    self.term(f">>> {text}")
+                    self.term("TEXT: " + text)
                     self.term_input.setText(text)
                 else:
                     self.term("[NO SPEECH]")
             
             self.status_lbl.setText("WAITING")
-                
-        except ImportError:
-            self.term("[MISSING: pip install sounddevice numpy faster-whisper]")
-            self.stop_voice_recording()
+            
         except Exception as e:
-            self.term(f"[ERROR: {type(e).__name__}]")
-            self.stop_voice_recording()
-            logger.exception("Voice")
+            self.term("[VOICE ERROR]")
+            self.status_lbl.setText("ERROR")
+            print("VOICE ERROR:", e)
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_F12:
