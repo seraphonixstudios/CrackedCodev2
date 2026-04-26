@@ -3,7 +3,7 @@
 Local AI Coding Assistant with Sci-Fi Neural Interface
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.1.7-blue?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Version-2.1.8-blue?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License">
   <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-orange?style=for-the-badge" alt="Platform">
   <img src="https://img.shields.io/badge/Python-3.10%2B-yellow?style=for-the-badge" alt="Python">
@@ -12,160 +12,198 @@ Local AI Coding Assistant with Sci-Fi Neural Interface
 
 ## Overview
 
-CrackedCode is a 100% local AI coding assistant running offline with Ollama. Features the Atlantean Neural Interface - a sci-fi themed terminal UI with Matrix-style effects, neural pulse animations, and holographic displays.
-
-### Key Features
-
-- **Multi-Agent Swarm**: Supervisor → Architect → Coder → Executor → Reviewer
-- **Voice I/O**: Speech-to-Text (faster-whisper) + Text-to-Speech (Piper)
-- **100% Local**: No cloud, no API keys, full privacy
-- **Vision System**: Image analysis, OCR, vision model integration
-- **Natural Prompts**: Intent detection, entity tracking
-- **Full Logging**: Debug mode, error tracking, session logs
-- **Atlantean UI**: Sci-fi neural interface with effects
+CrackedCode is a 100% local AI coding assistant featuring the Atlantean Neural Interface with parallel processing, plan/build modes, and Matrix-style effects.
 
 ### Version History
 
 | Version | Features |
 |---------|----------|
+| 2.1.8 | Parallel Processor + Plan/Build Mode |
 | 2.1.7 | Atlantean Sci-Fi Neural Interface |
 | 2.1.6 | Natural conversational prompts |
 | 2.1.5 | Vision/image and text prompt systems |
 | 2.1.4 | Full logging and debugging |
-| 2.1.3 | Enhanced interface |
 
 ## Quick Start
 
-### Install Dependencies
+### Install
 
 ```bash
 pip install ollama faster-whisper sounddevice numpy colorama pillow
 ```
 
-### Start Ollama
-
-```bash
-ollama serve
-```
-
-### Run CrackedCode
+### Run
 
 ```bash
 python src/main.py
-```
 
-### Run Atlantean UI Demo
-
-```bash
+# Or UI demo
 python src/atlan_ui.py
 ```
 
-## Atlantean Neural Interface
+## Core Components
 
-The Atlantean UI provides a sci-fi themed interface with Matrix/neural effects:
+### Parallel Processor
+
+Multi-core task execution with multiple modes:
+
+```python
+from src.parallel_processor import (
+    ParallelExecutor, PipelineProcessor, UnifiedCoordinator, DistributedProcessor,
+    ExecutionMode, create_task, batch_create_tasks
+)
+```
+
+#### Parallel Execution
+
+```python
+executor = ParallelExecutor(max_workers=4, mode=ExecutionMode.PARALLEL)
+executor.start()
+
+# Create tasks
+task_specs = [
+    {"id": "task1", "func": worker_add, "args": (5, 3)},
+    {"id": "task2", "func": worker_multiply, "args": (4, 7)},
+]
+tasks = batch_create_tasks(task_specs)
+
+# Submit and wait
+task_ids = executor.submit_batch(tasks)
+results = executor.wait_for(task_ids)
+
+executor.stop()
+```
+
+#### Pipeline Processing
+
+```python
+pipeline = PipelineProcessor()
+pipeline.add_stage("stage1", lambda x: x * 2)
+pipeline.add_stage("stage2", lambda x: x + 1)
+pipeline.add_stage("stage3", lambda x: f"Result: {x}")
+
+result = pipeline.execute(5)  # Result: "Result: 11"
+```
+
+#### Unified Resolution
+
+```python
+coordinator = UnifiedCoordinator(max_workers=3)
+coordinator.start()
+
+# Submit multiple methods
+task_id = coordinator.submit_resolution_task(
+    "unified_task",
+    [func1, func2, func3],
+    ResolutionStrategy.MAJORITY
+)
+
+# Resolve with consensus
+resolution = coordinator.resolve(task_id)
+
+coordinator.stop()
+```
+
+#### Distributed Processing
+
+```python
+dist = DistributedProcessor(nodes=["node1", "node2"])
+dist.dispatch_task(task)
+```
+
+### Execution Modes
+
+| Mode | Description |
+|------|-------------|
+| SEQUENTIAL | One task at a time |
+| PARALLEL | Multiple workers |
+| PIPELINE | Staged processing |
+| UNIFIED | Multi-method consensus |
+| DISTRIBUTED | Multi-node dispatch |
+
+### Resolution Strategies
+
+| Strategy | Behavior |
+|----------|----------|
+| FIRST_WINNER | Return first success |
+| MAJORITY | >50% agrees |
+| CONSENSUS | >=80% agrees |
+| WEIGHTED | By execution time |
+
+### Plan/Build Mode Toggle
 
 ```python
 from src.atlan_ui import atlan_ui
 
-# Print system banner
-atlan_ui.print_system_info()
+# Set modes
+atlan_ui.set_mode(plan=True, build=False)  # Plan only
+atlan_ui.set_mode(plan=True, build=True)     # Full execution
 
-# Loading sequence with animation
-atlan_ui.loading_sequence("INITIALIZING NEURAL LINK")
+# Toggle individually
+atlan_ui.toggle_plan()
+atlan_ui.toggle_build()
 
-# Data stream effect
-atlan_ui.print_data_stream("SYSTEM ONLINE", "hex", 1.0)
-
-# Custom prompt
-prompt = atlan_ui.prompt()  # Returns: "◈> "
-atlan_ui.response("Neural system ready")
+# Execute workflow
+results = atlan_ui.execute_plan("build authentication", 5)
 ```
 
-### UI Components
+#### Mode States
+
+| Mode | Function |
+|------|----------|
+| PLAN only | Analyze and plan tasks |
+| BUILD only | Execute existing plan |
+| PLAN + BUILD | Full workflow |
+| Both OFF | Idle |
+
+### Atlantean Sci-Fi UI
 
 ```python
 from src.atlan_ui import *
 
-# Glitch text effect
+# Print system banner
+atlan_ui.print_system_info()
+
+# Loading sequence
+atlan_ui.loading_sequence("INITIALIZING")
+
+# Data stream effect
+atlan_ui.print_data_stream("SYSTEM ONLINE", "hex", 1.0)
+
+# Status display
+atlan_ui.print_status({"NEURAL CORE": "online"})
+
+# Get stylized prompt
+prompt = atlan_ui.prompt()  # Returns: "◈> "
+```
+
+### UI Effects
+
+```python
+# Glitch text
 GlitchEffect.glitch_text("SYSTEM")
 
-# Neural pulse progress
+# Progress bar
 NeuralPulse.progress_bar(7, 10)
 
-# Hex grid display
+# Hex grid
 HexGrid.hex_pattern(20, 5)
 
-# Circuit board
+# Circuit connection
 CircuitBoard.draw_connection("cpu", "memory")
 
 # Hologram box
 HologramBorder.box("Content", "rounded")
 
 # Scanner
-ScannerLine.scan("SYSTEM CHECK", 3)
+ScannerLine.scan("SYSTEM", 3)
 
-# Status display
-StatusDisplay.status("NEURAL CORE", "online")
-```
-
-### Theme Colors
-
-```python
-from src.atlan_ui import AtlanteanTheme
-
-theme = AtlanteanTheme()
-theme.PRIMARY    # Cyan
-theme.SECONDARY  # Green  
-theme.ACCENT   # Magenta
-theme.DATA     # Blue
-theme.WARNING  # Yellow
-theme.ERROR   # Red
-```
-
-### Matrix Effects
-
-```python
-from src.atlan_ui import MatrixRain, DataStream, GlitchEffect
-
-# Matrix rain animation
+# Matrix rain
 rain = MatrixRain(width=40, height=20)
-rain.start(duration=3.0)
-
-# Binary data stream
-stream = DataStream(charset="binary", width=60)
-stream.run(duration=2.0)
-
-# Corrupted/glitched text
-GlitchEffect.corrupt("data...", 0.1)
+rain.start(3.0)
 ```
 
-## Natural Prompt Engine
-
-Process natural language with intent detection:
-
-```python
-from src.main import NaturalTextPromptEngine, Intent, PromptStyle
-
-engine = NaturalTextPromptEngine()
-
-# Process user input
-result = engine.process("fix the bug in auth.py")
-
-# result = {
-#   'intent': 'debug',
-#   'entities': ['auth.py'],
-#   'system_prompt': '...',
-#   'context': '...'
-# }
-
-# Set response style
-engine.set_style(PromptStyle.TECHNICAL)
-
-# Get conversation stats
-stats = engine.get_stats()
-```
-
-## Vision System
+### Vision System
 
 ```python
 from src.main import VisionEngine
@@ -175,76 +213,46 @@ vision = VisionEngine(model="llama3.2-vision:11b")
 # Analyze image
 analysis = vision.analyze_image("screenshot.png")
 
-# Describe image with vision model
-description = vision.describe_image("screenshot.png", "What's in this UI?")
+# Describe image
+description = vision.describe_image("screenshot.png", "What's in this?")
 
-# OCR text extraction
+# OCR
 text = vision.extract_text("screenshot.png")
-
-# Compare images
-similarity = vision.compare_images("before.png", "after.png")
 ```
 
-## Logging and Debug
+### Natural Prompt Engine
 
-```bash
-# Enable debug mode
-export CRACKEDCODE_DEBUG=true
+```python
+from src.main import NaturalTextPromptEngine, Intent, PromptStyle
 
-# Enable verbose output
-export CRACKEDCODE_VERBOSE=true
+engine = NaturalTextPromptEngine()
+result = engine.process("fix the bug in auth.py")
+
+# result = {'intent': 'debug', 'entities': ['auth.py'], ...}
+
+engine.set_style(PromptStyle.TECHNICAL)
 ```
-
-Logs are written to `logs/` directory with timestamps and full tracebacks.
-
-## Commands
-
-| Command | Action |
-|---------|--------|
-| "architect X" | Design system architecture |
-| "write code X" | Generate production code |
-| "run X" | Execute shell commands |
-| "review X" | Critique code |
-| "show blackboard" | View swarm memory |
-| "show history" | View task history |
-| "exit" | Quit |
 
 ## Environment Variables
 
 | Variable | Values | Description |
-|---------|--------| -----------|
+|----------|--------|-------------|
 | CRACKEDCODE_DEBUG | true/false | Enable debug logging |
 | CRACKEDCODE_VERBOSE | true/false | Verbose output |
-| OLLAMA_MODEL | model name | Ollama model |
-| OLLAMA_HOST | URL | Ollama host |
 
 ## File Structure
 
 ```
 crackedcode/
 ├── src/
-│   ├── main.py        # Main application
-│   ├── atlan_ui.py   # Atlantean UI
-│   └── voice.py      # Voice engine
-├── config.json      # Configuration
-├── install.sh     # Linux installer
-├── install.bat    # Windows installer
-├── logs/         # Log files
-└── README.md    # This file
+│   ├── main.py              # Main application
+│   ├── atlan_ui.py         # Sci-Fi UI
+│   ├── voice.py           # Voice engine
+│   └── parallel_processor.py # Parallel executor
+├── config.json
+├── logs/
+└── README.md
 ```
-
-## Models
-
-### Ollama Models
-
-- `qwen3-coder:32b` - Best overall coding
-- `deepseek-coder-v2:16b` - Complex logic
-- `llama3.2-vision:11b` - Vision support
-
-### Voice Models
-
-- **STT**: medium.en (faster-whisper)
-- **TTS**: en_US-lessac-medium (Piper)
 
 ## License
 
