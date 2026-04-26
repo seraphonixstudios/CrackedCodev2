@@ -3,7 +3,7 @@
 Local AI Coding Assistant with Sci-Fi Neural Interface
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.1.9-blue?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Version-2.2.0-blue?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License">
   <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-orange?style=for-the-badge" alt="Platform">
   <img src="https://img.shields.io/badge/Python-3.10%2B-yellow?style=for-the-badge" alt="Python">
@@ -18,23 +18,38 @@ CrackedCode is a 100% local AI coding assistant featuring the Atlantean Neural I
 
 | Version | Features |
 |---------|----------|
+| 2.2.0 | PyQt6 Desktop GUI Application |
 | 2.1.9 | Fix Ollama ListResponse API, test fixture |
 | 2.1.8 | Parallel Processor + Plan/Build Mode |
-| 2.1.7 | Atlantean Sci-Fi Neural Interface |
-| 2.1.6 | Natural conversational prompts |
-| 2.1.5 | Vision/image and text prompt systems |
-| 2.1.4 | Full logging and debugging |
 
 ### Running
 
 ```bash
-python src/main.py
+python src/main.py        # CLI mode
 
-# Or UI demo
-python src/atlan_ui.py
+python src/gui.py        # Desktop GUI (Recommended)
+
+python src/atlan_ui.py   # CLI with Atlantean UI effects
 ```
 
-## Core Components
+## Desktop GUI
+
+The desktop GUI provides a full-featured IDE-like experience with PyQt6:
+
+```bash
+python src/gui.py
+```
+
+### Features
+
+- **Menu Bar**: File, Edit, View, Run, Help menus
+- **Toolbar**: Quick access to Plan/Build modes and Execute
+- **Left Panel**: File browser and Agent selector tabs
+- **Code Editor**: Syntax-capable text editor
+- **Terminal**: Integrated terminal output
+- **Status Bar**: Current status, model, and mode indicators
+- **Dark Theme**: Professional dark color scheme
+- **Single Instance**: Prevents multiple app instances
 
 ### Parallel Processor
 
