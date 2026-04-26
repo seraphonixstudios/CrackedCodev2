@@ -512,78 +512,64 @@ class CrackedCodeGUI(QMainWindow):
         self.status_lbl.setText("WAITING")
 
     def toggle_voice(self):
-        if self.mic_btn.isChecked():
-            if self.voice_enabled:
-                self.process_voice()
-            else:
-                self.start_voice_recording()
+        if self.voice_enabled:
+            self.process_voice()
         else:
-            self.stop_voice_recording()
+            self.start_voice_recording()
 
     def start_voice_recording(self):
-        self.term("[VOICE: Mode ON - Click to record]")
-        self.status_lbl.setText("VOICE MODE")
+        if hasattr(self.engine, 'voice'):
+            self.engine.voice.load()
+        self.term("[VOICE: Click button to record]")
+        self.status_lbl.setText("VOICE READY")
         self.voice_enabled = True
+        self.mic_btn.setChecked(True)
 
     def stop_voice_recording(self):
         self.term("[VOICE: Off]")
         self.status_lbl.setText("WAITING")
         self.voice_enabled = False
+        self.mic_btn.setChecked(False)
 
     def process_voice(self):
-        if not self.voice_enabled:
-            self.term("[VOICE: Enable button first]")
-            return
-            
+        self.stop_voice_recording()
+        
         try:
             import sounddevice as sd
             import numpy as np
             import wave
             
-            self.term("[LISTENING 3s...]")
-            self.status_lbl.setText("RECORDING...")
-            
-            try:
-                devices = sd.query_devices()
-                if isinstance(devices, dict):
-                    device_name = devices.get('name', devices.get('default_input_device_name', 'default'))
-                elif devices and len(devices) > 0:
-                    device_name = str(devices[0].get('name', 'default'))
-                else:
-                    device_name = 'default'
-                self.term(f"[MIC: {device_name}]")
-            except Exception:
-                self.term("[MIC: default]")
+            self.term("[RECORDING 3s...]")
+            self.status_lbl.setText("LISTENING...")
             
             audio = sd.rec(int(3000), samplerate=16000, channels=1, dtype=np.int16)
             sd.wait()
             
             buffer = io.BytesIO()
             with wave.open(buffer, 'wb') as f:
-                f.setnchannels(1); f.setsampwidth(2); f.setframerate(16000)
+                f.setnchannels(1)
+                f.setsampwidth(2)
+                f.setframerate(16000)
                 f.writeframes(audio.tobytes())
             buffer.seek(0)
             
-            if hasattr(self.engine, 'voice') and self.engine.voice:
-                self.engine.voice.load()
+            if hasattr(self.engine, 'voice'):
                 result = self.engine.voice.whisper.transcribe(buffer)
                 text = result[0].strip()
-                
                 if text:
                     self.term(f">>> {text}")
                     self.term_input.setText(text)
-                    self.process_prompt(text)
                 else:
                     self.term("[NO SPEECH]")
-            else:
-                self.term("[NO WHISPER]")
             
             self.status_lbl.setText("WAITING")
-            
+                
         except ImportError:
-            self.term("[VOICE: pip install sounddevice faster-whisper]")
+            self.term("[MISSING: pip install sounddevice numpy faster-whisper]")
+            self.stop_voice_recording()
         except Exception as e:
-            self.term(f"[ERROR: {type(e).__name__}: {e}]")
+            self.term(f"[ERROR: {type(e).__name__}]")
+            self.stop_voice_recording()
             logger.exception("Voice")
 
     def keyPressEvent(self, event):
