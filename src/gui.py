@@ -9,6 +9,7 @@ import time
 import traceback
 import io
 from pathlib import Path
+from typing import Optional, Dict, List, Any
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QTextEdit, QLineEdit, QPushButton, QMenuBar, QMenu, QToolBar,
@@ -24,6 +25,12 @@ from PyQt6.QtGui import (
 from PyQt6.QtNetwork import QLocalSocket, QLocalServer
 
 from src.engine import get_engine, CrackedCodeEngine, Intent
+
+try:
+    from src.voice_typing import VoiceTyping
+    VOICE_AVAILABLE = True
+except ImportError:
+    VOICE_AVAILABLE = False
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -79,10 +86,13 @@ class CrackedCodeGUI(QMainWindow):
         self.config = {}
         self.settings = QSettings("SeraphonixStudios", "CrackedCode")
         self.engine = None
+        self.voice: Optional[Any] = None
+        self.voice_recording = False
         self.load_config()
         self.setup_atlan_theme()
         self.init_ui()
         self.init_engine()
+        self.init_voice()
         self.init_matrix()
         self.restore_state()
         logger.info("CrackedCode GUI started")
@@ -98,6 +108,28 @@ class CrackedCodeGUI(QMainWindow):
                 self.term(f"[OLLAMA: {len(status['ollama_models'])} models]")
         except Exception as e:
             logger.error(f"Engine init failed: {e}")
+
+    def init_voice(self):
+        if not VOICE_AVAILABLE:
+            self.term("[VOICE: not available]")
+            if hasattr(self, 'voice_btn'):
+                self.voice_btn.setEnabled(False)
+            return
+        
+        try:
+            self.voice = VoiceTyping(model_size="base")
+            if self.voice.is_available:
+                self.term("[VOICE: ready]")
+                logger.info("Voice typing initialized")
+            else:
+                self.term("[VOICE: model failed to load]")
+                if hasattr(self, 'voice_btn'):
+                    self.voice_btn.setEnabled(False)
+        except Exception as e:
+            logger.error(f"Voice init failed: {e}")
+            self.term("[VOICE: init failed]")
+            if hasattr(self, 'voice_btn'):
+                self.voice_btn.setEnabled(False)
 
     def load_config(self):
         config_path = Path("config.json")
@@ -288,9 +320,10 @@ class CrackedCodeGUI(QMainWindow):
         exec_btn.clicked.connect(self.exec_code)
         tb.addWidget(exec_btn)
         
-        exec_btn = QPushButton("EXECUTE")
-        exec_btn.clicked.connect(self.exec_code)
-        tb.addWidget(exec_btn)
+        self.voice_btn = QPushButton("VOICE")
+        self.voice_btn.setCheckable(True)
+        self.voice_btn.clicked.connect(self.toggle_voice)
+        tb.addWidget(self.voice_btn)
 
     def create_status(self):
         sb = QStatusBar()
@@ -469,6 +502,44 @@ class CrackedCodeGUI(QMainWindow):
 
     def debug_code(self):
         self.term(">>> DEBUG MODE...")
+
+    def toggle_voice(self):
+        if not self.voice or not self.voice.is_available:
+            self.term("[VOICE: not available]")
+            return
+        
+        if self.voice_recording:
+            self.voice_recording = False
+            self.voice_btn.setChecked(False)
+            self.status_lbl.setText("READY")
+            self.term("[VOICE: stopped]")
+        else:
+            self.voice_recording = True
+            self.voice_btn.setChecked(True)
+            self.status_lbl.setText("RECORDING...")
+            self.term("[VOICE: recording - speak now]")
+            self._record_voice()
+
+    def _record_voice(self):
+        if not self.voice_recording or not self.voice:
+            return
+        
+        try:
+            result = self.voice.listen_and_transcribe(duration=5.0)
+            if result.success and result.text:
+                self.term_input.setText(result.text)
+                self.term(f"[VOICE: '{result.text[:50]}...']")
+            elif result.error:
+                self.term(f"[VOICE ERROR: {result.error}]")
+            
+            if self.voice_recording:
+                self._record_voice()
+        except Exception as e:
+            logger.error(f"Voice recording error: {e}")
+            self.term(f"[VOICE ERROR: {e}]")
+            self.voice_recording = False
+            self.voice_btn.setChecked(False)
+            self.status_lbl.setText("READY")
 
     def run_term(self):
         cmd = self.term_input.text().strip()

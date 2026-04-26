@@ -137,8 +137,13 @@ class SessionManager:
 
     def load(self):
         if self.session_file.exists():
-            with open(self.session_file) as f:
-                self.session = json.load(f)
+            try:
+                with open(self.session_file) as f:
+                    content = f.read().strip()
+                    if content:
+                        self.session = json.loads(content)
+            except (json.JSONDecodeError, IOError):
+                self.session = {"history": []}
 
     def save(self):
         with open(self.session_file, 'w') as f:

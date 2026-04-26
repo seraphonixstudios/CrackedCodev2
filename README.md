@@ -3,7 +3,7 @@
 Local AI Coding Assistant with Sci-Fi Neural Interface
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.3.3-blue?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Version-2.3.8-blue?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License">
   <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-orange?style=for-the-badge" alt="Platform">
   <img src="https://img.shields.io/badge/Python-3.10%2B-yellow?style=for-the-badge" alt="Python">
@@ -12,17 +12,15 @@ Local AI Coding Assistant with Sci-Fi Neural Interface
 
 ## Overview
 
-CrackedCode is a 100% local AI coding assistant featuring the Atlantean Neural Interface with parallel processing, plan/build modes, voice input, and Matrix-style effects.
+CrackedCode is a 100% local AI coding assistant featuring the Atlantean Neural Interface with parallel processing, plan/build modes, and Matrix-style effects.
 
 ### Version History
 
 | Version | Features |
 |---------|----------|
-| 2.3.3 | Enhanced Ollama detection, dev console, status |
-| 2.3.2 | Engine architecture, push-to-talk voice |
-| 2.3.0 | CrackedCodeEngine + Voice + OllamaBridge |
-| 2.2.1 | Simplified UI, Voice + Prompt input |
-| 2.2.0 | PyQt6 Desktop GUI Application |
+| 2.3.8 | Type hints, test coverage, voice typing, session persistence |
+| 2.3.5 | Project sidebar, agents panel |
+| 2.3.0 | CrackedCodeEngine architecture |
 
 ### Running
 
@@ -34,30 +32,29 @@ python src/atlan_ui.py   # CLI with Atlantean UI
 
 ## Desktop GUI
 
-The desktop GUI (v2.3.3):
-
 ```bash
 python src/gui.py
 ```
 
 ### Features
 
-- **Left Sidebar**: Project file browser with NEW/OPEN buttons
-- **Code Editor**: Large text area for code input
-- **Terminal**: Command output + input field
-- **Toolbar**: PLAN/BUILD toggles, VOICE button, EXECUTE
-- **Matrix Overlay**: Animated rain effect (background)
+- **Left Sidebar**: Project files, AGENTS list, TASK status
+- **Voice Typing**: Click VOICE button to record and transcribe speech (faster-whisper)
+- **Code Editor**: Large text area
+- **Terminal**: Input prompts, view responses
+- **Toolbar**: PLAN/BUILD toggles, VOICE button, EXECUTE button
+- **Matrix Overlay**: Animated rain effect
 - **Atlantean Theme**: Green `#00FF41` on black
-- **Single Instance**: Prevents multiple app instances
-- **Ollama Auto-Detection**: On startup health check
-- **Dev Console**: Press F12 for diagnostics
+- **Single Instance**: Prevents duplicates
+- **Ollama Auto-Detection**: Health check on startup
+- **Dev Console**: Press F12
 
 ### Keyboard Shortcuts
 
 | Key | Action |
 |-----|--------|
 | F12 | Toggle Dev Console |
-| SPACE | Voice input (when VOICE enabled) |
+| Enter | Submit prompt |
 
 ### Status Bar
 
