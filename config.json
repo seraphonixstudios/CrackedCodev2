@@ -1,9 +1,10 @@
 {
   "name": "CrackedCode",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "SOTA Local Multi-Agent Coding Swarm with Voice I/O - 100% Offline",
   "logo": "╔══════════════════════════════════════════════════════════════════════════════╗\n║   █████╗  ██████╗  ██████╗ ████████╗    ██████╗  ██╗     ██╗ ██████╗ ██████╗  █████╗ ║\n║  ██╔══██╗██╔═══██╗██╔═══██╗╚══██╔══╝    ██╔══██╗ ██║     ██║██╔════╝ ██╔══██╗██╔══██╗║\n║  ███████║██║   ██║██║   ██║   ██║       ██████╔╝ ██║     ██║██║  ███╗██████╔╝███████║║\n║  ██╔══██║██║   ██║██║   ██║   ██║       ██╔══██╗ ██║     ██║██║   ██║██╔══██╗██╔══██║║\n║  ██║  ██║╚██████╔╝╚██████╔╝   ██║       ██║  ██║ ███████╗██║██║   ██║██║  ██║██║  ██║║\n║  ╚═╝  ╚═╝ ╚═════╝  ╚═════╝    ╚═╝       ╚═╝  ╚═╝ ╚══════╝╚═╝╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝║\n║                                                                              ║\n║                        CrackedCode Voice System                               ║\n║              SOTA Local Multi-Agent Coding Swarm with Voice I/O             ║\n╚══════════════════════════════════════════════════════════════════════════════╝",
   "model": "qwen3-coder:32b",
+  "vision_model": "llama3.2-vision:11b",
   "whisper_size": "medium.en",
   "tts_voice": "en_US-lessac-medium",
   "sample_rate": 16000,
@@ -90,6 +91,10 @@
       "deepseek-coder-v2:16b",
       "llama3.3:70b-instruct-q4_K_M",
       "codellama:34b-instruct"
+    ],
+    "vision": [
+      "llama3.2-vision:11b",
+      "llava:7b"
     ],
     "stt": [
       "tiny",
