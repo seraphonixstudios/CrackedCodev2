@@ -483,20 +483,17 @@ class CrackedCodeGUI(QMainWindow):
 
     def toggle_voice(self):
         if self.mic_btn.isChecked():
-            self.start_voice_recording()
+            if self.voice_enabled:
+                self.process_voice()
+            else:
+                self.start_voice_recording()
         else:
             self.stop_voice_recording()
 
     def start_voice_recording(self):
-        self.term("[VOICE: Conversational mode ON]")
+        self.term("[VOICE: Mode ON - Click to record]")
         self.status_lbl.setText("VOICE MODE")
         self.voice_enabled = True
-        self.term("[VOICE: Click to speak, click again to process]")
-        try:
-            self.voice_enabled = True
-        except Exception as e:
-            self.term(f"[VOICE ERROR: {e}]")
-            self.mic_btn.setChecked(False)
 
     def stop_voice_recording(self):
         self.term("[VOICE: Off]")
@@ -505,7 +502,7 @@ class CrackedCodeGUI(QMainWindow):
 
     def process_voice(self):
         if not self.voice_enabled:
-            self.term("[VOICE: Enable VOICE first]")
+            self.term("[VOICE: Enable button first]")
             return
             
         try:
@@ -513,11 +510,15 @@ class CrackedCodeGUI(QMainWindow):
             import numpy as np
             import wave
             
-            self.term("[LISTENING 3s...]")
-            self.status_lbl.setText("LISTENING...")
+            self.term("[LISTENING...]")
+            self.status_lbl.setText("RECORDING...")
             
-            devices = sd.query_devices()
-            self.term(f"[Device: {devices['default_input_device_name']}]")
+            try:
+                device_info = sd.query_devices()
+                device_name = device_info.get('default_input_device_name', 'Unknown')
+                self.term(f"[MIC: {device_name}]")
+            except:
+                self.term("[MIC: default]")
             
             audio = sd.rec(int(3000), samplerate=16000, channels=1, dtype=np.int16)
             sd.wait()
@@ -538,12 +539,12 @@ class CrackedCodeGUI(QMainWindow):
                     self.term_input.setText(text)
                     self.process_prompt(text)
                 else:
-                    self.term("[NO SPEECH]")
+                    self.term("[NO SPEECH DETECTED]")
             else:
-                self.term("[VOICE: Engine not ready]")
+                self.term("[VOICE: Engine ready - click VOICE]")
                 
         except ImportError:
-            self.term("[VOICE: pip install sounddevice numpy faster-whisper]")
+            self.term("[VOICE: pip install sounddevice faster-whisper]")
         except Exception as e:
             self.term(f"[ERROR: {e}]")
             logger.exception("Voice")
