@@ -214,7 +214,7 @@ def log_task_event(task_id: int, agent: str, event: str, details: str = ""):
 def log_session_start():
     log_info("=" * 60)
     log_info("CrackedCode Session Started")
-    log_info(f"Version: 2.1.3")
+    log_info(f"Version: 2.1.4")
     log_info(f"Platform: {platform.system()} {platform.release()}")
     log_info(f"Python: {platform.python_version()}")
     log_info(f"Debug Mode: {DEBUG_MODE}")
@@ -257,6 +257,404 @@ def log_heartbeat(agent: str = "system"):
     if DEBUG_MODE:
         timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
         print(f"{Fore.CYAN}{timestamp} {agent.upper()} heartbeat{Style.RESET_ALL}")
+
+
+# ============================================================================
+# VISION AND IMAGE PROCESSING SYSTEM
+# ============================================================================
+
+class VisionCapability(Enum):
+    NONE = "none"
+    BASIC = "basic"
+    ADVANCED = "advanced"
+    OCR = "ocr"
+
+
+class ImageFormat(Enum):
+    JPEG = "jpeg"
+    PNG = "png"
+    GIF = "gif"
+    BMP = "bmp"
+    WEBP = "webp"
+    UNKNOWN = "unknown"
+
+
+@dataclass  
+class ImageAnalysis:
+    format: str
+    width: int
+    height: int
+    channels: int
+    size_bytes: int
+    mode: str
+    has_transparency: bool
+    color_histogram: Dict = field(default_factory=dict)
+    dominant_colors: List[Tuple[int, int, int]] = field(default_factory=list)
+
+
+@dataclass
+class OcrResult:
+    text: str
+    confidence: float
+    language: str
+    bounding_boxes: List[Dict] = field(default_factory=list)
+
+
+class VisionEngine:
+    SUPPORTED_FORMATS = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff', '.tif'}
+    MAX_IMAGE_SIZE = 10 * 1024 * 1024
+    
+    def __init__(self, model: str = "llama3.2-vision:11b"):
+        self.model = model
+        self.capability = VisionCapability.NONE
+        self.pil_available = False
+        self.cv2_available = False
+        self.pytesseract_available = False
+        
+        self._check_dependencies()
+        self._check_ollama_vision()
+        
+    def _check_dependencies(self):
+        try:
+            from PIL import Image
+            self.pil_available = True
+            log_info("PIL (Pillow) available for image processing")
+        except ImportError:
+            log_warning("PIL not installed. Install: pip install pillow")
+            
+        try:
+            import cv2
+            self.cv2_available = True
+            log_info("OpenCV available for advanced image processing")
+        except ImportError:
+            log_warning("OpenCV not installed. Install: pip install opencv-python")
+            
+        try:
+            import pytesseract
+            self.pytesseract_available = True
+            log_info("Tesseract OCR available for text extraction")
+        except ImportError:
+            log_warning("Tesseract not installed for OCR. Install pytesseract and tesseract binary")
+            
+    def _check_ollama_vision(self):
+        if not OLLAMA_AVAILABLE:
+            log_error("Ollama not available. Cannot use vision model.")
+            return
+            
+        try:
+            response = ollama.list()
+            available_models = [m['name'] for m in response.get('models', [])]
+            
+            if self.model in available_models:
+                self.capability = VisionCapability.ADVANCED
+                log_info(f"Vision model {self.model} is available")
+            else:
+                for m in available_models:
+                    if 'vision' in m.lower() or 'llama3' in m.lower():
+                        self.model = m
+                        self.capability = VisionCapability.ADVANCED
+                        log_info(f"Using vision model: {self.model}")
+                        break
+                else:
+                    log_warning(f"No vision model found. Models available: {available_models}")
+                    log_warning("Pull vision model: ollama pull llama3.2-vision:11b")
+        except Exception as e:
+            log_error(f"Failed to check vision models: {e}")
+            
+    def is_ready(self) -> bool:
+        return self.capability != VisionCapability.NONE
+        
+    def get_capability(self) -> str:
+        return self.capability.value
+        
+    def analyze_image(self, image_path: str) -> Optional[ImageAnalysis]:
+        from PIL import Image
+        import io
+        
+        path = Path(image_path)
+        
+        if not path.exists():
+            log_error(f"Image file not found: {image_path}")
+            return None
+            
+        if path.suffix.lower() not in self.SUPPORTED_FORMATS:
+            log_warning(f"Unsupported image format: {path.suffix}")
+            return None
+            
+        if path.stat().st_size > self.MAX_IMAGE_SIZE:
+            log_error(f"Image too large: {path.stat().st_size} > {self.MAX_IMAGE_SIZE}")
+            return None
+            
+        try:
+            with Image.open(path) as img:
+                analysis = ImageAnalysis(
+                    format=img.format or "unknown",
+                    width=img.width,
+                    height=img.height,
+                    channels=len(img.getbands()),
+                    size_bytes=path.stat().st_size,
+                    mode=img.mode,
+                    has_transparency=img.mode in ('RGBA', 'LA') or 'transparency' in img.info
+                )
+                
+                if img.mode == 'RGB' and img.width < 500 and img.height < 500:
+                    img_resized = img.resize((100, 100))
+                    colors = img_resized.getcolors(maxcolors=101)
+                    if colors:
+                        analysis.dominant_colors = sorted(colors, reverse=True)[:5]
+                        
+                log_info(f"Image analyzed: {img.width}x{img.height} {img.format} {analysis.size_bytes} bytes")
+                return analysis
+                
+        except Exception as e:
+            log_error(f"Failed to analyze image: {e}", exc_info=True)
+            return None
+            
+    def process_image_for_vision(self, image_path: str) -> Optional[bytes]:
+        from PIL import Image
+        import io
+        
+        path = Path(image_path)
+        
+        if not path.exists():
+            log_error(f"Image not found: {image_path}")
+            return None
+            
+        try:
+            with Image.open(path) as img:
+                if img.mode != 'RGB':
+                    img = img.convert('RGB')
+                    
+                max_size = 1128
+                if img.width > max_size or img.height > max_size:
+                    ratio = min(max_size / img.width, max_size / img.height)
+                    new_size = (int(img.width * ratio), int(img.height * ratio))
+                    img = img.resize(new_size, Image.Resampling.LANCZOS)
+                    
+                buffer = io.BytesIO()
+                img.save(buffer, format='JPEG', quality=85)
+                image_bytes = buffer.getvalue()
+                
+                log_debug(f"Image processed: {len(image_bytes)} bytes")
+                return image_bytes
+                
+        except Exception as e:
+            log_error(f"Failed to process image: {e}", exc_info=True)
+            return None
+            
+    def describe_image(self, image_path: str, prompt: str = "Describe this image in detail.") -> Optional[str]:
+        if not self.is_ready():
+            log_error("Vision model not ready")
+            return None
+            
+        image_bytes = self.process_image_for_vision(image_path)
+        if not image_bytes:
+            return None
+            
+        try:
+            start_time = time.time()
+            
+            response = ollama.chat(
+                model=self.model,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": prompt,
+                        "images": [image_bytes]
+                    }
+                ]
+            )
+            
+            duration = time.time() - start_time
+            description = response['message']['content']
+            
+            log_llm_request(self.model, prompt, description, None, duration)
+            log_info(f"Image description generated: {len(description)} chars")
+            return description
+            
+        except Exception as e:
+            log_error(f"Failed to describe image: {e}", exc_info=True)
+            return None
+            
+    def extract_text(self, image_path: str, lang: str = "eng") -> Optional[OcrResult]:
+        if not self.pytesseract_available:
+            log_error("Tesseract OCR not available")
+            return None
+            
+        import pytesseract
+        from PIL import Image
+        
+        path = Path(image_path)
+        
+        if not path.exists():
+            log_error(f"Image not found: {image_path}")
+            return None
+            
+        try:
+            with Image.open(path) as img:
+                if img.mode != 'L':
+                    img = img.convert('L')
+                    
+                text = pytesseract.image_to_string(img, lang=lang)
+                confidence = pytesseract.image_to_data(img, output_type=pytesseract.Output.DICT)
+                
+                avg_confidence = sum(confidence['conf']) / len([c for c in confidence['conf'] if c > 0]) if confidence['conf'] else 0
+                
+                result = OcrResult(
+                    text=text.strip(),
+                    confidence=avg_confidence / 100.0,
+                    language=lang,
+                    bounding_boxes=[
+                        {
+                            "text": confidence['text'][i],
+                            "left": confidence['left'][i],
+                            "top": confidence['top'][i],
+                            "width": confidence['width'][i],
+                            "height": confidence['height'][i],
+                            "conf": confidence['conf'][i]
+                        }
+                        for i in range(len(confidence['text']))
+                        if confidence['text'][i].strip()
+                    ]
+                )
+                
+                log_info(f"OCR extracted: {len(result.text)} chars, confidence: {avg_confidence:.1f}%")
+                return result
+                
+        except Exception as e:
+            log_error(f"OCR failed: {e}", exc_info=True)
+            return None
+            
+    def compare_images(self, image_path1: str, image_path2: str) -> Optional[Dict]:
+        if not self.cv2_available:
+            log_error("OpenCV not available for image comparison")
+            return None
+            
+        import cv2
+        import numpy as np
+        
+        path1 = Path(image_path1)
+        path2 = Path(image_path2)
+        
+        if not path1.exists() or not path2.exists():
+            log_error("One or both images not found")
+            return None
+            
+        try:
+            img1 = cv2.imread(str(path1))
+            img2 = cv2.imread(str(path2))
+            
+            if img1 is None or img2 is None:
+                log_error("Failed to load images")
+                return None
+                
+            if img1.shape != img2.shape:
+                img2 = cv2.resize(img2, (img1.shape[1], img1.shape[0]))
+                
+            diff = cv2.absdiff(img1, img2)
+            gray = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY)
+            _, thresh = cv2.threshold(gray, 30, 255, cv2.THRESH_BINARY)
+            
+            diff_ratio = np.sum(thresh) / thresh.size
+            similarity = 1.0 - diff_ratio
+            
+            histogram1 = cv2.calcHist([img1], [0], None, [256], [0, 256])
+            histogram2 = cv2.calcHist([img2], [0], None, [256], [0, 256])
+            
+            histogram_similarity = cv2.compareHist(histogram1, histogram2, cv2.HISTCMP_CORREL)
+            
+            result = {
+                "pixel_similarity": float(similarity),
+                "histogram_similarity": float(histogram_similarity),
+                "overall_similarity": float((similarity + histogram_similarity) / 2),
+                "difference_pixels": int(np.sum(thresh) / 255)
+            }
+            
+            log_info(f"Images compared: {result['overall_similarity']:.2%} similar")
+            return result
+            
+        except Exception as e:
+            log_error(f"Image comparison failed: {e}", exc_info=True)
+            return None
+
+
+class TextPromptEngine:
+    def __init__(self):
+        self.history: List[Dict] = []
+        self.max_history = 100
+        
+    def add_to_history(self, role: str, content: str, tokens: int = 0):
+        self.history.append({
+            "role": role,
+            "content": content,
+            "tokens": tokens,
+            "timestamp": datetime.now().isoformat()
+        })
+        
+        if len(self.history) > self.max_history:
+            self.history = self.history[-self.max_history:]
+            
+    def get_conversation_context(self, max_turns: int = 10) -> str:
+        if not self.history:
+            return ""
+            
+        turns = self.history[-max_turns:]
+        context = ""
+        
+        for turn in turns:
+            role = turn["role"]
+            content = turn["content"][:200]
+            time = turn.get("timestamp", "")[11:19]
+            context += f"[{time}] {role.upper()}: {content}\n"
+            
+        return context
+        
+    def clear_history(self):
+        cleared = len(self.history)
+        self.history = []
+        log_info(f"Cleared {cleared} prompts from history")
+        
+    def export_history(self, filepath: str = "conversation_history.json"):
+        try:
+            with open(filepath, 'w') as f:
+                json.dump(self.history, f, indent=2)
+            log_info(f"History exported to {filepath}")
+            return True
+        except Exception as e:
+            log_error(f"Failed to export history: {e}")
+            return False
+            
+    def import_history(self, filepath: str = "conversation_history.json"):
+        try:
+            with open(filepath, 'r') as f:
+                self.history = json.load(f)
+            log_info(f"History imported from {filepath}: {len(self.history)} turns")
+            return True
+        except Exception as e:
+            log_error(f"Failed to import history: {e}")
+            return False
+
+
+vision_engine = None
+text_prompt_engine = None
+
+
+def init_engines():
+    global vision_engine, text_prompt_engine
+    
+    log_info("Initializing prompt engines...")
+    
+    vision_engine = VisionEngine()
+    text_prompt_engine = TextPromptEngine()
+    
+    if vision_engine.is_ready():
+        log_info(f"Vision engine ready: {vision_engine.get_capability()} mode")
+    else:
+        log_warning("Vision engine not ready - no vision model")
+        
+    log_info("Text prompt engine ready")
+    
+    return vision_engine, text_prompt_engine
 
 
 @dataclass
