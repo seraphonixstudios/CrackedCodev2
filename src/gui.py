@@ -234,6 +234,7 @@ class CrackedCodeGUI(QMainWindow):
         l.addWidget(lbl)
         
         self.files_list = QListWidget()
+        self.files_list.itemDoubleClicked.connect(self.on_file_clicked)
         l.addWidget(self.files_list)
         
         btn_layout = QHBoxLayout()
@@ -375,11 +376,40 @@ class CrackedCodeGUI(QMainWindow):
 
     def scan_project_files(self, root):
         self.files_list.clear()
-        path = Path(root)
-        if path.exists():
-            for p in path.rglob("*"):
-                if p.is_file() and p.suffix == ".py":
-                    self.files_list.addItem(str(p.relative_to(path)))
+        self.project_path = Path(root)
+        
+        if not self.project_path.exists():
+            self.term(f"[ERROR: Path not found: {root}]")
+            return
+        
+        self.term(f"[LOADING: {root}]")
+        
+        count = 0
+        try:
+            for p in self.project_path.rglob("*"):
+                if p.is_file():
+                    relative = str(p.relative_to(self.project_path))
+                    self.files_list.addItem(relative)
+                    count += 1
+                    if count > 50:
+                        break
+        except Exception as e:
+            self.term(f"[ERROR: {e}]")
+        
+        self.term(f"[FILES: {count} found]")
+        
+        if hasattr(self, 'task_lbl'):
+            self.task_lbl.setText(f"{count} files")
+
+    def on_file_clicked(self, item):
+        if hasattr(self, 'project_path'):
+            file_path = self.project_path / item.text()
+            if file_path.exists():
+                content = file_path.read_text(errors='ignore')
+                self.editor.setPlainText(content)
+                self.term(f"[OPENED: {item.text()}]")
+            else:
+                self.term(f"[ERROR: File not found]")
 
     def show_settings(self):
         self.term("="*50)
@@ -510,14 +540,19 @@ class CrackedCodeGUI(QMainWindow):
             import numpy as np
             import wave
             
-            self.term("[LISTENING...]")
+            self.term("[LISTENING 3s...]")
             self.status_lbl.setText("RECORDING...")
             
             try:
-                device_info = sd.query_devices()
-                device_name = device_info.get('default_input_device_name', 'Unknown')
+                devices = sd.query_devices()
+                if isinstance(devices, dict):
+                    device_name = devices.get('name', devices.get('default_input_device_name', 'default'))
+                elif devices and len(devices) > 0:
+                    device_name = str(devices[0].get('name', 'default'))
+                else:
+                    device_name = 'default'
                 self.term(f"[MIC: {device_name}]")
-            except:
+            except Exception:
                 self.term("[MIC: default]")
             
             audio = sd.rec(int(3000), samplerate=16000, channels=1, dtype=np.int16)
@@ -529,7 +564,7 @@ class CrackedCodeGUI(QMainWindow):
                 f.writeframes(audio.tobytes())
             buffer.seek(0)
             
-            if self.engine and self.engine.voice:
+            if hasattr(self.engine, 'voice') and self.engine.voice:
                 self.engine.voice.load()
                 result = self.engine.voice.whisper.transcribe(buffer)
                 text = result[0].strip()
@@ -539,14 +574,16 @@ class CrackedCodeGUI(QMainWindow):
                     self.term_input.setText(text)
                     self.process_prompt(text)
                 else:
-                    self.term("[NO SPEECH DETECTED]")
+                    self.term("[NO SPEECH]")
             else:
-                self.term("[VOICE: Engine ready - click VOICE]")
-                
+                self.term("[NO WHISPER]")
+            
+            self.status_lbl.setText("WAITING")
+            
         except ImportError:
             self.term("[VOICE: pip install sounddevice faster-whisper]")
         except Exception as e:
-            self.term(f"[ERROR: {e}]")
+            self.term(f"[ERROR: {type(e).__name__}: {e}]")
             logger.exception("Voice")
 
     def keyPressEvent(self, event):
