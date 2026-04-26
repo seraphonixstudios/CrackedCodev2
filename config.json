@@ -1,9 +1,10 @@
 {
   "name": "CrackedCode",
-  "version": "2.1.3",
-  "description": "Local Multi-Agent Coding Swarm",
-  "model": "qwen3-coder:32b",
-  "vision_model": "llama3.2-vision:11b",
+  "version": "2.1.8",
+  "description": "Local Multi-Agent Coding Swarm with Voice I/O",
+  "model": "qwen3:8b-gpu",
+  "vision_model": "llava:13b-gpu",
+  "secondary_model": "dolphin-llama3:8b-gpu",
   "whisper_size": "medium.en",
   "tts_voice": "en_US-lessac-medium",
   "sample_rate": 16000,
@@ -31,8 +32,6 @@
     "cd",
     "mkdir",
     "rm",
-    "cp",
-    "mv",
     "cat",
     "type",
     "find",
@@ -51,28 +50,23 @@
   "agents": {
     "supervisor": {
       "enabled": true,
-      "model": "qwen3-coder:32b",
-      "system_prompt": "You are the Supervisor Agent - the orchestrator of the CrackedCode Multi-Agent Swarm. Your role is to analyze complex coding tasks and break them into structured subtask plans."
+      "system_prompt": "You are the Supervisor Agent - the orchestrator of the CrackedCode Multi-Agent Swarm."
     },
     "architect": {
       "enabled": true,
-      "model": "qwen3-coder:32b",
-      "system_prompt": "You are the Architect Agent - the system design specialist. Design SOTA system architecture using modern patterns (2026 best practices)."
+      "system_prompt": "You are the Architect Agent - system design specialist."
     },
     "coder": {
       "enabled": true,
-      "model": "qwen3-coder:32b",
-      "system_prompt": "You are the Coder Agent - the code generation specialist. Write production-ready code with 2026 best practices."
+      "system_prompt": "You are the Coder Agent - code generation specialist."
     },
     "executor": {
       "enabled": true,
-      "model": "qwen3-coder:32b",
-      "system_prompt": "You are the Executor Agent - the command execution specialist. Execute safe shell commands and report results."
+      "system_prompt": "You are the Executor Agent - command execution specialist."
     },
     "reviewer": {
       "enabled": true,
-      "model": "qwen3-coder:32b",
-      "system_prompt": "You are the Reviewer Agent - the code critique specialist. Analyze code for bugs, security issues, and performance problems."
+      "system_prompt": "You are the Reviewer Agent - code critique specialist."
     }
   },
   "features": {
@@ -82,42 +76,33 @@
     "blackboard_memory": true,
     "tool_use": true,
     "json_output": true,
-    "parallel_execution": true
+    "parallel_execution": true,
+    "plan_build_mode": true
   },
   "models": {
     "recommended": [
-      "qwen3-coder:32b",
-      "deepseek-coder-v2:16b",
-      "llama3.3:70b-instruct-q4_K_M",
-      "codellama:34b-instruct"
-    ],
-    "vision": [
-      "llama3.2-vision:11b",
-      "llava:7b"
+      "qwen3:8b-gpu",
+      "llava:13b-gpu",
+      "dolphin-llama3:8b-gpu"
     ],
     "stt": [
       "tiny",
       "base",
       "small",
-      "medium",
-      "large"
+      "medium"
     ],
     "tts": [
-      "en_US-lessac-medium",
-      "en_US-lessac-large",
-      "en_GB-southern_english_female-medium"
+      "en_US-lessac-medium"
     ]
   },
   "security": {
     "allow_arbitrary_code": false,
     "sandbox_commands": true,
-    "max_file_size": 50000,
     "command_whitelist_only": true
   },
   "performance": {
     "max_workers": 4,
     "task_timeout": 120,
-    "cache_models": true,
     "gpu_acceleration": true
   }
 }
