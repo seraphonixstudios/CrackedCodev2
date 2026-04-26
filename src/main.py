@@ -1,35 +1,7 @@
 #!/usr/bin/env python3
 """
-╔══════════════════════════════════════════════════════════════════════════════╗
-║                                                                              ║
-║   █████╗  ██████╗  ██████╗ ████████╗    ██████╗  ██╗     ██╗ ██████╗ ██████╗  █████╗ ║
-║  ██╔══██╗██╔═══██╗██╔═══██╗╚══██╔══╝    ██╔══██╗ ██║     ██║██╔════╝ ██╔══██╗██╔══██╗║
-║  ███████║██║   ██║██║   ██║   ██║       ██████╔╝ ██║     ██║██║  ███╗██████╔╝███████║║
-║  ██╔══██║██║   ██║██║   ██║   ██║       ██╔══██╗ ██║     ██║██║   ██║██╔══██╗██╔══██║║
-║  ██║  ██║╚██████╔╝╚██████╔╝   ██║       ██║  ██║ ███████╗██║██║   ██║██║  ██║██║  ██║║
-║  ╚═╝  ╚═╝ ╚═════╝  ╚═════╝    ╚═╝       ╚═╝  ╚═╝ ╚══════╝╚═╝╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝║
-║                                                                              ║
-║                        CrackedCode Voice System                               ║
-║              SOTA Local Multi-Agent Coding Swarm with Voice I/O             ║
-║                                                                              ║
-╚══════════════════════════════════════════════════════════════════════════════╝
-
-CrackedCode - Production-Grade Local AI Coding Assistant
-100% Offline • 100% Private • 100% Free
-
-Version: 2.0.0
-License: MIT
-Platforms: Linux, macOS, Windows (WSL)
-
-Features:
-- Multi-Agent Swarm: Supervisor → Architect → Coder → Executor → Reviewer
-- Voice I/O: Speech-to-Text (faster-whisper) + Text-to-Speech (Piper)
-- Tool Use: File read/write, shell execution, code analysis
-- Debate Protocol: Coder-Reviewer dynamic resolution
-- Blackboard Memory: Persistent cross-agent coordination
-
-Author: CrackedCode Team
-Website: https://github.com/crackedcode
+CrackedCode - Local AI Coding Assistant
+Version: 2.1.3
 """
 
 import os
@@ -41,13 +13,14 @@ import threading
 import time
 import platform
 import re
+import traceback
+import logging
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Optional, Dict, List, Any, Tuple
 from dataclasses import dataclass, field
-from enum import Enum
-import logging
 from datetime import datetime
+from enum import Enum
 
 try:
     from colorama import init, Fore, Style, Back
@@ -69,26 +42,221 @@ try:
     FASTER_WHISPER_AVAILABLE = True
 except ImportError:
     FASTER_WHISPER_AVAILABLE = False
-    print("Warning: faster-whisper not installed. Voice features disabled.")
-    print("Install with: pip install faster-whisper sounddevice numpy")
 
 try:
     import ollama
     OLLAMA_AVAILABLE = True
 except ImportError:
     OLLAMA_AVAILABLE = False
-    print("Warning: ollama Python SDK not installed.")
-    print("Install with: pip install ollama")
+
+
+# ============================================================================
+# DEBUG AND LOGGING SYSTEM - NO PLACEHOLDERS
+# ============================================================================
+
+DEBUG_MODE = os.environ.get("CRACKEDCODE_DEBUG", "false").lower() in ("true", "1", "yes")
+VERBOSE_MODE = os.environ.get("CRACKEDCODE_VERBOSE", "false").lower() in ("true", "1", "yes")
+
+LOG_DIR = Path("logs")
+LOG_DIR.mkdir(exist_ok=True)
+
+LOG_FILE = LOG_DIR / f"crackedcode_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
 
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s',
+    level=logging.DEBUG if DEBUG_MODE else logging.INFO,
+    format='%(asctime)s | %(levelname)-8s | %(name)s | %(message)s',
     handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler('crackedcode.log', mode='a')
+        logging.FileHandler(LOG_FILE, mode='a', encoding='utf-8'),
+        logging.StreamHandler(sys.stdout)
     ]
 )
+
 logger = logging.getLogger('CrackedCode')
+logger.setLevel(logging.DEBUG if DEBUG_MODE else logging.INFO)
+
+def log_debug(message: str, exc_info: bool = False):
+    if DEBUG_MODE:
+        logger.debug(message, exc_info=exc_info)
+        if VERBOSE_MODE:
+            _print_debug(f"[DEBUG] {message}")
+
+def log_info(message: str):
+    logger.info(message)
+    _print_info(f"[INFO] {message}")
+
+def log_warning(message: str):
+    logger.warning(message)
+    _print_warn(f"[WARNING] {message}")
+
+def log_error(message: str, exc_info: bool = True):
+    logger.error(message, exc_info=exc_info)
+    _print_error(f"[ERROR] {message}")
+    if exc_info:
+        exc_type, exc_value, exc_tb = sys.exc_info()
+        tb_lines = traceback.format_exception(exc_type, exc_value, exc_tb)
+        for line in tb_lines:
+            for l in line.strip().split('\n'):
+                if l:
+                    _print_error(f"  {l}")
+
+def log_critical(message: str, exc_info: bool = True):
+    logger.critical(message, exc_info=exc_info)
+    _print_error(f"[CRITICAL] {message}")
+    if exc_info:
+        exc_type, exc_value, exc_tb = sys.exc_info()
+        tb_lines = traceback.format_exception(exc_type, exc_value, exc_tb)
+        for line in tb_lines:
+            for l in line.strip().split('\n'):
+                if l:
+                    _print_error(f"  {l}")
+
+def _print_debug(msg: str):
+    if COLORAMA_AVAILABLE:
+        print(f"{Fore.CYAN}{msg}{Style.RESET_ALL}")
+    else:
+        print(f"[DEBUG] {msg}")
+
+def _print_info(msg: str):
+    if COLORAMA_AVAILABLE:
+        print(f"{Fore.BLUE}{msg}{Style.RESET_ALL}")
+    else:
+        print(f"{msg}")
+
+def _print_warn(msg: str):
+    if COLORAMA_AVAILABLE:
+        print(f"{Fore.YELLOW}{msg}{Style.RESET_ALL}")
+    else:
+        print(f"{msg}")
+
+def _print_error(msg: str):
+    if COLORAMA_AVAILABLE:
+        print(f"{Fore.RED}{msg}{Style.RESET_ALL}")
+    else:
+        print(f"{msg}", file=sys.stderr)
+
+def log_agent_action(agent: str, action: str, details: str = ""):
+    timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+    msg = f"[{timestamp}] {agent.upper()} | {action}"
+    if details:
+        msg += f" | {details}"
+    logger.info(msg)
+    if COLORAMA_AVAILABLE:
+        colors = {"supervisor": Fore.CYAN, "architect": Fore.BLUE, "coder": Fore.GREEN, 
+                 "executor": Fore.YELLOW, "reviewer": Fore.MAGENTA, "specialist": Fore.WHITE}
+        color = colors.get(agent.lower(), Fore.WHITE)
+        print(f"{color}{msg}{Style.RESET_ALL}")
+    else:
+        print(msg)
+
+def log_tool_call(tool: str, args: Dict, result: Any = None, error: str = None):
+    timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+    if error:
+        msg = f"[{timestamp}] TOOL | {tool}({json.dumps(args)}) -> ERROR: {error}"
+        logger.error(msg)
+        _print_error(msg)
+    elif result:
+        result_str = str(result)[:100]
+        msg = f"[{timestamp}] TOOL | {tool}({json.dumps(args)}) -> OK: {result_str}..."
+        logger.debug(msg)
+        if DEBUG_MODE:
+            _print_debug(msg)
+    else:
+        msg = f"[{timestamp}] TOOL | {tool}({json.dumps(args)})"
+        logger.debug(msg)
+        if DEBUG_MODE:
+            _print_debug(msg)
+
+def log_llm_request(model: str, prompt: str, response: str = None, error: str = None, duration: float = None):
+    timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+    prompt_preview = prompt[:50] + "..." if len(prompt) > 50 else prompt
+    
+    if error:
+        msg = f"[{timestamp}] LLM | {model} | Prompt: {prompt_preview} | ERROR: {error}"
+        logger.error(msg)
+        _print_error(msg)
+    elif response:
+        response_preview = response[:50] + "..." if len(response) > 50 else response
+        duration_str = f" ({duration:.2f}s)" if duration else ""
+        msg = f"[{timestamp}] LLM | {model} | Prompt: {prompt_preview} | Response: {response_preview}{duration_str}"
+        logger.info(msg)
+        _print_info(msg)
+    else:
+        msg = f"[{timestamp}] LLM | {model} | Prompt: {prompt_preview} | ..."
+        logger.debug(msg)
+        if DEBUG_MODE:
+            _print_debug(msg)
+
+def log_voice_event(event: str, details: str = ""):
+    timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+    msg = f"[{timestamp}] VOICE | {event}"
+    if details:
+        msg += f" | {details}"
+    logger.info(msg)
+    if COLORAMA_AVAILABLE:
+        print(f"{Fore.MAGENTA}{msg}{Style.RESET_ALL}")
+    else:
+        print(msg)
+
+def log_config_loaded(config: Dict):
+    if DEBUG_MODE:
+        logger.debug(f"Config loaded: {json.dumps(config, indent=2)}")
+    safe_config = {k: v for k, v in config.items() if k not in ['api_key', 'password', 'token']}
+    logger.info(f"Config keys: {list(safe_config.keys())}")
+
+def log_task_event(task_id: int, agent: str, event: str, details: str = ""):
+    timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+    msg = f"[{timestamp}] TASK #{task_id} | {agent} | {event}"
+    if details:
+        msg += f" | {details}"
+    logger.info(msg)
+    print(msg)
+
+def log_session_start():
+    log_info("=" * 60)
+    log_info("CrackedCode Session Started")
+    log_info(f"Version: 2.1.3")
+    log_info(f"Platform: {platform.system()} {platform.release()}")
+    log_info(f"Python: {platform.python_version()}")
+    log_info(f"Debug Mode: {DEBUG_MODE}")
+    log_info(f"Verbose Mode: {VERBOSE_MODE}")
+    log_info(f"Log File: {LOG_FILE}")
+    log_info("=" * 60)
+
+def log_session_end():
+    log_info("=" * 60)
+    log_info("CrackedCode Session Ended")
+    log_info("=" * 60)
+
+def log_exception_with_context(context: str, exc_type: type, exc_value: Exception, tb):
+    log_error("=" * 60)
+    log_error(f"EXCEPTION IN: {context}")
+    log_error(f"Type: {exc_type.__name__}")
+    log_error(f"Message: {str(exc_value)}")
+    log_error("Traceback:")
+    tb_str = "".join(traceback.format_exception(exc_type, exc_value, tb))
+    for line in tb_str.split('\n'):
+        if line.strip():
+            log_error(f"  {line}")
+    log_error("=" * 60)
+
+def debug_print_state(state: Dict):
+    if DEBUG_MODE and VERBOSE_MODE:
+        log_debug("Current State:")
+        for key, value in state.items():
+            log_debug(f"  {key}: {value}")
+
+def debug_print_memory():
+    if DEBUG_MODE:
+        log_debug("Memory Dump:")
+        log_debug(f"  BLACKBOARD.FILES count: {len(BLACKBOARD.FILES)}")
+        log_debug(f"  BLACKBOARD.PLAN length: {len(BLACKBOARD.PLAN)}")
+        log_debug(f"  BLACKBOARD.DEBATE_LOG length: {len(BLACKBOARD.DEBATE_LOG)}")
+        log_debug(f"  BLACKBOARD.TASK_HISTORY length: {len(BLACKBOARD.TASK_HISTORY)}")
+
+def log_heartbeat(agent: str = "system"):
+    if DEBUG_MODE:
+        timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+        print(f"{Fore.CYAN}{timestamp} {agent.upper()} heartbeat{Style.RESET_ALL}")
 
 
 @dataclass
