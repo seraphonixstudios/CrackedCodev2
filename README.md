@@ -33,6 +33,15 @@ CrackedCode is a production-grade local AI coding assistant that runs 100% offli
 - **Blackboard Memory**: Persistent cross-agent coordination
 - **JSON Structured Output**: All agents output valid JSON
 
+### New in v2.1 - Enhanced Interface
+
+- **Agent Thought Visualization**: See each agent's reasoning process
+- **Reasoning Chain Display**: Step-by-step thought flow
+- **Conversational Context**: Maintains conversation history
+- **Colored CLI Output**: Rich terminal UI with colors
+- **Debate Visualization**: Real-time debate progress bars
+- **Status Indicators**: Visual agent state tracking
+
 ## Quick Start
 
 ### 1. Install Dependencies

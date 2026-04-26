@@ -62,6 +62,7 @@ python3 -m pip install \
     faster-whisper \
     sounddevice \
     numpy \
+    colorama \
     logging \
     dataclasses \
     concurrent-futures

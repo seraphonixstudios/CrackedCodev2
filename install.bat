@@ -66,7 +66,8 @@ python -m pip install ^
     ollama ^
     faster-whisper ^
     sounddevice ^
-    numpy
+    numpy ^
+    colorama
 
 if errorlevel 1 (
     echo ❌ Failed to install Python packages

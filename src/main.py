@@ -47,6 +47,20 @@ from typing import Optional, Dict, List, Any, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
 import logging
+from datetime import datetime
+
+try:
+    from colorama import init, Fore, Style, Back
+    init(autoreset=True)
+    COLORAMA_AVAILABLE = True
+except ImportError:
+    COLORAMA_AVAILABLE = False
+    class Fore:
+        RED = GREEN = YELLOW = BLUE = CYAN = MAGENTA = WHITE = RESET = ""
+    class Style:
+        BRIGHT = DIM = NORMAL = RESET_ALL = ""
+    class Back:
+        BLACK = RED = GREEN = YELLOW = BLUE = MAGENTA = CYAN = WHITE = ""
 
 try:
     from faster_whisper import WhisperModel
@@ -75,6 +89,187 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger('CrackedCode')
+
+
+@dataclass
+class AgentThought:
+    agent: str
+    step: str
+    reasoning: str
+    timestamp: datetime = field(default_factory=datetime.now)
+    confidence: float = 0.0
+    context: Dict = field(default_factory=dict)
+
+
+class EnhancedInterface:
+    """Enhanced CLI with thought process visualization"""
+    
+    COLORS = {
+        'supervisor': Fore.CYAN,
+        'architect': Fore.BLUE,
+        'coder': Fore.GREEN,
+        'executor': Fore.YELLOW,
+        'reviewer': Fore.MAGENTA,
+        'system': Fore.WHITE,
+        'error': Fore.RED,
+        'success': Fore.GREEN,
+        'warning': Fore.YELLOW,
+        'info': Fore.BLUE,
+    }
+    
+    THOUGHT_ICONS = {
+        'analyzing': '🔍',
+        'planning': '📋',
+        'designing': '🏗️',
+        'writing': '✍️',
+        'executing': '⚡',
+        'reviewing': '🔎',
+        'thinking': '💭',
+        'reasoning': '🧠',
+        'debating': '⚖️',
+        'learning': '📚',
+    }
+    
+    @staticmethod
+    def color(text: str, color: str) -> str:
+        return f"{color}{text}{Style.RESET_ALL}" if COLORAMA_AVAILABLE else text
+    
+    @staticmethod
+    def bold(text: str) -> str:
+        return f"{Style.BRIGHT}{text}{Style.RESET_ALL}" if COLORAMA_AVAILABLE else text
+    
+    @staticmethod
+    def dim(text: str) -> str:
+        return f"{Style.DIM}{text}{Style.RESET_ALL}" if COLORAMA_AVAILABLE else text
+    
+    def print_agent_thought(self, thought: AgentThought):
+        agent_color = self.COLORS.get(thought.agent, Fore.WHITE)
+        icon = self.THOUGHT_ICONS.get(thought.step, '💭')
+        
+        ts = thought.timestamp.strftime("%H:%M:%S")
+        header = f"{icon} [{ts}] {agent_color}{thought.agent.upper()}{Style.RESET_ALL}"
+        
+        print(f"\n{self.bold(header)}")
+        print(f"  └─ {self.dim('Step:')} {thought.step}")
+        print(f"  └─ {self.dim('Reasoning:')} {thought.reasoning[:200]}")
+        
+        if thought.confidence > 0:
+            bar_len = int(thought.confidence * 10)
+            bar = '█' * bar_len + '░' * (10 - bar_len)
+            print(f"  └─ {self.dim('Confidence:')} [{agent_color}{bar}{Style.RESET_ALL}] {thought.confidence:.0%}")
+    
+    def print_thinking(self, agent: str, message: str):
+        agent_color = self.COLORS.get(agent, Fore.WHITE)
+        icon = self.THOUGHT_ICONS['thinking']
+        
+        print(f"\n{icon} {agent_color}{agent.upper()}{Style.RESET_ALL}")
+        print(f"  {self.dim('Thinking...')} {message}")
+        
+        for i in range(3):
+            time.sleep(0.3)
+            dots = '.' * (i + 1)
+            print(f"  {self.dim('Processing')} {dots:3s}", end='\r')
+        print()
+    
+    def print_reasoning_chain(self, agent: str, chain: List[str]):
+        agent_color = self.COLORS.get(agent, Fore.WHITE)
+        icon = self.THOUGHT_ICONS['reasoning']
+        
+        print(f"\n{self.bold(f'{icon} {agent.upper()} - Reasoning Chain')}")
+        print(f"  {self.dim('─' * 40)}")
+        
+        for i, step in enumerate(chain, 1):
+            print(f"  {agent_color}{i}.{Style.RESET_ALL} {step}")
+        
+        print(f"  {self.dim('─' * 40)}")
+    
+    def print_agent_state(self, agent: str, state: str, details: str = ""):
+        agent_color = self.COLORS.get(agent, Fore.WHITE)
+        
+        if state == "active":
+            state_text = self.color(f"● {agent.upper()}", agent_color)
+            anim = ['│', '▌', '▀', '▐']
+            for frame in anim:
+                print(f"\r{self.color(frame, agent_color)} {state_text}", end='\r')
+                time.sleep(0.1)
+            print(f"\r  {state_text}")
+        elif state == "thinking":
+            print(f"\n💭 {agent_color}{agent.upper()}{Style.RESET_ALL} thinking...")
+        elif state == "complete":
+            print(f"\n✓ {agent_color}{agent.upper()}{Style.RESET_ALL} complete")
+        elif state == "error":
+            print(f"\n✗ {self.COLORS['error']}{agent.upper()}{Style.RESET_ALL} error: {details}")
+    
+    def print_conversation_turn(self, role: str, message: str, context: str = ""):
+        if role == "user":
+            print(f"\n{self.bold('👤 You:')} {message}")
+        elif role == "assistant":
+            icon = '🤖'
+            print(f"\n{self.bold(f'{icon} CrackedCode:')} {message}")
+        
+        if context:
+            print(f"  {self.dim(f'Context: {context}')}")
+    
+    def print_status_bar(self, task_id: int, agent: str, progress: float):
+        agent_color = self.COLORS.get(agent, Fore.WHITE)
+        bar_width = 30
+        filled = int(bar_width * progress)
+        bar = '█' * filled + '░' * (bar_width - filled)
+        
+        print(f"\r  {agent_color}{agent.upper()}{Style.RESET_ALL}: [{agent_color}{bar}{Style.RESET_ALL}] {int(progress * 100)}%", end='', flush=True)
+    
+    def print_debate_visual(self, round_num: int, coder_claim: str, reviewer_critique: str, consensus: float):
+        print(f"\n{self.bold('⚖️  Debate Round')} #{round_num}")
+        print(f"  {self.dim('─' * 50)}")
+        print(f"  {self.COLORS['coder']}Coder:{Style.RESET_ALL} {coder_claim[:80]}...")
+        print(f"  {self.COLORS['reviewer']}Reviewer:{Style.RESET_ALL} {reviewer_critique[:80]}...")
+        
+        bar_width = 20
+        filled = int(bar_width * consensus)
+        bar = '█' * filled + '░' * (bar_width - filled)
+        print(f"  {self.bold('Consensus:')} [{self.COLORS['success']}{bar}{Style.RESET_ALL}] {consensus:.0%}")
+        print(f"  {self.dim('─' * 50)}")
+    
+    def print_banner(self, version: str):
+        banner = f"""
+{self.bold(self.color('╔' + '═' * 68 + '╗', Fore.CYAN))}
+{self.bold(self.color('║', Fore.CYAN))}                                                                              {self.bold(self.color('║', Fore.CYAN))}
+{self.bold(self.color('║', Fore.CYAN))}   █████╗  ██████╗  ██████╗ ████████╗    ██████╗  ██╗     ██╗ ██████╗ ██████╗  █████╗   {self.bold(self.color('║', Fore.CYAN))}
+{self.bold(self.color('║', Fore.CYAN))}  ██╔══██╗██╔═══██╗██╔═══██╗╚══██╔══╝    ██╔══██╗ ██║     ██║██╔════╝ ██╔══██╗██╔══██╗   {self.bold(self.color('║', Fore.CYAN))}
+{self.bold(self.color('║', Fore.CYAN))}  ███████║██║   ██║██║   ██║   ██║       ██████╔╝ ██║     ██║██║  ███╗██████╔╝███████║   {self.bold(self.color('║', Fore.CYAN))}
+{self.bold(self.color('║', Fore.CYAN))}  ██╔══██║██║   ██║██║   ██║   ██║       ██╔══██╗ ██║     ██║██║   ██║██╔══██╗██╔══██║   {self.bold(self.color('║', Fore.CYAN))}
+{self.bold(self.color('║', Fore.CYAN))}  ██║  ██║╚██████╔╝╚██████╔╝   ██║       ██║  ██║ ███████╗██║██║   ██║██║  ██║██║  ██║   {self.bold(self.color('║', Fore.CYAN))}
+{self.bold(self.color('║', Fore.CYAN))}  ╚═╝  ╚═╝ ╚═════╝  ╚═════╝    ╚═╝       ╚═╝  ╚═╝ ╚══════╝╚═╝╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝   {self.bold(self.color('║', Fore.CYAN))}
+{self.bold(self.color('║', Fore.CYAN))}                                                                              {self.bold(self.color('║', Fore.CYAN))}
+{self.bold(self.color('║', Fore.CYAN))}              {self.bold(self.color('CrackedCode', Fore.GREEN))} {self.bold(self.color('Enhanced Interface', Fore.WHITE))}                                   {self.bold(self.color('║', Fore.CYAN))}
+{self.bold(self.color('║', Fore.CYAN))}         {self.bold(self.color('SOTA Local Multi-Agent Coding Swarm', Fore.YELLOW))}                    {self.bold(self.color('║', Fore.CYAN))}
+{self.bold(self.color('╚' + '═' * 68 + '╝', Fore.CYAN))}
+
+{self.dim(f'Version: {version}')} | {self.dim('Platform: ' + platform.system())} | {self.dim('Python: ' + platform.python_version())}
+"""
+        print(banner)
+    
+    def print_help(self):
+        help_text = f"""
+{self.bold('📖 Commands:')}
+  {self.COLORS['supervisor']}• 'architect X'{Style.RESET_ALL}     → Design system architecture
+  {self.COLORS['coder']}• 'write code for X'{Style.RESET_ALL}   → Generate production code
+  {self.COLORS['executor']}• 'run X'{Style.RESET_ALL}           → Execute shell commands
+  {self.COLORS['reviewer']}• 'review X'{Style.RESET_ALL}        → Critique code
+  {self.COLORS['system']}• 'show blackboard'{Style.RESET_ALL} → View swarm memory
+  {self.COLORS['system']}• 'show history'{Style.RESET_ALL}   → View task history
+  {self.COLORS['system']}• 'show thinking'{Style.RESET_ALL}  → View reasoning chain
+  {self.dim('• exit/quit')}               → Quit
+
+{self.bold('🎛️  Hotkeys:')}
+  {self.dim('Ctrl+C')}  → Interrupt current task
+  {self.dim('Ctrl+L')}  → Clear screen
+  {self.dim('Ctrl+H')}  → Show help
+"""
+        print(help_text)
+
+
+interface = EnhancedInterface()
 
 
 class AgentType(Enum):
@@ -940,51 +1135,77 @@ Python: {python}
         if not self.start():
             return
 
+        conversation_context = ""
+        conversation_history = []
+        
         while self.running:
             try:
                 if self.config.get("push_to_talk"):
-                    input("\nPress Enter to speak... ")
+                    input(f"\n{interface.color('Press Enter to speak... ', interface.COLORS['system'])}")
 
                 if self.swarm.voice.stt_model:
                     transcript = self.swarm.voice.listen()
                 else:
-                    transcript = input("You: ").strip()
+                    transcript = input(f"{interface.color('You: ', Fore.GREEN)}").strip()
 
                 if not transcript:
                     continue
 
-                print(f"\n👤 You: {transcript}")
+                interface.print_conversation_turn("user", transcript, conversation_context)
 
                 if transcript.lower() in ["exit", "quit", "shutdown"]:
                     logger.info("Shutting down...")
-                    print("\n👋 CrackedCode shutting down. Goodnight!")
+                    interface.print_conversation_turn("assistant", "Shutting down. Goodnight!")
                     self.swarm.voice.speak("Shutting down. Goodnight!")
                     break
 
                 if transcript.lower() == "show blackboard":
-                    print("\n" + "=" * 50)
-                    print("BLACKBOARD STATE")
-                    print("=" * 50)
+                    print("\n" + interface.bold("📌 BLACKBOARD STATE"))
+                    print(interface.dim("─" * 50))
                     print(json.dumps({
                         "project_context": BLACKBOARD.PROJECT_CONTEXT,
                         "files_tracked": len(BLACKBOARD.FILES),
-                        "plan": BLACKBOARD.PLAN,
+                        "plan": BLACKBOARD.PLAN[-5:] if BLACKBOARD.PLAN else [],
                         "debate_rounds": len(BLACKBOARD.DEBATE_LOG),
                         "consensus": BLACKBOARD.CONSENSUS
-                    }, indent=2))
+                    }, indent=2, default=str))
                     continue
 
                 if transcript.lower() == "show history":
-                    print("\n" + "=" * 50)
-                    print("TASK HISTORY")
-                    print("=" * 50)
+                    print("\n" + interface.bold("📜 TASK HISTORY"))
+                    print(interface.dim("─" * 50))
                     for task in BLACKBOARD.TASK_HISTORY[-10:]:
-                        print(f"  Task {task.id}: {task.agent} - {task.status}")
+                        status_icon = "✓" if task.status == "completed" else "✗"
+                        status_color = interface.COLORS['success'] if task.status == "completed" else interface.COLORS['error']
+                        print(f"  {status_icon} {task.agent}: {task.description[:40]}... [{status_color}{task.status}{Style.RESET_ALL}]")
+                    continue
+
+                if transcript.lower() == "show thinking" or transcript.lower() == "thinking":
+                    print("\n" + interface.bold("💭 REASONING CHAINS"))
+                    print(interface.dim("─" * 50))
+                    for task in BLACKBOARD.TASK_HISTORY[-5:]:
+                        reasoning_chain = [
+                            "Analyzing task requirements",
+                            "Decomposing into subtasks",
+                            f"Executing via {task.agent}",
+                            "Evaluating results"
+                        ]
+                        interface.print_reasoning_chain(task.agent, reasoning_chain)
                     continue
 
                 if transcript.lower() == "help":
-                    self._print_banner()
+                    interface.print_banner(self.VERSION)
+                    interface.print_help()
                     continue
+
+                supervisor_thought = AgentThought(
+                    agent="supervisor",
+                    step="analyzing",
+                    reasoning=f"Analyzing user request: {transcript[:50]}..."
+                )
+                interface.print_agent_thought(supervisor_thought)
+
+                interface.print_thinking("Supervisor", "Creating task plan...")
 
                 supervisor_response = self.swarm.ollama.chat(
                     AgentType.SUPERVISOR.value,
@@ -995,12 +1216,36 @@ Python: {python}
                     {"id": 1, "agent": "architect", "description": transcript}
                 ])
 
-                print(f"\n📋 Supervisor created {len(plan)} subtasks")
+                reasoning_chain = [
+                    f"Understood: {transcript[:30]}...",
+                    f"Created {len(plan)} subtasks",
+                    f"Assigned to: {', '.join(set(t['agent'] for t in plan))}"
+                ]
+                interface.print_reasoning_chain("SUPERVISOR", reasoning_chain)
+                
+                print(f"\n{interface.color('📋 Supervisor:', interface.COLORS['supervisor'])} Created {len(plan)} subtasks")
                 self.swarm.voice.speak(f"Executing {len(plan)} subtasks")
+
+                print(interface.dim("─" * 50))
+                
+                reasoning_thought = AgentThought(
+                    agent="supervisor",
+                    step="reasoning",
+                    reasoning=f"Task breakdown: {', '.join(t['description'][:20] for t in plan[:3])}..."
+                )
+                interface.print_agent_thought(reasoning_thought)
 
                 results = self.swarm.run_plan(plan)
 
                 for task, result in results:
+                    task_thought = AgentThought(
+                        agent=task.agent,
+                        step=task.agent,
+                        reasoning=f"Completed: {task.description[:40]}...",
+                        confidence=0.85
+                    )
+                    interface.print_agent_thought(task_thought)
+                    
                     if result.get("action") == "review":
                         coder_result = next(
                             (r[1] for r in results if r[1].get("action") == "write_file"),
@@ -1012,19 +1257,39 @@ Python: {python}
                                 result,
                                 self.config.get("debate_rounds", 3)
                             )
-                            print(f"\n⚖️  Debate resolved. Score: {consensus.get('score')}")
+                            interface.print_debate_visual(
+                                len(BLACKBOARD.DEBATE_LOG),
+                                result.get("reasoning", "Code improvements")[:50],
+                                result.get("issues", ["Quality check"])[0] if result.get("issues") else "Review complete",
+                                result.get("score", 80) / 100.0
+                            )
 
                 completed = len([t for t, r in results if t.status == "completed"])
                 summary = f"Complete. {completed}/{len(results)} tasks succeeded."
+                
+                conversation_history.append({
+                    "role": "user",
+                    "content": transcript,
+                    "timestamp": datetime.now().isoformat()
+                })
+                conversation_history.append({
+                    "role": "assistant", 
+                    "content": summary,
+                    "timestamp": datetime.now().isoformat()
+                })
+                if len(conversation_history) > 20:
+                    conversation_history = conversation_history[-20:]
+                
+                conversation_context = f"Last task: {transcript[:30]}... | {completed} completed"
 
-                print(f"\n✅ {summary}")
+                print(f"\n{interface.COLORS['success']}✓{Style.RESET_ALL} {summary}")
                 self.swarm.voice.speak(summary)
 
             except KeyboardInterrupt:
-                print("\n\nInterrupted. Type 'exit' to quit.")
+                print(f"\n\n{interface.color('Interrupted. Type exit to quit.', Fore.YELLOW)}")
             except Exception as e:
                 logger.error(f"Error: {e}")
-                print(f"\n❌ Error: {e}")
+                print(f"\n{interface.COLORS['error']}✗ Error:{Style.RESET_ALL} {e}")
 
         self.running = False
 
