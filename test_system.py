@@ -229,16 +229,28 @@ def test_config():
         return False
 
 
+def test_gui():
+    print_header("GUI IMPORT")
+    
+    try:
+        from src.gui import CrackedCodeGUI
+        PASS("GUI Module")
+        return True
+    except Exception as e:
+        FAIL("GUI", str(e)[:30])
+        return False
+
+
 def test_ollama():
     print_header("OLLAMA CONNECTION")
     
     try:
         import ollama
-        models = ollama.list().get('models', [])
+        models = ollama.list().models
         PASS("Ollama: %d models" % len(models))
         
         for m in models[:3]:
-            print("  - %s" % m.get('name', 'unknown'))
+            print("  - %s" % m.model)
         
         return True
         
@@ -248,12 +260,13 @@ def test_ollama():
 
 
 def main():
-    print("\n%s\n  CRACKEDCODE v2.1.8 - TEST SUITE\n%s\n" % ("="*60, "="*60))
+    print("\n%s\n  CRACKEDCODE v2.2.1 - TEST SUITE\n%s\n" % ("="*60, "="*60))
     
     results = []
     
     results.append(("Modules", test_modules()))
     results.append(("Config", test_config()))
+    results.append(("GUI", test_gui()))
     results.append(("Ollama", test_ollama()))
     results.append(("Pipeline", test_pipeline()))
     results.append(("Unified", test_unified()))
