@@ -2,6 +2,8 @@ import sys
 import os
 import json
 import logging
+import random
+import time
 from pathlib import Path
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
@@ -13,7 +15,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal, QSettings, QUrl
 from PyQt6.QtGui import (
     QAction, QIcon, QFont, QColor, QTextCursor, QKeySequence,
-    QGuiApplication, QDesktopServices
+    QGuiApplication, QDesktopServices, QPainter
 )
 from PyQt6.QtNetwork import QLocalSocket, QLocalServer
 
@@ -23,15 +25,57 @@ logging.basicConfig(
 )
 logger = logging.getLogger("CrackedCodeGUI")
 
+ATLAN_GREEN = "#00FF41"
+ATLAN_CYAN = "#00FFFF"
+ATLAN_GOLD = "#FFD700"
+ATLAN_RED = "#FF3333"
+ATLAN_PURPLE = "#9D00FF"
+
+
+class MatrixOverlay(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.matrix_chars = "アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン0123456789@#$%&*"
+        self.drops = []
+        self.cols = 80
+        for _ in range(self.cols):
+            self.drops.append({"y": random.randint(-100, 0), "speed": random.uniform(0.5, 2.0)})
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_rain)
+        self.timer.start(50)
+
+    def update_rain(self):
+        for drop in self.drops:
+            drop["y"] += drop["speed"]
+            if drop["y"] > self.height():
+                drop["y"] = random.randint(-20, 0)
+        self.update()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        w = self.width() // self.cols
+        for i, drop in enumerate(self.drops):
+            color = QColor(0, 255, 65, random.randint(100, 200))
+            painter.setPen(color)
+            font = QFont("Consolas", 10)
+            font.setBold(True)
+            painter.setFont(font)
+            char = random.choice(self.matrix_chars)
+            painter.drawText(i * w, int(drop["y"]), w, 20, Qt.AlignmentFlag.AlignCenter, char)
+
 
 class CrackedCodeGUI(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("CrackedCode v2.1.9 - Atlantean Neural System")
-        self.setMinimumSize(1200, 800)
+        self.config = {}
         self.settings = QSettings("SeraphonixStudios", "CrackedCode")
         self.load_config()
-        self.setup_ui()
+        self.setup_atlan_theme()
+        self.init_ui()
+        self.init_matrix()
         self.restore_state()
         logger.info("CrackedCode GUI started")
 
@@ -43,299 +87,335 @@ class CrackedCodeGUI(QMainWindow):
         else:
             self.config = {"model": "qwen3:8b-gpu", "project_root": "."}
 
-    def setup_ui(self):
+    def setup_atlan_theme(self):
+        self.setWindowTitle("CRACKEDCODE v2.2.0 // ATLANTEAN NEURAL SYSTEM")
+        self.setMinimumSize(1200, 800)
+        
+        self.atlan_font = QFont("Consolas", 11)
+        self.atlan_header = QFont("Consolas", 14, QFont.Weight.Bold)
+        
+        self.setStyleSheet(f"""
+            QMainWindow {{ background-color: #0a0a0a; }}
+            QWidget {{ background-color: #0a0a0a; color: {ATLAN_GREEN}; font-family: Consolas; }}
+            QMenuBar {{ background-color: #0d0d0d; color: {ATLAN_GREEN}; border-bottom: 2px solid {ATLAN_GREEN}; }}
+            QMenuBar::item:selected {{ background-color: {ATLAN_GREEN}; color: #000; }}
+            QMenu {{ background-color: #0d0d0d; color: {ATLAN_GREEN}; border: 1px solid {ATLAN_GREEN}; }}
+            QMenu::item:selected {{ background-color: {ATLAN_GREEN}; color: #000; }}
+            QToolBar {{ background-color: #0d0d0d; border-bottom: 2px solid {ATLAN_GREEN}; }}
+            QPushButton {{ 
+                background-color: #1a1a1a; 
+                color: {ATLAN_GREEN}; 
+                border: 1px solid {ATLAN_GREEN}; 
+                padding: 6px 12px;
+                font-family: Consolas;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{ background-color: {ATLAN_GREEN}; color: #000; }}
+            QPushButton:checked {{ background-color: {ATLAN_GREEN}; color: #000; }}
+            QTextEdit {{ 
+                background-color: #050505; 
+                color: {ATLAN_GREEN}; 
+                border: 1px solid #333; 
+                font-family: Consolas;
+            }}
+            QLineEdit {{ 
+                background-color: #050505; 
+                color: {ATLAN_GREEN}; 
+                border: 1px solid {ATLAN_GREEN}; 
+                font-family: Consolas;
+            }}
+            QListWidget {{ 
+                background-color: #050505; 
+                color: {ATLAN_GREEN}; 
+                border: 1px solid #333; 
+            }}
+            QListWidget::item:selected {{ background-color: {ATLAN_GREEN}; color: #000; }}
+            QTabWidget::pane {{ border: 1px solid {ATLAN_GREEN}; }}
+            QTabBar::tab {{ 
+                background-color: #111; 
+                color: {ATLAN_GREEN}; 
+                border: 1px solid #333; 
+                padding: 6px 12px;
+            }}
+            QTabBar::tab:selected {{ 
+                background-color: {ATLAN_GREEN}; 
+                color: #000; 
+            }}
+            QGroupBox {{ 
+                border: 2px solid {ATLAN_GREEN}; 
+                margin-top: 10px;
+                font-weight: bold;
+            }}
+            QGroupBox::title {{ 
+                color: {ATLAN_GOLD}; 
+                subcontrol-origin: margin;
+                left: 10px;
+            }}
+            QStatusBar {{ 
+                background-color: #0d0d0d; 
+                color: {ATLAN_GREEN}; 
+                border-top: 2px solid {ATLAN_GREEN}; 
+            }}
+            QLabel {{ color: {ATLAN_GREEN}; }}
+            QComboBox {{ 
+                background-color: #1a1a1a; 
+                color: {ATLAN_GREEN}; 
+                border: 1px solid {ATLAN_GREEN}; 
+            }}
+            QSplitter::handle {{ background-color: {ATLAN_GREEN}; }}
+        """)
+
+    def init_ui(self):
         central = QWidget()
         self.setCentralWidget(central)
-        main_layout = QVBoxLayout(central)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.setSpacing(0)
-
-        self.create_menu_bar()
+        main = QVBoxLayout(central)
+        main.setContentsMargins(0, 0, 0, 0)
+        
+        self.create_menu()
         self.create_toolbar()
         
         splitter = QSplitter(Qt.Orientation.Horizontal)
-        
-        left_panel = self.create_left_panel()
-        splitter.addWidget(left_panel)
-        
-        self.right_panel = self.create_right_panel()
-        splitter.addWidget(self.right_panel)
-        
+        splitter.addWidget(self.create_left())
+        splitter.addWidget(self.create_right())
         splitter.setSizes([300, 900])
-        main_layout.addWidget(splitter)
+        main.addWidget(splitter)
         
-        self.create_status_bar()
+        self.create_status()
 
-    def create_menu_bar(self):
-        menubar = self.menuBar()
+    def create_menu(self):
+        mb = self.menuBar()
         
-        file_menu = menubar.addMenu("&File")
-        file_menu.addAction("&New Project", self.new_project)
-        file_menu.addAction("&Open Project", self.open_project)
-        file_menu.addSeparator()
-        file_menu.addAction("&Settings", self.show_settings)
-        file_menu.addSeparator()
-        file_menu.addAction("E&xit", self.close)
+        m_file = mb.addMenu("FILE")
+        m_file.addAction("NEW PROJECT", self.new_proj)
+        m_file.addAction("OPEN PROJECT", self.open_proj)
+        m_file.addSeparator()
+        m_file.addAction("SETTINGS", self.show_settings)
+        m_file.addSeparator()
+        m_file.addAction("EXIT", self.close)
         
-        edit_menu = menubar.addMenu("&Edit")
-        edit_menu.addAction("&Undo")
-        edit_menu.addAction("&Redo")
-        edit_menu.addSeparator()
-        edit_menu.addAction("Cu&t")
-        edit_menu.addAction("&Copy")
-        edit_menu.addAction("&Paste")
+        m_edit = mb.addMenu("EDIT")
+        m_edit.addAction("UNDO")
+        m_edit.addAction("REDO")
+        m_edit.addSeparator()
+        m_edit.addAction("CUT")
+        m_edit.addAction("COPY")
+        m_edit.addAction("PASTE")
         
-        view_menu = menubar.addMenu("&View")
-        view_menu.addAction("&Toggle Left Panel", self.toggle_left_panel)
-        view_menu.addAction("&Toggle Terminal", self.toggle_terminal)
-        view_menu.addSeparator()
-        view_menu.addAction("&Full Screen", self.toggle_fullscreen)
+        m_view = mb.addMenu("VIEW")
+        m_view.addAction("TOGGLE LEFT PANEL")
+        m_view.addAction("TOGGLE TERMINAL")
+        m_view.addSeparator()
+        m_view.addAction("FULLSCREEN", self.toggle_full)
         
-        run_menu = menubar.addMenu("&Run")
-        run_menu.addAction("&Execute Code", self.execute_code)
-        run_menu.addAction("&Debug", self.debug_code)
-        run_menu.addSeparator()
-        run_menu.addAction("&Plan Mode", lambda: self.set_mode("plan"))
-        run_menu.addAction("&Build Mode", lambda: self.set_mode("build"))
+        m_run = mb.addMenu("RUN")
+        m_run.addAction("EXECUTE CODE", self.exec_code)
+        m_run.addAction("DEBUG", self.debug_code)
+        m_run.addSeparator()
+        m_run.addAction("PLAN MODE", lambda: self.set_mode("plan"))
+        m_run.addAction("BUILD MODE", lambda: self.set_mode("build"))
         
-        help_menu = menubar.addMenu("&Help")
-        help_menu.addAction("&Documentation", self.show_docs)
-        help_menu.addAction("&About", self.show_about)
+        m_help = mb.addMenu("HELP")
+        m_help.addAction("DOCS", self.show_docs)
+        m_help.addAction("ABOUT", self.show_about)
 
     def create_toolbar(self):
-        toolbar = QToolBar("Main Toolbar")
-        toolbar.setMovable(False)
-        self.addToolBar(toolbar)
+        tb = QToolBar("MAIN")
+        tb.setMovable(False)
+        self.addToolBar(tb)
         
-        self.plan_btn = QPushButton("Plan")
+        self.plan_btn = QPushButton("[PLAN]")
         self.plan_btn.setCheckable(True)
         self.plan_btn.setChecked(True)
         self.plan_btn.clicked.connect(lambda: self.set_mode("plan"))
-        toolbar.addWidget(self.plan_btn)
+        tb.addWidget(self.plan_btn)
         
-        self.build_btn = QPushButton("Build")
+        self.build_btn = QPushButton("[BUILD]")
         self.build_btn.setCheckable(True)
         self.build_btn.setChecked(True)
         self.build_btn.clicked.connect(lambda: self.set_mode("build"))
-        toolbar.addWidget(self.build_btn)
+        tb.addWidget(self.build_btn)
         
-        toolbar.addSeparator()
+        tb.addSeparator()
         
-        exec_btn = QPushButton("Execute")
-        exec_btn.clicked.connect(self.execute_code)
-        toolbar.addWidget(exec_btn)
+        exec_btn = QPushButton(">> EXECUTE")
+        exec_btn.clicked.connect(self.exec_code)
+        tb.addWidget(exec_btn)
         
-        toolbar.addSeparator()
+        tb.addSeparator()
         
-        model_label = QLabel("Model:")
-        toolbar.addWidget(model_label)
-        
+        tb.addWidget(QLabel("MODEL:"))
         self.model_combo = QComboBox()
         self.model_combo.addItems(["qwen3:8b-gpu", "dolphin-llama3:8b-gpu", "llava:13b-gpu"])
         self.model_combo.setCurrentText(self.config.get("model", "qwen3:8b-gpu"))
-        toolbar.addWidget(self.model_combo)
+        tb.addWidget(self.model_combo)
 
-    def create_left_panel(self):
+    def create_left(self):
         panel = QFrame()
         panel.setFrameShape(QFrame.Shape.StyledPanel)
-        layout = QVBoxLayout(panel)
+        l = QVBoxLayout(panel)
         
-        tabs = QTabWidget()
+        self.tabs = QTabWidget()
         
-        files_tab = QWidget()
-        files_layout = QVBoxLayout(files_tab)
-        
+        files = QWidget()
+        fl = QVBoxLayout(files)
         self.files_list = QListWidget()
-        self.files_list.setHeaderLabel("Project Files")
-        files_layout.addWidget(self.files_list)
+        fl.addWidget(QLabel("PROJECT FILES"))
+        fl.addWidget(self.files_list)
+        self.tabs.addTab(files, "FILES")
         
-        tabs.addTab(files_tab, "Files")
-        
-        agents_tab = QWidget()
-        agents_layout = QVBoxLayout(agents_tab)
-        
+        agents = QWidget()
+        al = QVBoxLayout(agents)
         self.agents_list = QListWidget()
         self.agents_list.addItems([
-            "Supervisor - Orchestrates workflow",
-            "Architect - Designs system structure", 
-            "Coder - Writes and modifies code",
-            "Executor - Runs commands safely",
-            "Reviewer - Analyzes and suggests fixes"
+            "SUPERVISOR - Orchestrates",
+            "ARCHITECT - Designs structure",
+            "CODER - Writes code",
+            "EXECUTOR - Runs safely",
+            "REVIEWER - Analyzes"
         ])
-        agents_layout.addWidget(self.agents_list)
+        al.addWidget(QLabel("AGENTS"))
+        al.addWidget(self.agents_list)
+        self.tabs.addTab(agents, "AGENTS")
         
-        tabs.addTab(agents_tab, "Agents")
-        
-        layout.addWidget(tabs)
-        
+        l.addWidget(self.tabs)
         return panel
 
-    def create_right_panel(self):
+    def create_right(self):
         panel = QFrame()
-        panel.setFrameShape(QFrame.Shape.NoFrame)
-        layout = QVBoxLayout(panel)
-        layout.setContentsMargins(4, 4, 4, 4)
-        layout.setSpacing(4)
+        l = QVBoxLayout(panel)
+        l.setContentsMargins(4, 4, 4, 4)
         
-        self.code_editor = QTextEdit()
-        self.code_editor.setFont(QFont("Consolas", 11))
-        self.code_editor.setPlaceholderText("# Enter your code here...\n# Press Ctrl+Return to execute")
-        layout.addWidget(self.code_editor, 3)
+        self.editor = QTextEdit()
+        self.editor.setPlaceholderText("// Enter code here...\n// Press >> EXECUTE or Ctrl+Return to run")
+        l.addWidget(self.editor, 3)
         
-        terminal_group = QGroupBox("Terminal Output")
-        terminal_layout = QVBoxLayout(terminal_group)
+        term_group = QGroupBox("TERMINAL OUTPUT")
+        tl = QVBoxLayout(term_group)
         
         self.terminal = QTextEdit()
-        self.terminal.setFont(QFont("Consolas", 10))
         self.terminal.setReadOnly(True)
-        self.terminal.setStyleSheet("background-color: #1e1e1e; color: #00ff00;")
-        terminal_layout.addWidget(self.terminal)
+        tl.addWidget(self.terminal)
         
-        terminal_input_layout = QHBoxLayout()
-        terminal_input_layout.addWidget(QLabel(">"))
+        tin = QHBoxLayout()
+        tin.addWidget(QLabel(">"))
+        self.term_input = QLineEdit()
+        self.term_input.setPlaceholderText("enter command...")
+        self.term_input.returnPressed.connect(self.run_term)
+        tin.addWidget(self.term_input)
+        tl.addLayout(tin)
         
-        self.terminal_input = QLineEdit()
-        self.terminal_input.setPlaceholderText("Enter command...")
-        self.terminal_input.returnPressed.connect(self.run_terminal_command)
-        terminal_input_layout.addWidget(self.terminal_input)
-        
-        terminal_layout.addLayout(terminal_input_layout)
-        
-        layout.addWidget(terminal_group, 2)
-        
+        l.addWidget(term_group, 2)
         return panel
 
-    def create_status_bar(self):
-        status = QStatusBar()
-        self.setStatusBar(status)
-        
-        self.status_label = QLabel("Ready")
-        status.addWidget(self.status_label)
-        
-        status.addPermanentWidget(QLabel("Model: " + self.config.get("model", "qwen3:8b-gpu")))
-        status.addPermanentWidget(QLabel("Plan: ON | Build: ON"))
+    def create_status(self):
+        sb = QStatusBar()
+        self.setStatusBar(sb)
+        self.status_lbl = QLabel("SYSTEM ONLINE // WAITING FOR INPUT")
+        sb.addWidget(self.status_lbl)
+        sb.addPermanentWidget(QLabel(f"MODEL: {self.config.get('model', 'qwen3:8b-gpu')}"))
+        sb.addPermanentWidget(QLabel("PLAN: ON | BUILD: ON"))
 
-    def toggle_left_panel(self):
-        pass
+    def init_matrix(self):
+        self.matrix = MatrixOverlay(self)
+        self.matrix.setGeometry(self.rect())
+        self.matrix.lower()
 
-    def toggle_terminal(self):
-        pass
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, 'matrix'):
+            self.matrix.setGeometry(self.rect())
 
-    def toggle_fullscreen(self):
-        if self.isFullScreen():
-            self.showNormal()
-        else:
-            self.showFullScreen()
+    def new_proj(self):
+        f = QFileDialog.getExistingDirectory(self, "NEW PROJECT")
+        if f:
+            self.config["project_root"] = f
+            self.term(f"PROJECT: {f}")
 
-    def new_project(self):
-        folder = QFileDialog.getExistingDirectory(self, "Select Project Folder")
-        if folder:
-            self.config["project_root"] = folder
-            self.append_terminal(f"New project selected: {folder}")
-
-    def open_project(self):
-        folder = QFileDialog.getExistingDirectory(self, "Open Project Folder")
-        if folder:
-            self.config["project_root"] = folder
-            self.append_terminal(f"Opened project: {folder}")
+    def open_proj(self):
+        f = QFileDialog.getExistingDirectory(self, "OPEN PROJECT")
+        if f:
+            self.config["project_root"] = f
+            self.term(f"OPENED: {f}")
 
     def show_settings(self):
-        self.append_terminal("Settings dialog opened")
+        self.term("SETTINGS: Coming soon...")
 
     def show_docs(self):
         QDesktopServices.openUrl(QUrl("https://github.com/seraphonixstudios/CrackedCodev2"))
 
     def show_about(self):
-        QMessageBox.about(self, "About CrackedCode",
-            "CrackedCode v2.1.9\n\n"
-            "Atlantean Neural System\n"
+        QMessageBox.about(self, "ABOUT",
+            "CRACKEDCODE v2.2.0\n"
+            "ATLANTEAN NEURAL SYSTEM\n"
             "Local AI Coding Assistant\n\n"
-            "Built with PyQt6\n"
+            "Built with PyQt6 + Matrix Effects\n"
             "MIT License"
         )
 
     def set_mode(self, mode):
         if mode == "plan":
-            self.status_label.setText(f"Plan mode: {'ON' if self.plan_btn.isChecked() else 'OFF'}")
+            self.status_lbl.setText(f"PLAN: {'ON' if self.plan_btn.isChecked() else 'OFF'}")
         elif mode == "build":
-            self.status_label.setText(f"Build mode: {'ON' if self.build_btn.isChecked() else 'OFF'}")
-        self.append_terminal(f"Mode changed: {mode}")
+            self.status_lbl.setText(f"BUILD: {'ON' if self.build_btn.isChecked() else 'OFF'}")
+        self.term(f"MODE: {mode}")
 
-    def execute_code(self):
-        code = self.code_editor.toPlainText()
+    def exec_code(self):
+        code = self.editor.toPlainText()
         if code.strip():
-            self.append_terminal(f"Executing code...\n{code}")
-            self.status_label.setText("Executing...")
+            self.term(f">>> EXECUTING...\n{code}")
+            self.status_lbl.setText("EXECUTING...")
 
     def debug_code(self):
-        code = self.code_editor.toPlainText()
-        if code.strip():
-            self.append_terminal(f"Debugging code...\n{code}")
+        self.term(">>> DEBUG MODE...")
 
-    def run_terminal_command(self):
-        cmd = self.terminal_input.text()
+    def run_term(self):
+        cmd = self.term_input.text()
         if cmd:
-            self.append_terminal(f"$ {cmd}")
-            self.terminal_input.clear()
+            self.term(f"$ {cmd}")
+            self.term_input.clear()
 
-    def append_terminal(self, text):
+    def term(self, text):
         self.terminal.append(text)
-        cursor = self.terminal.textCursor()
-        cursor.movePosition(QTextCursor.MoveOperation.End)
-        self.terminal.setTextCursor(cursor)
+        self.terminal.moveCursor(QTextCursor.MoveOperation.End)
+
+    def toggle_full(self):
+        if self.isFullScreen():
+            self.showNormal()
+        else:
+            self.showFullScreen()
 
     def restore_state(self):
-        geometry = self.settings.value("geometry")
-        if geometry:
-            self.restoreGeometry(geometry)
-        state = self.settings.value("windowState")
-        if state:
-            self.restoreState(state)
+        g = self.settings.value("geometry")
+        if g: self.restoreGeometry(g)
+        s = self.settings.value("windowState")
+        if s: self.restoreState(s)
 
-    def closeEvent(self, event):
+    def closeEvent(self, e):
         self.settings.setValue("geometry", self.saveGeometry())
         self.settings.setValue("windowState", self.saveState())
         logger.info("CrackedCode GUI closing")
-        event.accept()
+        e.accept()
 
 
-def check_single_instance():
-    socket = QLocalSocket()
-    socket.connectToServer("CrackedCode_SingleInstance")
-    if socket.state() == QLocalSocket.LocalSocketState.ConnectedState:
-        logger.warning("Another instance is already running")
+def check_single():
+    sock = QLocalSocket()
+    sock.connectToServer("CrackedCode_SingleInstance")
+    if sock.state() == QLocalSocket.LocalSocketState.ConnectedState:
         return False
     return True
 
 
 def main():
-    if not check_single_instance():
-        QMessageBox.warning(None, "CrackedCode", "Another instance is already running!")
+    if not check_single():
+        QMessageBox.warning(None, "CrackedCode", "Already running!")
         return
     
     app = QApplication(sys.argv)
     app.setApplicationName("CrackedCode")
     app.setOrganizationName("SeraphonixStudios")
-    app.setStyle("Fusion")
     
-    dark_palette = app.palette()
-    dark_palette.setColor(dark_palette.ColorRole.Window, QColor(53, 53, 53))
-    dark_palette.setColor(dark_palette.ColorRole.WindowText, Qt.GlobalColor.white)
-    dark_palette.setColor(dark_palette.ColorRole.Base, QColor(35, 35, 35))
-    dark_palette.setColor(dark_palette.ColorRole.AlternateBase, QColor(53, 53, 53))
-    dark_palette.setColor(dark_palette.ColorRole.ToolTipBase, Qt.GlobalColor.white)
-    dark_palette.setColor(dark_palette.ColorRole.ToolTipText, Qt.GlobalColor.white)
-    dark_palette.setColor(dark_palette.ColorRole.Text, Qt.GlobalColor.white)
-    dark_palette.setColor(dark_palette.ColorRole.Button, QColor(53, 53, 53))
-    dark_palette.setColor(dark_palette.ColorRole.ButtonText, Qt.GlobalColor.white)
-    dark_palette.setColor(dark_palette.ColorRole.BrightText, Qt.GlobalColor.red)
-    dark_palette.setColor(dark_palette.ColorRole.Link, QColor(42, 130, 218))
-    dark_palette.setColor(dark_palette.ColorRole.Highlight, QColor(42, 130, 218))
-    dark_palette.setColor(dark_palette.ColorRole.HighlightedText, Qt.GlobalColor.black)
-    app.setPalette(dark_palette)
-    
-    window = CrackedCodeGUI()
-    window.show()
+    win = CrackedCodeGUI()
+    win.show()
     
     sys.exit(app.exec())
 
