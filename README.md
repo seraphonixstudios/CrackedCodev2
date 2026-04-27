@@ -18,7 +18,7 @@ CrackedCode is a 100% local AI coding assistant featuring the Atlantean Neural I
 
 | Version | Features |
 |---------|----------|
-| 2.3.8 | Comprehensive tests (21/21), bug fixes, search intent, voice typing |
+| 2.3.8 | E2E tests (27/27), version consistency, no placeholders, voice system |
 | 2.3.5 | Project sidebar, agents panel, file watcher, git integration |
 | 2.3.0 | CrackedCodeEngine architecture |
 
@@ -311,6 +311,7 @@ crackedcode/
 │   ├── file_watcher.py    # File change monitor
 │   └── git_integration.py # Git status/diffs
 ├── tests/
+├── test_system.py          # Comprehensive E2E test suite
 ├── config.json
 ├── pyproject.toml
 ├── logs/
