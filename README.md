@@ -18,7 +18,7 @@ CrackedCode is a 100% local AI coding assistant featuring the Atlantean Neural I
 
 | Version | Features |
 |---------|----------|
-| 2.3.8 | E2E tests (27/27), version consistency, no placeholders, voice system |
+| 2.3.8 | Code generation pipeline, exec_code fix, 30 E2E tests, voice system |
 | 2.3.5 | Project sidebar, agents panel, file watcher, git integration |
 | 2.3.0 | CrackedCodeEngine architecture |
 
@@ -289,6 +289,37 @@ result = engine.process("fix the bug in auth.py")
 engine.set_style(PromptStyle.TECHNICAL)
 ```
 
+### Code Generation Pipeline
+
+```python
+from src.engine import CrackedCodeEngine
+
+engine = CrackedCodeEngine()
+
+# Generate code from prompt
+response = engine.generate_code("write a function to add two numbers")
+
+# Generate and save to file
+response = engine.generate_and_save("create hello.py", "hello.py")
+
+# Extract code from LLM response
+code, filename = engine._extract_code_from_response(response.text)
+```
+
+### Intent Detection
+
+The engine automatically detects user intent:
+
+| Intent | Keywords | Action |
+|--------|----------|--------|
+| CODE | write, create | Generate code |
+| DEBUG | fix, bug | Find and fix issues |
+| REVIEW | review | Analyze code quality |
+| BUILD | build, plan | Create implementation plan |
+| EXECUTE | run, execute | Execute shell commands |
+| SEARCH | search, find | Search files |
+| CHAT | other | General conversation |
+
 ## Environment Variables
 
 | Variable | Values | Description |
@@ -318,10 +349,34 @@ crackedcode/
 └── README.md
 ```
 
+## Testing
+
+```bash
+python test_system.py
+```
+
+30 comprehensive E2E tests covering:
+- Module imports
+- Configuration loading
+- Engine initialization
+- Ollama bridge
+- Session management
+- Intent parsing (8 intents)
+- Code executor (sandboxed)
+- GUI components
+- Voice typing (faster-whisper)
+- File watcher
+- Git integration
+- Parallel executor
+- Pipeline processor
+- Code generation pipeline
+- Code save and execute
+- GUI exec_code function
+
 ## License
 
 MIT
 
 ---
 
-**CrackedCode: Atlantean Neural System** - The Final Boss of Local AI Coding Agents
+**CrackedCode v2.3.8** - The Final Boss of Local AI Coding Agents
