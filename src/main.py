@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 CrackedCode - Local AI Coding Assistant
-Version: 2.1.8
+Version: 2.3.8
 """
 
 import os
@@ -214,7 +214,7 @@ def log_task_event(task_id: int, agent: str, event: str, details: str = ""):
 def log_session_start():
     log_info("=" * 60)
     log_info("CrackedCode Session Started")
-    log_info(f"Version: 2.1.6")
+    log_info(f"Version: 2.3.8")
     log_info(f"Platform: {platform.system()} {platform.release()}")
     log_info(f"Python: {platform.python_version()}")
     log_info(f"Debug Mode: {DEBUG_MODE}")
@@ -1908,7 +1908,7 @@ class AgentSwarm:
 
 
 class CrackedCode:
-    VERSION = "2.1.8"
+    VERSION = "2.3.8"
     BANNER = """
 ============================================================
   CRACKEDCODE v{version} - Local AI Coding Assistant

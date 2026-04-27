@@ -187,7 +187,7 @@ class CrackedCodeEngine:
 
     def get_status(self) -> Dict:
         ollama = self.ollama.detect()
-        return {"version": "2.3.3", "model": self.model, "plan": self.plan_enabled, "build": self.build_enabled,
+        return {"version": "2.3.8", "model": self.model, "plan": self.plan_enabled, "build": self.build_enabled,
                 "ollama_available": ollama["available"], "ollama_models": ollama["models"], "history_length": self.session.history_len()}
 
     def parse_intent(self, prompt: str) -> PromptRequest:
