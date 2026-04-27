@@ -650,7 +650,7 @@ class NaturalPromptEngine:
     def detect_intent(self, user_input: str) -> Intent:
         input_lower = user_input.lower()
         
-        coding_keywords = ["write", "create", "make", "build", "implement", "add", "new"]
+        create_keywords = ["write", "create", "make", "build", "implement", "add", "new"]
         debug_keywords = ["fix", "bug", "error", "issue", "broken", "not working", "crash"]
         explain_keywords = ["what", "how", "why", "explain", "tell me", "describe"]
         modify_keywords = ["change", "update", "modify", "edit", "refactor", "improve"]
@@ -868,7 +868,7 @@ class NaturalTextPromptEngine:
         for entity in entities:
             self.nlp.entities.add_entity(entity, "extracted", entity, 0.8)
         
-        resolved_input = self.nlp.envelops_user_input(user_input)
+        resolved_input = self.nlp.enrich_user_input(user_input)
         
         context = self.nlp.build_context_window()
         
@@ -919,7 +919,7 @@ def init_engines():
     log_info("Initializing prompt engines...")
     
     vision_engine = VisionEngine()
-    text_prompt_engine = TextPromptEngine()
+    text_prompt_engine = NaturalPromptEngine()
     natural_prompt_engine = NaturalTextPromptEngine()
     
     if vision_engine.is_ready():
@@ -1661,7 +1661,7 @@ PROJECT ROOT: {self.config.get('project_root')}
             response = ollama.list()
             model_names = [m.model for m in response.models]
             return self.model in model_names
-        except:
+        except Exception:
             return False
 
     def pull_model(self, model: Optional[str] = None):
@@ -1714,10 +1714,9 @@ class VoiceController:
             try:
                 subprocess.run(["nvidia-smi"], capture_output=True, check=True)
                 return True
-            except:
+            except Exception:
                 return False
-        else:
-            return False
+        return False
 
     def listen(self, duration: float = 5.0) -> str:
         if not self.stt_model:

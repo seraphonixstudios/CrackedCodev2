@@ -115,7 +115,7 @@ class OllamaBridge:
 class CodeExecutor:
     def __init__(self, project_root: str = "."):
         self.project_root = Path(project_root)
-        self.allowed = ["python", "pytest", "ruff", "git", "npm", "node", "pip"]
+        self.allowed = ["python", "pytest", "ruff", "git", "npm", "node", "pip", "echo", "ls", "dir", "cat", "type", "cd"]
 
     def run_shell(self, cmd: str) -> AgentResponse:
         import subprocess
@@ -198,6 +198,7 @@ class CrackedCodeEngine:
         elif any(k in text for k in ["review"]): intent = Intent.REVIEW
         elif any(k in text for k in ["build", "plan"]): intent = Intent.BUILD
         elif any(k in text for k in ["run", "execute"]): intent = Intent.EXECUTE
+        elif any(k in text for k in ["search", "find", "grep", "locate"]): intent = Intent.SEARCH
         return PromptRequest(text=prompt, intent=intent)
 
     async def process(self, prompt: str) -> AgentResponse:

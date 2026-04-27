@@ -18,8 +18,8 @@ CrackedCode is a 100% local AI coding assistant featuring the Atlantean Neural I
 
 | Version | Features |
 |---------|----------|
-| 2.3.8 | Type hints, test coverage, voice typing, session persistence |
-| 2.3.5 | Project sidebar, agents panel |
+| 2.3.8 | Comprehensive tests (21/21), bug fixes, search intent, voice typing |
+| 2.3.5 | Project sidebar, agents panel, file watcher, git integration |
 | 2.3.0 | CrackedCodeEngine architecture |
 
 ### Running
@@ -301,11 +301,18 @@ engine.set_style(PromptStyle.TECHNICAL)
 ```
 crackedcode/
 ├── src/
-│   ├── main.py              # Main application
-│   ├── atlan_ui.py         # Sci-Fi UI
-│   ├── voice.py           # Voice engine
-│   └── parallel_processor.py # Parallel executor
+│   ├── main.py              # Main application (CLI)
+│   ├── gui.py               # PyQt6 Desktop GUI
+│   ├── atlan_ui.py         # Sci-Fi UI effects
+│   ├── voice.py           # Voice engine (STT/TTS)
+│   ├── voice_typing.py    # Voice typing (faster-whisper)
+│   ├── parallel_processor.py # Parallel executor
+│   ├── engine.py          # CrackedCodeEngine
+│   ├── file_watcher.py    # File change monitor
+│   └── git_integration.py # Git status/diffs
+├── tests/
 ├── config.json
+├── pyproject.toml
 ├── logs/
 └── README.md
 ```
