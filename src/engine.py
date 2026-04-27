@@ -162,7 +162,18 @@ class SessionManager:
 
 class CrackedCodeEngine:
     PROMPT_TEMPLATES = {
-        Intent.CODE: "Write clean Python code.\n\nTask: {prompt}",
+        Intent.CODE: """Generate complete Python code for this task.
+
+Requirements:
+- Include all necessary imports
+- Add proper error handling
+- Include type hints and docstrings
+- Write clean, production-ready code
+
+Task: {prompt}
+
+Output the code in a code block.
+""",
         Intent.DEBUG: "Find and fix bugs.\n\nTask: {prompt}",
         Intent.REVIEW: "Analyze code quality.\n\nTask: {prompt}",
         Intent.BUILD: "Create implementation plan.\n\nTask: {prompt}",
@@ -200,6 +211,97 @@ class CrackedCodeEngine:
         elif any(k in text for k in ["run", "execute"]): intent = Intent.EXECUTE
         elif any(k in text for k in ["search", "find", "grep", "locate"]): intent = Intent.SEARCH
         return PromptRequest(text=prompt, intent=intent)
+
+    def _extract_code_from_response(self, text: str) -> tuple[str, str]:
+        """Extract code from response text, handling code blocks."""
+        import re
+        
+        code_block_pattern = r'```[\w]*\n(.*?)```'
+        matches = re.findall(code_block_pattern, text, re.DOTALL)
+        
+        if matches:
+            code = matches[0].strip()
+            file_match = re.search(r'([\w_]+\.py)', text)
+            filename = file_match.group(1) if file_match else "generated.py"
+            return code, filename
+        
+        lines = text.split('\n')
+        code_lines = []
+        in_code = False
+        
+        for line in lines:
+            if line.strip().startswith('```'):
+                in_code = not in_code
+                continue
+            if in_code or not line.strip().startswith('#') and not line.strip().startswith('//'):
+                if line.strip() and not any(line.strip().startswith(p) for p in ['import ', 'from ', 'def ', 'class ', 'if ', 'else:', 'elif ', 'for ', 'while ', 'return ', 'try:', 'except ', 'with ', 'print(']):
+                    pass
+                code_lines.append(line)
+        
+        code = '\n'.join(code_lines).strip()
+        
+        file_match = re.search(r'[\w_]+\.py', text)
+        filename = file_match.group(0) if file_match else "generated.py"
+        
+        return code if code else text, filename
+
+    def generate_code(self, prompt: str) -> AgentResponse:
+        """Generate code and optionally save to file."""
+        request = self.parse_intent(prompt)
+        
+        if request.intent == Intent.CHAT:
+            request.intent = Intent.CODE
+        
+        template = self.PROMPT_TEMPLATES.get(request.intent, "Write Python code.\n\nTask: {prompt}")
+        response = self.ollama.chat(template.format(prompt=prompt))
+        
+        if not response.success:
+            return response
+        
+        code, filename = self._extract_code_from_response(response.text)
+        
+        response.text = code
+        
+        return response
+
+    def generate_and_save(self, prompt: str, filepath: str = None) -> AgentResponse:
+        """Generate code and save to file."""
+        response = self.generate_code(prompt)
+        
+        if not response.success:
+            return response
+        
+        if filepath is None:
+            filepath = self._extract_filename(prompt) or "generated.py"
+        
+        try:
+            filepath = Path(filepath)
+            filepath.parent.mkdir(parents=True, exist_ok=True)
+            filepath.write_text(response.text)
+            response.text = f"# Saved to {filepath}\n\n{response.text}"
+            logger.info(f"Code saved to {filepath}")
+        except Exception as e:
+            response.success = False
+            response.error = f"Failed to save: {e}"
+            logger.error(f"Failed to save code: {e}")
+        
+        return response
+
+    def _extract_filename(self, prompt: str) -> str:
+        """Extract filename from prompt if mentioned."""
+        import re
+        patterns = [
+            r'create\s+(\w+\.py)',
+            r'save\s+(?:it\s+)?to\s+(\w+\.py)',
+            r'file\s+(\w+\.py)',
+            r'named\s+(\w+\.py)',
+            r'(?:in|to)\s+(\w+\.py)',
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, prompt.lower())
+            if match:
+                return match.group(1)
+        return None
 
     async def process(self, prompt: str) -> AgentResponse:
         request = self.parse_intent(prompt)

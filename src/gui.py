@@ -497,8 +497,35 @@ class CrackedCodeGUI(QMainWindow):
     def exec_code(self):
         code = self.editor.toPlainText()
         if code.strip():
-            self.term(f">>> EXECUTING...\n{code}")
+            self.term(f">>> EXECUTING...\n{code[:200]}{'...' if len(code) > 200 else ''}")
             self.status_lbl.setText("EXECUTING...")
+            try:
+                if self.engine and self.engine.executor:
+                    result = self.engine.executor.run_shell(code)
+                    if result.success:
+                        self.term(f">>> OUTPUT:\n{result.text}")
+                        self.term(">>> DONE")
+                    else:
+                        self.term(f">>> ERROR:\n{result.error}")
+                else:
+                    import subprocess
+                    result = subprocess.run(
+                        ["python", "-c", code],
+                        capture_output=True,
+                        text=True,
+                        timeout=30
+                    )
+                    if result.stdout:
+                        self.term(f">>> OUTPUT:\n{result.stdout}")
+                    if result.stderr:
+                        self.term(f">>> ERROR:\n{result.stderr}")
+                    if result.returncode == 0:
+                        self.term(">>> DONE")
+                    else:
+                        self.term(">>> FAILED")
+            except Exception as e:
+                self.term(f">>> EXECUTION ERROR: {e}")
+            self.status_lbl.setText("READY")
 
     def debug_code(self):
         self.term(">>> DEBUG MODE...")

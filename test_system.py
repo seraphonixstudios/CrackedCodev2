@@ -872,6 +872,138 @@ def test_voice_system_e2e() -> bool:
         return FAIL("Voice system E2E", str(e)[:50])
 
 
+def test_code_generation_pipeline() -> bool:
+    print_header("CODE GENERATION PIPELINE")
+    
+    try:
+        from src.engine import CrackedCodeEngine
+        
+        engine = CrackedCodeEngine()
+        
+        PASS("Engine has generate_code method:", hasattr(engine, 'generate_code'))
+        
+        if hasattr(engine, 'generate_code'):
+            PASS("Engine has generate_and_save method:", hasattr(engine, 'generate_and_save'))
+        
+        if hasattr(engine, '_extract_code_from_response'):
+            test_text = "Here is the code:\n```python\ndef hello():\n    return 'Hello'\n```"
+            code, filename = engine._extract_code_from_response(test_text)
+            if "def hello" in code:
+                PASS("Code extraction: works")
+            else:
+                FAIL("Code extraction", "Failed to extract code")
+                return False
+            
+            if filename == "generated.py" or filename.endswith(".py"):
+                PASS(f"Filename extraction: {filename}")
+            else:
+                FAIL("Filename extraction", f"Got {filename}")
+                return False
+        else:
+            FAIL("Code extraction", "Method not found")
+            return False
+        
+        if hasattr(engine, '_extract_filename'):
+            test_prompt = "create a function and save it to test_file.py"
+            fname = engine._extract_filename(test_prompt)
+            if fname == "test_file.py":
+                PASS(f"Filename from prompt: {fname}")
+            else:
+                FAIL("Filename from prompt", f"Got {fname}")
+                return False
+        else:
+            FAIL("Extract filename", "Method not found")
+            return False
+        
+        return True
+        
+    except Exception as e:
+        return FAIL("Code generation pipeline", str(e)[:50])
+
+
+def test_code_save_and_execute() -> bool:
+    print_header("CODE SAVE AND EXECUTE")
+    
+    try:
+        from src.engine import CrackedCodeEngine
+        import tempfile
+        from pathlib import Path
+        
+        engine = CrackedCodeEngine()
+        
+        with tempfile.TemporaryDirectory() as tmpdir:
+            test_file = Path(tmpdir) / "test_generated.py"
+            
+            test_code = '''def add_numbers(a, b):
+    """Add two numbers."""
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+'''
+            
+            test_file.write_text(test_code)
+            PASS("Test file written")
+            
+            result = subprocess.run(
+                [sys.executable, str(test_file)],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+            
+            if result.returncode == 0:
+                output = result.stdout.strip()
+                if output == "8":
+                    PASS(f"Code executed: output = {output}")
+                else:
+                    FAIL("Code output", f"Expected 8, got {output}")
+                    return False
+            else:
+                FAIL("Code execution", result.stderr[:50])
+                return False
+            
+            result2 = engine.executor.run_shell(f'python "{test_file}"')
+            if result2.success:
+                PASS("Executor can run generated code")
+            else:
+                FAIL("Executor", result2.error or "Failed")
+                return False
+        
+        return True
+        
+    except Exception as e:
+        return FAIL("Code save and execute", str(e)[:50])
+
+
+def test_exec_code_in_gui() -> bool:
+    print_header("EXEC CODE IN GUI")
+    
+    try:
+        from src.gui import CrackedCodeGUI
+        import inspect
+        
+        gui = CrackedCodeGUI()
+        
+        if hasattr(gui, 'exec_code'):
+            PASS("GUI has exec_code method")
+            
+            source = inspect.getsource(gui.exec_code)
+            if 'subprocess.run' in source or 'self.engine' in source:
+                PASS("exec_code actually executes code")
+            else:
+                FAIL("exec_code", "Does not execute code")
+                return False
+        else:
+            FAIL("exec_code", "Method not found")
+            return False
+        
+        return True
+        
+    except Exception as e:
+        return FAIL("Exec code in GUI", str(e)[:50])
+
+
 def main() -> int:
     print(f"\n{'='*60}\n  CRACKEDCODE v2.3.8 - E2E TEST SUITE\n{'='*60}\n")
     
@@ -903,6 +1035,9 @@ def main() -> int:
         ("Pipeline Data Flow E2E", test_pipeline_data_flow),
         ("Git Workflow E2E", test_git_workflow_e2e),
         ("Voice System E2E", test_voice_system_e2e),
+        ("Code Generation Pipeline", test_code_generation_pipeline),
+        ("Code Save and Execute", test_code_save_and_execute),
+        ("Exec Code in GUI", test_exec_code_in_gui),
     ]
     
     results: list[tuple[str, bool]] = []

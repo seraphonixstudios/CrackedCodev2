@@ -24,7 +24,6 @@ from enum import Enum
 import logging
 import traceback
 import random
-import logging
 
 logger = logging.getLogger('ParallelProcessor')
 
