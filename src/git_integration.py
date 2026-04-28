@@ -339,28 +339,82 @@ def demo():
     git = GitIntegration(".")
 
     if not git.is_repo:
-        print("Not a git repository")
+        print("Error: Not a git repository")
+        print(f"Checked path: {Path('.').resolve()}")
         return
 
+    print(f"Repository root: {git.git_root}\n")
+
+    print("--- BRANCH INFO ---")
+    branches = git.get_branches()
+    current = git.get_branch()
+    print(f"Current branch: {current}")
+
+    local_branches = [b for b in branches if not b.is_remote]
+    remote_branches = [b for b in branches if b.is_remote]
+    if local_branches:
+        print(f"Local branches: {', '.join(b.name for b in local_branches[:5])}")
+    if remote_branches:
+        print(f"Remote branches: {len(remote_branches)}")
+
+    print("\n--- GIT STATUS ---")
     info = git.get_status()
     print(f"Branch: {info.branch}")
-    print(f"Status: {info.status.value}")
+
+    status_str = "clean" if info.status == GitStatus.CLEAN else "dirty"
+    if info.status == GitStatus.CONFLICTED:
+        status_str = "conflicted"
+    elif info.untracked and not info.modified and not info.staged:
+        status_str = "untracked files only"
+    print(f"Working tree: {status_str}")
+
+    if info.commits_ahead > 0 or info.commits_behind > 0:
+        if info.commits_ahead > 0:
+            print(f"{info.commits_ahead} commit(s) ahead of remote")
+        if info.commits_behind > 0:
+            print(f"{info.commits_behind} commit(s) behind remote")
+
+    if info.staged:
+        print(f"\nStaged ({len(info.staged)}):")
+        for f in info.staged[:5]:
+            print(f"  + {f}")
+        if len(info.staged) > 5:
+            print(f"  ... and {len(info.staged) - 5} more")
 
     if info.modified:
         print(f"\nModified ({len(info.modified)}):")
         for f in info.modified[:5]:
             print(f"  M {f}")
+        if len(info.modified) > 5:
+            print(f"  ... and {len(info.modified) - 5} more")
 
     if info.untracked:
         print(f"\nUntracked ({len(info.untracked)}):")
         for f in info.untracked[:5]:
             print(f"  ?? {f}")
+        if len(info.untracked) > 5:
+            print(f"  ... and {len(info.untracked) - 5} more")
 
-    commits = git.get_recent_commits(3)
-    if commits:
-        print(f"\nRecent commits:")
-        for c in commits:
-            print(f"  {c.short_hash} {c.message[:50]}")
+    if info.conflicts:
+        print(f"\nConflicted ({len(info.conflicts)}):")
+        for f in info.conflicts:
+            print(f"  UU {f}")
+
+    if not (info.staged or info.modified or info.untracked or info.conflicts):
+        print("No changes")
+
+    print("\n--- RECENT COMMITS ---")
+    commits = git.get_recent_commits(10)
+    if not commits:
+        print("No commits yet")
+        return
+
+    for i, c in enumerate(commits):
+        date_str = c.timestamp.strftime("%Y-%m-%d %H:%M")
+        msg = c.message[:60] + "..." if len(c.message) > 60 else c.message
+        prefix = ">" if i == 0 else " "
+        print(f"{prefix} {c.short_hash} | {date_str} | {c.author}")
+        print(f"  {msg}")
 
 
 if __name__ == "__main__":

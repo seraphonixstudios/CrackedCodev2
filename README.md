@@ -3,7 +3,7 @@
 Local AI Coding Assistant with Sci-Fi Neural Interface
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.3.8-blue?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Version-2.3.9-blue?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License">
   <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-orange?style=for-the-badge" alt="Platform">
   <img src="https://img.shields.io/badge/Python-3.10%2B-yellow?style=for-the-badge" alt="Python">
@@ -12,303 +12,362 @@ Local AI Coding Assistant with Sci-Fi Neural Interface
 
 ## Overview
 
-CrackedCode is a 100% local AI coding assistant featuring the Atlantean Neural Interface with parallel processing, plan/build modes, and Matrix-style effects.
+CrackedCode is a **100% local AI coding assistant** featuring the Atlantean Neural Interface with agent orchestration, task queue management, voice commands, and Matrix-style effects. No cloud, no API keys - all running with Ollama.
+
+### Quick Start
+
+```bash
+# Desktop GUI (Recommended)
+python src/gui.py
+
+# CLI with code generation
+python src/main.py code -p "write a function to add numbers"
+
+# Run tests
+python test_system.py
+```
 
 ### Version History
 
 | Version | Features |
 |---------|----------|
-| 2.3.8 | Type hints, test coverage, voice typing, session persistence |
-| 2.3.5 | Project sidebar, agents panel |
-| 2.3.0 | CrackedCodeEngine architecture |
+| 2.3.9 | Complete UI overhaul, Task queue, Agent orchestration, Accessibility |
+| 2.3.8 | Code generation pipeline, CLI CODE subcommand, Swarm integration |
+| 2.3.5 | Project sidebar, agents panel, file watcher, git integration |
 
-### Running
+---
 
-```bash
-python src/gui.py        # Desktop GUI (Recommended)
-python src/main.py       # CLI mode
-python src/atlan_ui.py   # CLI with Atlantean UI
-```
-
-## Desktop GUI
+## Desktop GUI (v2.3.9)
 
 ```bash
 python src/gui.py
 ```
 
+### New UI Features
+
+- **Dockable Panels**: Left control center with project files, agents, and task queue
+- **Task Queue Widget**: Real-time status updates with pending/running/completed tracking
+- **Agent Panel**: Visual status indicators with icons and capabilities
+- **File Tree Widget**: Hierarchical project navigation
+- **Menu Bar**: FILE/EDIT/VIEW/HELP with full keyboard shortcuts
+- **Status Bar**: Live clock, task counter, Ollama status
+- **Progress Bar**: Visual feedback during task processing
+
+### Layout
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ MENU BAR: File | Edit | View | Help                       │
+├─────────┬───────────────────────────────────────────────┤
+│ CONTROL │ TOOLBAR: [PLAN][BUILD] [EXECUTE][VOICE]       │
+│ CENTER  ├───────────────────────────────────────────────┤
+│         │                                              │
+│ Project │ CODE EDITOR                                   │
+│ Files   │                                              │
+│         │                                              │
+│ ─────── │                                              │
+│ AGENTS  │                                              │
+│ S A C E │                                              │
+│ R F     │                                              │
+│         ├───────────────────────────────────────────────┤
+│ ─────── │                                              │
+│ TASK    │ TERMINAL: > Command input...                  │
+│ QUEUE   │        [SEND]                                │
+│ ○ ○ ●   │                                              │
+│         ├───────────────────────────────────────────────┤
+│ Progress│ STATUS: READY | OLLAMA: ON | Tasks: 3/5      │
+└─────────┴───────────────────────────────────────────────┘
+```
+
 ### Features
 
-- **Left Sidebar**: Project files, AGENTS list, TASK status
-- **Voice Typing**: Click VOICE button to record and transcribe speech (faster-whisper)
-- **Code Editor**: Large text area
-- **Terminal**: Input prompts, view responses
-- **Toolbar**: PLAN/BUILD toggles, VOICE button, EXECUTE button
-- **Matrix Overlay**: Animated rain effect
-- **Atlantean Theme**: Green `#00FF41` on black
-- **Single Instance**: Prevents duplicates
-- **Ollama Auto-Detection**: Health check on startup
-- **Dev Console**: Press F12
+| Feature | Description |
+|---------|-------------|
+| **Project Files** | Tree view with hierarchical navigation |
+| **Agent Panel** | 6 agents with real-time status |
+| **Task Queue** | Live task tracking with status icons |
+| **Voice Typing** | Click VOICE to record (faster-whisper) |
+| **Code Editor** | Full text editor with syntax |
+| **Terminal** | AI response display and input |
+| **Matrix Overlay** | Animated rain effect |
+| **Atlantean Theme** | Green `#00FF41` on black |
+
+### Voice Commands
+
+Natural language commands detected from voice input:
+
+| Command | Keywords | Action |
+|---------|----------|--------|
+| stop | stop, cancel, abort, quit | Stop operation |
+| execute | run, execute, go | Run code |
+| save | save, store | Save file |
+| copy | copy, clipboard | Copy output |
+| clear | clear, wipe | Clear terminal |
+| voice | voice, listen | Toggle voice mode |
 
 ### Keyboard Shortcuts
 
-| Key | Action |
-|-----|--------|
-| F12 | Toggle Dev Console |
-| Enter | Submit prompt |
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+N` | New project |
+| `Ctrl+O` | Open project |
+| `Ctrl+S` | Save file |
+| `Ctrl+Q` | Quit |
+| `Ctrl+Shift+C` | Copy output |
+| `Ctrl+V` | Paste (image or text) |
+| `Ctrl+A` | Select all |
+| `Ctrl+Enter` | Send prompt |
+| `F11` | Toggle fullscreen |
+| `F12` | Dev console |
+| `Escape` | Stop operation |
 
-### Status Bar
+### Accessibility
 
-Shows: READY state, OLLAMA status (ON/OFF), selected MODEL
+All widgets have `AccessibleName` for screen readers:
+- `AccessibleName="Code editor"` 
+- `AccessibleName="Command input"`
+- `AccessibleName="Send command"`
 
-### Dev Console (F12)
+---
 
-Shows:
-- Version
-- Ollama available status
-- All available Ollama models
-- Host and selected model
-- Plan/Build state
-- Conversation history length
+## Agent Orchestration
 
-### Usage
-
-1. **NEW/OPEN** - Select project folder (files appear in sidebar)
-2. **Type prompt** in terminal input line + Enter
-3. **PLAN toggle** - Enable/disable AI processing
-4. **BUILD toggle** - Enable/disable code execution
-5. **VOICE toggle** - Voice input mode (requires sounddevice)
-6. **Press SPACE** - Record voice (3s) when VOICE enabled
-7. **EXECUTE** - Run code directly
-8. **F12** - Dev console for diagnostics
-
-### CrackedCodeEngine
-
-Programmatic API:
+Tasks are automatically delegated to specialized agents based on intent:
 
 ```python
-from src.engine import get_engine, Intent
+from src.gui import AgentOrchestrator, AgentTask, TaskStatus
 
-engine = get_engine({"model": "qwen3:8b-gpu"})
+orchestrator = AgentOrchestrator()
 
-status = engine.get_status()
-print(f"Ollama: {status['ollama_available']}")
-print(f"Models: {status['ollama_models']}")
+# Delegate based on intent
+agent, task = orchestrator.delegate(Intent.CODE, "write a function")
+print(f"Delegated to {agent} for task {task.task_id}")
 
-import asyncio
-response = asyncio.run(engine.process("Hello"))
-print(response.text)
+# Check queue status
+status = orchestrator.get_queue_status()
+print(f"Pending: {status['pending']}, Running: {status['running']}")
+
+# Complete when done
+orchestrator.complete_task(task.task_id, "generated code here")
 ```
 
-### Parallel Processor
+### Agent Types
 
-Multi-core task execution with multiple modes:
+| Agent | Role | Capabilities |
+|-------|------|--------------|
+| Supervisor | Coordinates | Delegate, manage |
+| Architect | Design | Planning, architecture |
+| Coder | Implementation | Code, write, modify |
+| Executor | Execution | Run, execute, test |
+| Reviewer | Analysis | Review, debug, fix |
+| Searcher | Discovery | Search, find, grep |
+
+### Task States
+
+- `○` Pending
+- `◐` Running  
+- `●` Completed
+- `✕` Failed
+- `⊘` Cancelled
+
+---
+
+## Code Generation Pipeline
+
+```bash
+# CLI code generation
+python src/main.py code -p "write a hello world function"
+
+# Save to file
+python src/main.py code -p "create hello.py" -o hello.py
+
+# With validation
+python src/main.py code -p "write function" --validate
+
+# With Swarm
+python src/main.py code -p "write parser" --swarm
+```
+
+### API
+
+```python
+from src.engine import CrackedCodeEngine
+
+engine = CrackedCodeEngine()
+
+# Generate code
+response = engine.generate_code("write a function to add numbers")
+
+# Generate and save
+response = engine.generate_and_save("create hello.py", "hello.py")
+
+# Validate
+result = engine.validate_code("def foo(): return 1")
+
+# Execute
+result = engine.execute_generated_code("print('Hello!')")
+```
+
+---
+
+## Intent Detection
+
+The engine automatically detects user intent:
+
+| Intent | Keywords | Agent |
+|--------|----------|-------|
+| CODE | write, create, generate | Coder |
+| DEBUG | fix, bug, error | Reviewer |
+| REVIEW | review, analyze | Reviewer |
+| BUILD | build, plan, design | Architect |
+| EXECUTE | run, execute | Executor |
+| SEARCH | search, find, grep | Searcher |
+| HELP | help, assist | Supervisor |
+| CHAT | other | Coder |
+
+---
+
+## Image Paste & Drop
+
+- **Paste images**: `Ctrl+V` in editor
+- **Drop images**: Drag & drop PNG/JPG/GIF/BMP
+- Images processed through vision model (llava)
+
+---
+
+## Parallel Processor
 
 ```python
 from src.parallel_processor import (
-    ParallelExecutor, PipelineProcessor, UnifiedCoordinator, DistributedProcessor,
+    ParallelExecutor, PipelineProcessor, CodeSwarmCoordinator,
     ExecutionMode, create_task, batch_create_tasks
 )
-```
 
-#### Parallel Execution
-
-```python
+# Parallel execution
 executor = ParallelExecutor(max_workers=4, mode=ExecutionMode.PARALLEL)
 executor.start()
-
-# Create tasks
-task_specs = [
-    {"id": "task1", "func": worker_add, "args": (5, 3)},
-    {"id": "task2", "func": worker_multiply, "args": (4, 7)},
-]
-tasks = batch_create_tasks(task_specs)
-
-# Submit and wait
 task_ids = executor.submit_batch(tasks)
 results = executor.wait_for(task_ids)
-
 executor.stop()
-```
 
-#### Pipeline Processing
-
-```python
+# Pipeline processing
 pipeline = PipelineProcessor()
 pipeline.add_stage("stage1", lambda x: x * 2)
 pipeline.add_stage("stage2", lambda x: x + 1)
-pipeline.add_stage("stage3", lambda x: f"Result: {x}")
-
-result = pipeline.execute(5)  # Result: "Result: 11"
+result = pipeline.execute(5)  # 11
 ```
 
-#### Unified Resolution
+---
+
+## Voice Typing
 
 ```python
-coordinator = UnifiedCoordinator(max_workers=3)
-coordinator.start()
+from src.voice_typing import VoiceTyping
 
-# Submit multiple methods
-task_id = coordinator.submit_resolution_task(
-    "unified_task",
-    [func1, func2, func3],
-    ResolutionStrategy.MAJORITY
-)
+voice = VoiceTyping(model_size="base")
 
-# Resolve with consensus
-resolution = coordinator.resolve(task_id)
+# Record and transcribe
+result = voice.listen_and_transcribe(duration=5.0)
+print(result.text, result.confidence)
 
-coordinator.stop()
+# Detect voice commands
+cmd = voice.detect_command("stop recording")
+print(cmd)  # "stop"
 ```
 
-#### Distributed Processing
+---
 
-```python
-dist = DistributedProcessor(nodes=["node1", "node2"])
-dist.dispatch_task(task)
-```
-
-### Execution Modes
-
-| Mode | Description |
-|------|-------------|
-| SEQUENTIAL | One task at a time |
-| PARALLEL | Multiple workers |
-| PIPELINE | Staged processing |
-| UNIFIED | Multi-method consensus |
-| DISTRIBUTED | Multi-node dispatch |
-
-### Resolution Strategies
-
-| Strategy | Behavior |
-|----------|----------|
-| FIRST_WINNER | Return first success |
-| MAJORITY | >50% agrees |
-| CONSENSUS | >=80% agrees |
-| WEIGHTED | By execution time |
-
-### Plan/Build Mode Toggle
-
-```python
-from src.atlan_ui import atlan_ui
-
-# Set modes
-atlan_ui.set_mode(plan=True, build=False)  # Plan only
-atlan_ui.set_mode(plan=True, build=True)     # Full execution
-
-# Toggle individually
-atlan_ui.toggle_plan()
-atlan_ui.toggle_build()
-
-# Execute workflow
-results = atlan_ui.execute_plan("build authentication", 5)
-```
-
-#### Mode States
+## Plan/Build Mode Toggle
 
 | Mode | Function |
 |------|----------|
-| PLAN only | Analyze and plan tasks |
-| BUILD only | Execute existing plan |
+| PLAN only | Analyze and plan |
+| BUILD only | Execute plan |
 | PLAN + BUILD | Full workflow |
-| Both OFF | Idle |
 
-### Atlantean Sci-Fi UI
+---
+
+## Atlantean Sci-Fi UI
 
 ```python
 from src.atlan_ui import *
 
-# Print system banner
 atlan_ui.print_system_info()
-
-# Loading sequence
 atlan_ui.loading_sequence("INITIALIZING")
+atlan_ui.print_data_stream("ONLINE", "hex", 1.0)
 
-# Data stream effect
-atlan_ui.print_data_stream("SYSTEM ONLINE", "hex", 1.0)
-
-# Status display
-atlan_ui.print_status({"NEURAL CORE": "online"})
-
-# Get stylized prompt
-prompt = atlan_ui.prompt()  # Returns: "◈> "
-```
-
-### UI Effects
-
-```python
-# Glitch text
+# Effects
 GlitchEffect.glitch_text("SYSTEM")
-
-# Progress bar
 NeuralPulse.progress_bar(7, 10)
-
-# Hex grid
 HexGrid.hex_pattern(20, 5)
-
-# Circuit connection
-CircuitBoard.draw_connection("cpu", "memory")
-
-# Hologram box
-HologramBorder.box("Content", "rounded")
-
-# Scanner
-ScannerLine.scan("SYSTEM", 3)
-
-# Matrix rain
-rain = MatrixRain(width=40, height=20)
-rain.start(3.0)
+MatrixRain(width=40, height=20).start(3.0)
 ```
 
-### Vision System
-
-```python
-from src.main import VisionEngine
-
-vision = VisionEngine(model="llama3.2-vision:11b")
-
-# Analyze image
-analysis = vision.analyze_image("screenshot.png")
-
-# Describe image
-description = vision.describe_image("screenshot.png", "What's in this?")
-
-# OCR
-text = vision.extract_text("screenshot.png")
-```
-
-### Natural Prompt Engine
-
-```python
-from src.main import NaturalTextPromptEngine, Intent, PromptStyle
-
-engine = NaturalTextPromptEngine()
-result = engine.process("fix the bug in auth.py")
-
-# result = {'intent': 'debug', 'entities': ['auth.py'], ...}
-
-engine.set_style(PromptStyle.TECHNICAL)
-```
-
-## Environment Variables
-
-| Variable | Values | Description |
-|----------|--------|-------------|
-| CRACKEDCODE_DEBUG | true/false | Enable debug logging |
-| CRACKEDCODE_VERBOSE | true/false | Verbose output |
+---
 
 ## File Structure
 
 ```
 crackedcode/
 ├── src/
-│   ├── main.py              # Main application
-│   ├── atlan_ui.py         # Sci-Fi UI
-│   ├── voice.py           # Voice engine
-│   └── parallel_processor.py # Parallel executor
+│   ├── main.py              # CLI application
+│   ├── gui.py               # PyQt6 Desktop GUI
+│   ├── atlan_ui.py          # Sci-Fi UI effects
+│   ├── voice_typing.py      # Voice typing
+│   ├── parallel_processor.py # Parallel executor
+│   ├── engine.py            # CrackedCodeEngine
+│   ├── file_watcher.py      # File monitor
+│   └── git_integration.py  # Git integration
+├── tests/
+├── test_system.py           # 32 E2E tests
 ├── config.json
-├── logs/
 └── README.md
 ```
+
+---
+
+## Configuration
+
+```json
+{
+  "model": "qwen3:8b-gpu",
+  "temperature": 0.1,
+  "max_tokens": 4096,
+  "ollama_host": "http://127.0.0.1:11434"
+}
+```
+
+### Models
+
+| Model | Purpose |
+|-------|---------|
+| qwen3:8b-gpu | Code generation |
+| dolphin-llama3:8b-gpu | Conversation |
+| llava:13b-gpu | Vision |
+
+---
+
+## Testing
+
+```bash
+python test_system.py
+```
+
+### Test Coverage
+
+- Module imports (7)
+- Configuration (4)
+- Ollama Bridge (3)
+- Intent parsing (8)
+- Code Execution
+- GUI Components
+- Voice Typing
+- Parallel Executor
+- Pipeline Processor
+- Code Generation
+- E2E Flows
+
+---
 
 ## License
 
@@ -316,4 +375,4 @@ MIT
 
 ---
 
-**CrackedCode: Atlantean Neural System** - The Final Boss of Local AI Coding Agents
+**CrackedCode v2.3.9** - The Final Boss of Local AI Coding Agents
