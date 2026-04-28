@@ -629,11 +629,6 @@ class CrackedCodeGUI(QMainWindow):
             QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
                 height: 0px;
             }}
-            QDockWidget {{
-                color: {ATLAN_GREEN};
-                titlebar-close-icon: transparent;
-                titlebar-expand-icon: transparent;
-            }}
             QDockWidget::title {{
                 background-color: {ATLAN_MEDIUM};
                 color: {ATLAN_GOLD};
@@ -1404,21 +1399,30 @@ def check_single():
 
 
 def main():
-    if not check_single():
-        QMessageBox.warning(None, "CrackedCode", "Already running!")
-        return
-    
-    server = QLocalServer()
-    server.listen("CrackedCode_SingleInstance")
-    
-    app = QApplication(sys.argv)
-    app.setApplicationName("CrackedCode")
-    app.setOrganizationName("SeraphonixStudios")
-    
-    win = CrackedCodeGUI()
-    win.show()
-    
-    sys.exit(app.exec())
+    try:
+        if not check_single():
+            QMessageBox.warning(None, "CrackedCode", "Already running!")
+            return
+        
+        server = QLocalServer()
+        try:
+            server.listen("CrackedCode_SingleInstance")
+        except Exception:
+            pass
+        
+        app = QApplication(sys.argv)
+        app.setApplicationName("CrackedCode")
+        app.setOrganizationName("SeraphonixStudios")
+        
+        win = CrackedCodeGUI()
+        win.show()
+        
+        sys.exit(app.exec())
+    except Exception as e:
+        print(f"GUI Error: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
 
 
 if __name__ == "__main__":
