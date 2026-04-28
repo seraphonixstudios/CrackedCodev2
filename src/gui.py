@@ -8,21 +8,26 @@ import random
 import time
 import traceback
 import io
+import re
+import base64
+import hashlib
 from pathlib import Path
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, List, Any, Tuple
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QTextEdit, QLineEdit, QPushButton, QMenuBar, QMenu, QToolBar,
     QStatusBar, QLabel, QFileDialog, QMessageBox, QTabWidget,
     QListWidget, QSplitter, QGroupBox, QCheckBox, QComboBox, QSpinBox,
-    QScrollArea, QFrame, QDialog
+    QScrollArea, QFrame, QDialog, QProgressBar, QSlider
 )
-from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal, QSettings, QUrl
+from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal, QSettings, QUrl, QMimeData
 from PyQt6.QtGui import (
     QAction, QIcon, QFont, QColor, QTextCursor, QKeySequence,
-    QGuiApplication, QDesktopServices, QPainter
+    QGuiApplication, QDesktopServices, QPainter, QDragEnterEvent, QDropEvent, QPixmap, QImage
 )
 from PyQt6.QtNetwork import QLocalSocket, QLocalServer
+from PyQt6.QtWidgets import QApplication
+from PyQt6.QtGui import QGuiApplication
 
 from src.engine import get_engine, CrackedCodeEngine, Intent
 
@@ -43,6 +48,160 @@ ATLAN_CYAN = "#00FFFF"
 ATLAN_GOLD = "#FFD700"
 ATLAN_RED = "#FF3333"
 ATLAN_PURPLE = "#9D00FF"
+
+VOICE_COMMANDS = {
+    "write": ["write", "create", "generate", "make"],
+    "execute": ["run", "execute", "start", "launch"],
+    "debug": ["fix", "debug", "repair", "error"],
+    "review": ["review", "analyze", "check", "audit"],
+    "search": ["search", "find", "grep", "look"],
+    "save": ["save", "store", "keep", "export"],
+    "open": ["open", "load", "read", "import"],
+    "copy": ["copy", "duplicate", "clone", "clipboard"],
+    "paste": ["paste", "insert", "drop"],
+    "voice": ["voice", "speech", "speak", "record"],
+    "help": ["help", "assist", "support", "guide"],
+    "stop": ["stop", "cancel", "abort", "exit"],
+}
+
+
+class AgentTask:
+    def __init__(self, task_id: str, intent: str, prompt: str, agent: str = "Coder"):
+        self.task_id = task_id
+        self.intent = intent
+        self.prompt = prompt
+        self.agent = agent
+        self.status = "pending"
+        self.result = None
+        self.error = None
+        self.timestamp = time.time()
+
+    def to_dict(self) -> Dict:
+        return {
+            "task_id": self.task_id,
+            "intent": self.intent,
+            "prompt": self.prompt,
+            "agent": self.agent,
+            "status": self.status,
+            "result": self.result,
+            "error": self.error,
+        }
+
+
+class AgentOrchestrator:
+    def __init__(self):
+        self.agents = {
+            "Supervisor": {"role": "coordinates", "status": "idle", "capabilities": ["all"]},
+            "Architect": {"role": "design", "status": "idle", "capabilities": ["planning", "architecture"]},
+            "Coder": {"role": "implementation", "status": "idle", "capabilities": ["code", "write", "modify"]},
+            "Executor": {"role": "execution", "status": "idle", "capabilities": ["run", "execute", "test"]},
+            "Reviewer": {"role": "analysis", "status": "idle", "capabilities": ["review", "debug", "optimize"]},
+            "Searcher": {"role": "discovery", "status": "idle", "capabilities": ["search", "find", "grep"]},
+        }
+        self.tasks: List[AgentTask] = []
+        self.delegation_rules = {
+            Intent.CODE: "Coder",
+            Intent.DEBUG: "Reviewer",
+            Intent.REVIEW: "Reviewer",
+            Intent.BUILD: "Architect",
+            Intent.EXECUTE: "Executor",
+            Intent.SEARCH: "Searcher",
+            Intent.HELP: "Supervisor",
+            Intent.CHAT: "Coder",
+        }
+
+    def delegate(self, intent: Intent, prompt: str) -> Tuple[str, str]:
+        agent = self.delegation_rules.get(intent, "Coder")
+        task_id = f"task_{len(self.tasks)}_{int(time.time())}"
+        task = AgentTask(task_id, intent.value, prompt, agent)
+        self.tasks.append(task)
+        self.agents[agent]["status"] = "active"
+        return agent, task_id
+
+    def complete_task(self, task_id: str, result: str):
+        for task in self.tasks:
+            if task.task_id == task_id:
+                task.status = "completed"
+                task.result = result
+                self.agents[task.agent]["status"] = "idle"
+                break
+
+    def fail_task(self, task_id: str, error: str):
+        for task in self.tasks:
+            if task.task_id == task_id:
+                task.status = "failed"
+                task.error = error
+                self.agents[task.agent]["status"] = "idle"
+                break
+
+    def get_active_agents(self) -> List[str]:
+        return [name for name, data in self.agents.items() if data["status"] == "active"]
+
+    def get_queue_status(self) -> Dict:
+        return {
+            "pending": len([t for t in self.tasks if t.status == "pending"]),
+            "completed": len([t for t in self.tasks if t.status == "completed"]),
+            "failed": len([t for t in self.tasks if t.status == "failed"]),
+            "active_agents": self.get_active_agents(),
+        }
+
+
+class ImageDropZone(QFrame):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setAcceptDrops(True)
+        self.image_callback = None
+        self.setMinimumHeight(80)
+        self.setStyleSheet(f"""
+            QFrame {{
+                background-color: #0a0a0a;
+                border: 2px dashed {ATLAN_CYAN};
+                border-radius: 8px;
+            }}
+            QFrame:hover {{
+                border-color: {ATLAN_GREEN};
+            }}
+        """)
+
+    def set_callback(self, callback):
+        self.image_callback = callback
+
+    def dragEnterEvent(self, event: QDragEnterEvent):
+        if event.mimeData().hasImage() or self._has_image(event.mimeData()):
+            event.acceptProposedAction()
+
+    def dragMoveEvent(self, event):
+        if self._has_image(event.mimeData()):
+            event.acceptProposedAction()
+
+    def dropEvent(self, event: QDropEvent):
+        mime = event.mimeData()
+        if mime.hasImage():
+            image = mime.imageData()
+            if self.image_callback:
+                self.image_callback(image)
+            event.acceptProposedAction()
+        elif self._has_image(mime):
+            if mime.hasUrls():
+                for url in mime.urls():
+                    path = url.toLocalFile()
+                    if path.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp')):
+                        if self.image_callback:
+                            pixmap = QPixmap(path)
+                            self.image_callback(pixmap)
+                        break
+            event.acceptProposedAction()
+
+    def _has_image(self, mime: QMimeData) -> bool:
+        return mime.hasUrls() and any(
+            url.toLocalFile().lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp'))
+            for url in mime.urls()
+        )
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, "Drop Image Here or Paste (Ctrl+V)")
 
 
 class MatrixOverlay(QWidget):
@@ -94,8 +253,24 @@ class CrackedCodeGUI(QMainWindow):
         self.init_engine()
         self.init_voice()
         self.init_matrix()
+        self.init_orchestrator()
+        self.init_clipboard()
         self.restore_state()
+        self.setup_paste_handler()
         logger.info("CrackedCode GUI started")
+
+    def init_orchestrator(self):
+        self.orchestrator = AgentOrchestrator()
+        self.update_agents_list()
+        logger.info("Agent orchestrator initialized")
+
+    def init_clipboard(self):
+        self.clipboard = QGuiApplication.clipboard()
+        self.pending_image: Optional[QImage] = None
+        self.last_paste_hash = ""
+
+    def setup_paste_handler(self):
+        self.editor.installEventFilter(self)
 
     def init_engine(self):
         try:
@@ -261,14 +436,15 @@ class CrackedCodeGUI(QMainWindow):
         panel.setMaximumWidth(250)
         l = QVBoxLayout(panel)
         l.setSpacing(4)
-        
+
         lbl = QLabel("PROJECT")
         l.addWidget(lbl)
-        
+
         self.files_list = QListWidget()
         self.files_list.itemDoubleClicked.connect(self.on_file_clicked)
+        self.files_list.setAcceptDrops(True)
         l.addWidget(self.files_list)
-        
+
         btn_layout = QHBoxLayout()
         new_btn = QPushButton("NEW")
         new_btn.clicked.connect(self.new_proj)
@@ -277,53 +453,74 @@ class CrackedCodeGUI(QMainWindow):
         btn_layout.addWidget(new_btn)
         btn_layout.addWidget(open_btn)
         l.addLayout(btn_layout)
-        
+
         l.addWidget(QLabel(""))
         l.addWidget(QLabel("AGENTS"))
-        
+
         self.agents_list = QListWidget()
-        self.agents_list.addItems([
-            "Supervisor",
-            "Architect", 
-            "Coder",
-            "Executor",
-            "Reviewer"
-        ])
+        self.agents_list.itemClicked.connect(self.on_agent_selected)
         l.addWidget(self.agents_list)
-        
+
         l.addWidget(QLabel(""))
         l.addWidget(QLabel("TASK"))
-        
+
         self.task_lbl = QLabel("Idle")
         l.addWidget(self.task_lbl)
-        
+
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setMaximumHeight(8)
+        self.progress_bar.setStyleSheet(f"""
+            QProgressBar {{
+                border: 1px solid {ATLAN_GREEN};
+                border-radius: 4px;
+                background-color: #0a0a0a;
+                text-align: center;
+            }}
+            QProgressBar::chunk {{
+                background-color: {ATLAN_GREEN};
+            }}
+        """)
+        l.addWidget(self.progress_bar)
+
         return panel
 
     def create_toolbar(self):
         tb = QToolBar()
         tb.setMovable(False)
         self.addToolBar(tb)
-        
+
         self.plan_btn = QPushButton("PLAN")
         self.plan_btn.setCheckable(True)
         self.plan_btn.setChecked(True)
+        self.plan_btn.clicked.connect(lambda: self.set_mode("plan"))
         tb.addWidget(self.plan_btn)
-        
+
         self.build_btn = QPushButton("BUILD")
         self.build_btn.setCheckable(True)
         self.build_btn.setChecked(True)
+        self.build_btn.clicked.connect(lambda: self.set_mode("build"))
         tb.addWidget(self.build_btn)
-        
+
         tb.addSeparator()
-        
+
         exec_btn = QPushButton("EXECUTE")
         exec_btn.clicked.connect(self.exec_code)
         tb.addWidget(exec_btn)
-        
+
         self.voice_btn = QPushButton("VOICE")
         self.voice_btn.setCheckable(True)
         self.voice_btn.clicked.connect(self.toggle_voice)
         tb.addWidget(self.voice_btn)
+
+        tb.addSeparator()
+
+        copy_btn = QPushButton("COPY")
+        copy_btn.clicked.connect(self.copy_output)
+        tb.addWidget(copy_btn)
+
+        clear_btn = QPushButton("CLEAR")
+        clear_btn.clicked.connect(self.clear_terminal)
+        tb.addWidget(clear_btn)
 
     def create_status(self):
         sb = QStatusBar()
@@ -373,10 +570,110 @@ class CrackedCodeGUI(QMainWindow):
         return []
 
     def keyPressEvent(self, event):
+        modifiers = event.modifiers()
+
         if event.key() == Qt.Key.Key_F12:
             self.toggle_dev_console()
+        elif event.key() == Qt.Key.Key_Escape:
+            self.stop_current_operation()
+        elif event.matches(QKeySequence.StandardKey.Copy):
+            self.copy_output()
+        elif event.matches(QKeySequence.StandardKey.Paste):
+            self.handle_paste()
+        elif event.matches(QKeySequence.StandardKey.SelectAll):
+            self.editor.selectAll()
         else:
             super().keyPressEvent(event)
+
+    def eventFilter(self, obj, event):
+        if obj == self.editor and event.type() == event.Type.KeyPress:
+            if event.modifiers() == Qt.KeyboardModifier.ControlModifier and event.key() == Qt.Key.Key_V:
+                self.handle_paste()
+                return True
+        return super().eventFilter(obj, event)
+
+    def handle_paste(self):
+        mime = self.clipboard.mimeData()
+        if mime.hasImage():
+            image = self.clipboard.image()
+            if image:
+                self.handle_dropped_image(image)
+                self.term("[IMAGE: pasted from clipboard]")
+                return
+        if mime.hasText():
+            text = mime.text()
+            if text:
+                if self._is_code_snippet(text):
+                    self.editor.append(text)
+                    self.term(f"[PASTE: {len(text)} chars]")
+                else:
+                    self.term_input.setText(text)
+                    self.term(f"[PASTE: text]")
+
+    def handle_dropped_image(self, image: QImage or QPixmap):
+        buffer = io.BytesIO()
+        if isinstance(image, QPixmap):
+            image = image.toImage()
+        image.save(buffer, "PNG")
+        img_bytes = buffer.getvalue()
+        img_hash = hashlib.md5(img_bytes).hexdigest()[:8]
+
+        if img_hash == self.last_paste_hash:
+            return
+        self.last_paste_hash = img_hash
+
+        img_base64 = base64.b64encode(img_bytes).decode()
+        self.pending_image = img_bytes
+
+        self.term(f"[IMAGE: {image.width()}x{image.height()}, {len(img_bytes)} bytes]")
+
+        if self.engine and hasattr(self.engine, 'vision'):
+            try:
+                import asyncio
+                result = asyncio.run(self.engine.vision.analyze_image(img_bytes))
+                self.term(f"[VISION: {result[:200]}...]")
+            except Exception as e:
+                self.term(f"[VISION ERROR: {e}]")
+
+    def _is_code_snippet(self, text: str) -> bool:
+        code_indicators = ['def ', 'class ', 'function ', 'import ', 'from ', 'const ', 'let ', 'var ',
+                         'if (', 'if(', 'for (', 'for(', 'while (', 'while(', 'print(', 'return ']
+        return any(text.lstrip().startswith(ind) for ind in code_indicators) or text.count('\n') > 2
+
+    def copy_output(self):
+        text = self.terminal.toPlainText()
+        if text:
+            self.clipboard.setText(text)
+            self.term("[COPIED: terminal to clipboard]")
+
+    def clear_terminal(self):
+        self.terminal.clear()
+        self.term("[CLEARED]")
+
+    def stop_current_operation(self):
+        self.voice_recording = False
+        if hasattr(self, 'voice_btn'):
+            self.voice_btn.setChecked(False)
+        self.status_lbl.setText("STOPPED")
+        self.progress_bar.setValue(0)
+        self.term("[STOPPED]")
+
+    def update_agents_list(self):
+        if hasattr(self, 'agents_list'):
+            self.agents_list.clear()
+            active = self.orchestrator.get_active_agents()
+            for name, data in self.orchestrator.agents.items():
+                status = f"[ACTIVE] " if data["status"] == "active" else ""
+                self.agents_list.addItem(f"{status}{name} ({data['role']})")
+
+    def on_agent_selected(self, item):
+        agent_name = item.text().split("(")[0].replace("[ACTIVE] ", "").strip()
+        self.term(f"[AGENT: selected {agent_name}]")
+
+    def update_progress(self, value: int, text: str = ""):
+        self.progress_bar.setValue(value)
+        if text:
+            self.task_lbl.setText(text)
 
     def init_matrix(self):
         self.matrix = MatrixOverlay(self)
@@ -530,7 +827,7 @@ class CrackedCodeGUI(QMainWindow):
         if not self.voice or not self.voice.is_available:
             self.term("[VOICE: not available]")
             return
-        
+
         if self.voice_recording:
             self.voice_recording = False
             self.voice_btn.setChecked(False)
@@ -543,20 +840,53 @@ class CrackedCodeGUI(QMainWindow):
             self.term("[VOICE: recording - speak now]")
             self._record_voice()
 
+    def detect_voice_command(self, text: str) -> Optional[str]:
+        text_lower = text.lower().strip()
+        for cmd, keywords in VOICE_COMMANDS.items():
+            for keyword in keywords:
+                if text_lower.startswith(keyword) or f" {keyword} " in text_lower:
+                    return cmd
+        return None
+
+    def process_voice_command(self, text: str):
+        cmd = self.detect_voice_command(text)
+        if cmd:
+            self.term(f"[CMD: detected '{cmd}' from '{text[:30]}...']")
+            if cmd == "stop":
+                self.stop_current_operation()
+                return True
+            elif cmd == "voice":
+                self.toggle_voice()
+                return True
+            elif cmd == "save":
+                self.exec_code()
+                return True
+            elif cmd == "copy":
+                self.copy_output()
+                return True
+        return False
+
     def _record_voice(self):
         if not self.voice_recording or not self.voice:
             return
-        
+
         try:
             result = self.voice.listen_and_transcribe(duration=5.0)
             if result.success and result.text:
-                self.term_input.setText(result.text)
-                self.term(f"[VOICE: '{result.text[:50]}...']")
+                transcribed = result.text
+                self.term(f"[VOICE: '{transcribed[:50]}...']")
+
+                if not self.process_voice_command(transcribed):
+                    self.term_input.setText(transcribed)
+                    if self.orchestrator:
+                        agent, task_id = self.orchestrator.delegate(Intent.CHAT, transcribed)
+                        self.term(f"[DELEGATED: to {agent}]")
+                        self.update_agents_list()
             elif result.error:
                 self.term(f"[VOICE ERROR: {result.error}]")
-            
+
             if self.voice_recording:
-                self._record_voice()
+                QTimer.singleShot(500, self._record_voice)
         except Exception as e:
             logger.error(f"Voice recording error: {e}")
             self.term(f"[VOICE ERROR: {e}]")
@@ -573,41 +903,54 @@ class CrackedCodeGUI(QMainWindow):
         self.process_prompt(cmd)
 
     def process_prompt(self, text):
+        self.update_progress(10, "Processing...")
         self.status_lbl.setText("PROCESSING...")
-        
-        if hasattr(self, 'task_lbl'):
-            self.task_lbl.setText("Processing...")
-        
+
         if not self.plan_btn.isChecked():
             self.term("[PLAN OFF]")
             self.status_lbl.setText("WAITING")
+            self.update_progress(0)
             return
-        
+
         if not self.engine:
             self.term("[NO ENGINE]")
             self.status_lbl.setText("ERROR")
+            self.update_progress(0)
             return
-        
+
+        if self.orchestrator:
+            intent = self.engine.parse_intent(text)
+            agent, task_id = self.orchestrator.delegate(intent, text)
+            self.term(f"[DELEGATED: {text[:30]}... -> {agent}]")
+            self.update_agents_list()
+            self.update_progress(30)
+
         try:
             import asyncio
+            self.update_progress(50)
             response = asyncio.run(self.engine.process(text))
-            
+
+            self.update_progress(90)
             if response.success:
                 self.term("<<< " + response.text[:500])
             else:
                 self.term("[ERROR: " + str(response.error) + "]")
-            
+
             self.term(f"[took {response.execution_time:.2f}s]")
-            
-            if hasattr(self, 'task_lbl'):
-                self.task_lbl.setText("Done")
+
+            if self.orchestrator:
+                self.orchestrator.complete_task(task_id, response.text)
+                self.update_agents_list()
+
         except Exception as e:
             self.term("[ERROR: " + type(e).__name__ + "]")
-            print("PROMPT ERROR:", e)
-            if hasattr(self, 'task_lbl'):
-                self.task_lbl.setText("Error")
-        
-        self.status_lbl.setText("WAITING")
+            if self.orchestrator and 'task_id' in locals():
+                self.orchestrator.fail_task(task_id, str(e))
+                self.update_agents_list()
+
+        self.update_progress(100, "Done")
+        self.status_lbl.setText("READY")
+        QTimer.singleShot(500, lambda: self.update_progress(0))
 
     def term(self, text):
         self.terminal.append(text)

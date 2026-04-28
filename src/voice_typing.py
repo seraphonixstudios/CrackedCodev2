@@ -46,6 +46,25 @@ class TranscriptionResult:
     duration: float = 0.0
     success: bool = True
     error: Optional[str] = None
+    command: Optional[str] = None
+
+
+VOICE_COMMANDS = {
+    "write": ["write", "create", "generate", "make", "new file", "new code"],
+    "execute": ["run", "execute", "start", "launch", "go", "do it"],
+    "debug": ["fix", "debug", "repair", "bug", "error"],
+    "review": ["review", "analyze", "check", "audit"],
+    "search": ["search", "find", "grep", "look for"],
+    "save": ["save", "store", "keep", "export"],
+    "open": ["open", "load", "read", "import"],
+    "copy": ["copy", "duplicate", "clone", "to clipboard"],
+    "paste": ["paste", "insert", "drop in"],
+    "voice": ["voice mode", "speech", "speak", "record"],
+    "stop": ["stop", "cancel", "abort", "exit", "quit"],
+    "help": ["help", "assist", "support", "guide", "what"],
+    "clear": ["clear", "wipe", "reset"],
+    "copy_output": ["copy output", "copy result", "copy that"],
+}
 
 
 class VoiceTyping:
@@ -223,6 +242,46 @@ class VoiceTyping:
         except Exception as e:
             logger.error(f"Failed to query devices: {e}")
             return []
+
+    def detect_command(self, text: str) -> Optional[str]:
+        if not text:
+            return None
+        text_lower = text.lower().strip()
+
+        for cmd, keywords in VOICE_COMMANDS.items():
+            for keyword in keywords:
+                if keyword in text_lower or text_lower.startswith(keyword.split()[0]):
+                    return cmd
+        return None
+
+    def parse_command_params(self, text: str, command: str) -> Dict:
+        params = {"command": command, "raw": text}
+        words = text.lower().split()
+
+        if command == "write":
+            for i, word in enumerate(words):
+                if word in ["function", "class", "file", "code"]:
+                    params["type"] = word
+                if word.endswith(".py") or word.endswith(".js"):
+                    params["filename"] = word
+                if word in ["save", "to"]:
+                    for w in words[i+1:]:
+                        if w.endswith(('.py', '.js', '.json', '.txt')):
+                            params["filename"] = w
+                            break
+
+        elif command == "search":
+            for i, word in enumerate(words):
+                if word in ["for", "find", "grep"]:
+                    params["query"] = " ".join(words[i+1:])
+                    break
+
+        elif command == "open":
+            for word in words:
+                if word.endswith(('.py', '.js', '.json', '.txt', '.md')):
+                    params["filename"] = word
+
+        return params
 
 
 def test_voice_typing():
