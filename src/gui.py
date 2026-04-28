@@ -438,11 +438,11 @@ class CrackedCodeGUI(QMainWindow):
         
         self.load_config()
         self.setup_atlan_theme()
-        self.init_ui()
         self.init_engine()
+        self.init_orchestrator()
+        self.init_ui()
         self.init_voice()
         self.init_matrix()
-        self.init_orchestrator()
         self.init_clipboard()
         self.restore_state()
         self.setup_paste_handler()
@@ -661,13 +661,13 @@ class CrackedCodeGUI(QMainWindow):
         self.create_toolbar()
         
         self.editor = QTextEdit()
-        self.editor.setPlaceholderText("")
-        self.editor.setAccessibleName("Code editor - type or paste code here")
+        self.editor.setPlaceholderText("Enter code here...")
+        self.editor.setToolTip("Code editor - type or paste code here")
         rl.addWidget(self.editor, 3)
         
         self.terminal = QTextEdit()
         self.terminal.setReadOnly(True)
-        self.terminal.setAccessibleName("Terminal output")
+        self.terminal.setToolTip("Terminal output")
         
         term_group = QGroupBox("TERMINAL")
         term_layout = QVBoxLayout(term_group)
@@ -680,13 +680,13 @@ class CrackedCodeGUI(QMainWindow):
         tin.addWidget(prompt_label)
         
         self.term_input = QLineEdit()
-        self.term_input.setAccessibleName("Command input")
         self.term_input.setPlaceholderText("Enter prompt or command...")
+        self.term_input.setToolTip("Command input - press Enter to send")
         self.term_input.returnPressed.connect(self.run_term)
         tin.addWidget(self.term_input)
         
         send_btn = QPushButton("SEND")
-        send_btn.setAccessibleName("Send command")
+        send_btn.setToolTip("Send command (Enter)")
         send_btn.clicked.connect(self.run_term)
         send_btn.setFixedWidth(80)
         tin.addWidget(send_btn)
@@ -700,34 +700,34 @@ class CrackedCodeGUI(QMainWindow):
 
     def create_menu_bar(self):
         menubar = self.menuBar()
-        menubar.setAccessibleName("Main menu")
         
         file_menu = menubar.addMenu("FILE")
         
         new_action = QAction("NEW PROJECT", self)
         new_action.setShortcut(QKeySequence("Ctrl+N"))
+        new_action.setToolTip("Create new project (Ctrl+N)")
         new_action.triggered.connect(self.new_proj)
-        new_action.setAccessibleName("Create new project")
         file_menu.addAction(new_action)
         
         open_action = QAction("OPEN PROJECT", self)
         open_action.setShortcut(QKeySequence("Ctrl+O"))
+        open_action.setToolTip("Open project folder (Ctrl+O)")
         open_action.triggered.connect(self.open_proj)
-        open_action.setAccessibleName("Open existing project")
         file_menu.addAction(open_action)
         
         file_menu.addSeparator()
         
         save_action = QAction("SAVE", self)
         save_action.setShortcut(QKeySequence("Ctrl+S"))
+        save_action.setToolTip("Save current file (Ctrl+S)")
         save_action.triggered.connect(self.save_current_file)
-        save_action.setAccessibleName("Save current file")
         file_menu.addAction(save_action)
         
         file_menu.addSeparator()
         
         exit_action = QAction("EXIT", self)
         exit_action.setShortcut(QKeySequence("Ctrl+Q"))
+        exit_action.setToolTip("Exit application (Ctrl+Q)")
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
         
@@ -735,10 +735,12 @@ class CrackedCodeGUI(QMainWindow):
         
         copy_action = QAction("COPY OUTPUT", self)
         copy_action.setShortcut(QKeySequence("Ctrl+Shift+C"))
+        copy_action.setToolTip("Copy terminal output")
         copy_action.triggered.connect(self.copy_output)
         edit_menu.addAction(copy_action)
         
         clear_action = QAction("CLEAR TERMINAL", self)
+        clear_action.setToolTip("Clear terminal output")
         clear_action.triggered.connect(self.clear_terminal)
         edit_menu.addAction(clear_action)
         
@@ -746,21 +748,25 @@ class CrackedCodeGUI(QMainWindow):
         
         full_action = QAction("TOGGLE FULLSCREEN", self)
         full_action.setShortcut(QKeySequence("F11"))
+        full_action.setToolTip("Toggle fullscreen (F11)")
         full_action.triggered.connect(self.toggle_full)
         view_menu.addAction(full_action)
         
         dev_action = QAction("DEV CONSOLE", self)
         dev_action.setShortcut(QKeySequence("F12"))
+        dev_action.setToolTip("Open dev console (F12)")
         dev_action.triggered.connect(self.toggle_dev_console)
         view_menu.addAction(dev_action)
         
         help_menu = menubar.addMenu("HELP")
         
         docs_action = QAction("DOCUMENTATION", self)
+        docs_action.setToolTip("Open documentation")
         docs_action.triggered.connect(self.show_docs)
         help_menu.addAction(docs_action)
         
         about_action = QAction("ABOUT", self)
+        about_action.setToolTip("About CrackedCode")
         about_action.triggered.connect(self.show_about)
         help_menu.addAction(about_action)
 
@@ -780,15 +786,15 @@ class CrackedCodeGUI(QMainWindow):
         self.files_tree = QTreeWidget()
         self.files_tree.setHeaderLabel("Files")
         self.files_tree.itemDoubleClicked.connect(self.on_file_clicked)
-        self.files_tree.setAccessibleName("Project files tree")
+        self.files_tree.setToolTip("Project files - double-click to open")
         project_layout.addWidget(self.files_tree)
         
         btn_layout = QHBoxLayout()
         new_btn = QPushButton("NEW")
-        new_btn.setAccessibleName("Create new project")
+        new_btn.setToolTip("Create new project")
         new_btn.clicked.connect(self.new_proj)
         open_btn = QPushButton("OPEN")
-        open_btn.setAccessibleName("Open project folder")
+        open_btn.setToolTip("Open project folder")
         open_btn.clicked.connect(self.open_proj)
         btn_layout.addWidget(new_btn)
         btn_layout.addWidget(open_btn)
@@ -803,7 +809,7 @@ class CrackedCodeGUI(QMainWindow):
         layout.addWidget(self.task_queue)
         
         self.progress_bar = QProgressBar()
-        self.progress_bar.setAccessibleName("Task progress")
+        self.progress_bar.setToolTip("Task progress")
         self.progress_bar.setFixedHeight(20)
         layout.addWidget(self.progress_bar)
         
@@ -821,46 +827,46 @@ class CrackedCodeGUI(QMainWindow):
         self.plan_btn = QPushButton("PLAN")
         self.plan_btn.setCheckable(True)
         self.plan_btn.setChecked(True)
-        self.plan_btn.setAccessibleName("Toggle PLAN mode")
+        self.plan_btn.setToolTip("Toggle PLAN mode")
         self.plan_btn.clicked.connect(lambda: self.set_mode("plan"))
         tb.addWidget(self.plan_btn)
         
         self.build_btn = QPushButton("BUILD")
         self.build_btn.setCheckable(True)
         self.build_btn.setChecked(True)
-        self.build_btn.setAccessibleName("Toggle BUILD mode")
+        self.build_btn.setToolTip("Toggle BUILD mode")
         self.build_btn.clicked.connect(lambda: self.set_mode("build"))
         tb.addWidget(self.build_btn)
         
         tb.addSeparator()
         
         exec_btn = QPushButton("EXECUTE")
-        exec_btn.setAccessibleName("Execute code in editor")
+        exec_btn.setToolTip("Execute code in editor")
         exec_btn.clicked.connect(self.exec_code)
         tb.addWidget(exec_btn)
         
         self.voice_btn = QPushButton("VOICE")
         self.voice_btn.setCheckable(True)
-        self.voice_btn.setAccessibleName("Toggle voice input")
+        self.voice_btn.setToolTip("Toggle voice input")
         self.voice_btn.clicked.connect(self.toggle_voice)
         tb.addWidget(self.voice_btn)
         
         tb.addSeparator()
         
         copy_btn = QPushButton("COPY")
-        copy_btn.setAccessibleName("Copy terminal output")
+        copy_btn.setToolTip("Copy terminal output")
         copy_btn.clicked.connect(self.copy_output)
         tb.addWidget(copy_btn)
         
         clear_btn = QPushButton("CLEAR")
-        clear_btn.setAccessibleName("Clear terminal")
+        clear_btn.setToolTip("Clear terminal")
         clear_btn.clicked.connect(self.clear_terminal)
         tb.addWidget(clear_btn)
         
         tb.addSeparator()
         
         stop_btn = QPushButton("STOP")
-        stop_btn.setAccessibleName("Stop current operation")
+        stop_btn.setToolTip("Stop current operation")
         stop_btn.clicked.connect(self.stop_current_operation)
         stop_btn.setStyleSheet(f"color: {ATLAN_RED}; border-color: {ATLAN_RED};")
         tb.addWidget(stop_btn)
@@ -870,19 +876,19 @@ class CrackedCodeGUI(QMainWindow):
         self.setStatusBar(sb)
         
         self.status_lbl = QLabel("READY")
-        self.status_lbl.setAccessibleName("Current status")
+        self.status_lbl.setToolTip("Current status")
         sb.addWidget(self.status_lbl)
         
         self.ollama_lbl = QLabel("OLLAMA: ...")
-        self.ollama_lbl.setAccessibleName("Ollama status")
+        self.ollama_lbl.setToolTip("Ollama connection status")
         sb.addPermanentWidget(self.ollama_lbl)
         
         self.model_lbl = QLabel("MODEL: none")
-        self.model_lbl.setAccessibleName("Current model")
+        self.model_lbl.setToolTip("Current AI model")
         sb.addPermanentWidget(self.model_lbl)
         
         self.task_status_lbl = QLabel("Tasks: 0")
-        self.task_status_lbl.setAccessibleName("Task count")
+        self.task_status_lbl.setToolTip("Task count")
         sb.addPermanentWidget(self.task_status_lbl)
         
         self.time_lbl = QLabel("")
