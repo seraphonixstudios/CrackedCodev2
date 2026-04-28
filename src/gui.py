@@ -12,22 +12,23 @@ import re
 import base64
 import hashlib
 from pathlib import Path
-from typing import Optional, Dict, List, Any, Tuple
+from typing import Optional, Dict, List, Any, Tuple, Callable
+from dataclasses import dataclass, field
+from enum import Enum
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QTextEdit, QLineEdit, QPushButton, QMenuBar, QMenu, QToolBar,
     QStatusBar, QLabel, QFileDialog, QMessageBox, QTabWidget,
     QListWidget, QSplitter, QGroupBox, QCheckBox, QComboBox, QSpinBox,
-    QScrollArea, QFrame, QDialog, QProgressBar, QSlider
+    QScrollArea, QFrame, QDialog, QProgressBar, QSlider, QTreeWidget,
+    QTreeWidgetItem, QStackedWidget, QSizePolicy, QDockWidget
 )
-from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal, QSettings, QUrl, QMimeData
+from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal, QSettings, QUrl, QMimeData, QSize
 from PyQt6.QtGui import (
     QAction, QIcon, QFont, QColor, QTextCursor, QKeySequence,
-    QGuiApplication, QDesktopServices, QPainter, QDragEnterEvent, QDropEvent, QPixmap, QImage
+    QGuiApplication, QDesktopServices, QPainter, QDragEnterEvent, QDropEvent, QPixmap, QImage, QPalette
 )
 from PyQt6.QtNetwork import QLocalSocket, QLocalServer
-from PyQt6.QtWidgets import QApplication
-from PyQt6.QtGui import QGuiApplication
 
 from src.engine import get_engine, CrackedCodeEngine, Intent
 
@@ -48,33 +49,58 @@ ATLAN_CYAN = "#00FFFF"
 ATLAN_GOLD = "#FFD700"
 ATLAN_RED = "#FF3333"
 ATLAN_PURPLE = "#9D00FF"
+ATLAN_DARK = "#0a0a0a"
+ATLAN_MEDIUM = "#1a1a1a"
+ATLAN_LIGHT = "#2a2a2a"
 
-VOICE_COMMANDS = {
-    "write": ["write", "create", "generate", "make"],
-    "execute": ["run", "execute", "start", "launch"],
-    "debug": ["fix", "debug", "repair", "error"],
-    "review": ["review", "analyze", "check", "audit"],
-    "search": ["search", "find", "grep", "look"],
-    "save": ["save", "store", "keep", "export"],
-    "open": ["open", "load", "read", "import"],
-    "copy": ["copy", "duplicate", "clone", "clipboard"],
-    "paste": ["paste", "insert", "drop"],
-    "voice": ["voice", "speech", "speak", "record"],
-    "help": ["help", "assist", "support", "guide"],
-    "stop": ["stop", "cancel", "abort", "exit"],
-}
+
+class TaskStatus(Enum):
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
 
 
 class AgentTask:
-    def __init__(self, task_id: str, intent: str, prompt: str, agent: str = "Coder"):
-        self.task_id = task_id
+    task_counter = 0
+    
+    def __init__(self, intent: str, prompt: str, agent: str = "Coder"):
+        AgentTask.task_counter += 1
+        self.task_id = f"task_{AgentTask.task_counter}"
         self.intent = intent
         self.prompt = prompt
         self.agent = agent
-        self.status = "pending"
+        self.status = TaskStatus.PENDING
         self.result = None
         self.error = None
         self.timestamp = time.time()
+        self.start_time = None
+        self.end_time = None
+
+    @property
+    def duration(self) -> float:
+        if self.start_time and self.end_time:
+            return self.end_time - self.start_time
+        return 0.0
+
+    def start(self):
+        self.status = TaskStatus.RUNNING
+        self.start_time = time.time()
+
+    def complete(self, result: str):
+        self.status = TaskStatus.COMPLETED
+        self.result = result
+        self.end_time = time.time()
+
+    def fail(self, error: str):
+        self.status = TaskStatus.FAILED
+        self.error = error
+        self.end_time = time.time()
+
+    def cancel(self):
+        self.status = TaskStatus.CANCELLED
+        self.end_time = time.time()
 
     def to_dict(self) -> Dict:
         return {
@@ -82,23 +108,63 @@ class AgentTask:
             "intent": self.intent,
             "prompt": self.prompt,
             "agent": self.agent,
-            "status": self.status,
+            "status": self.status.value,
             "result": self.result,
             "error": self.error,
+            "duration": self.duration,
         }
 
 
 class AgentOrchestrator:
-    def __init__(self):
+    def __init__(self, gui_ref: Any = None):
+        self.gui = gui_ref
         self.agents = {
-            "Supervisor": {"role": "coordinates", "status": "idle", "capabilities": ["all"]},
-            "Architect": {"role": "design", "status": "idle", "capabilities": ["planning", "architecture"]},
-            "Coder": {"role": "implementation", "status": "idle", "capabilities": ["code", "write", "modify"]},
-            "Executor": {"role": "execution", "status": "idle", "capabilities": ["run", "execute", "test"]},
-            "Reviewer": {"role": "analysis", "status": "idle", "capabilities": ["review", "debug", "optimize"]},
-            "Searcher": {"role": "discovery", "status": "idle", "capabilities": ["search", "find", "grep"]},
+            "Supervisor": {
+                "role": "coordinates", 
+                "status": "idle", 
+                "capabilities": ["all", "delegate", "manage"],
+                "icon": "S",
+                "color": ATLAN_PURPLE
+            },
+            "Architect": {
+                "role": "design", 
+                "status": "idle", 
+                "capabilities": ["planning", "architecture", "blueprint"],
+                "icon": "A",
+                "color": ATLAN_CYAN
+            },
+            "Coder": {
+                "role": "implementation", 
+                "status": "idle", 
+                "capabilities": ["code", "write", "modify", "create"],
+                "icon": "C",
+                "color": ATLAN_GREEN
+            },
+            "Executor": {
+                "role": "execution", 
+                "status": "idle", 
+                "capabilities": ["run", "execute", "test", "deploy"],
+                "icon": "E",
+                "color": ATLAN_GOLD
+            },
+            "Reviewer": {
+                "role": "analysis", 
+                "status": "idle", 
+                "capabilities": ["review", "debug", "optimize", "fix"],
+                "icon": "R",
+                "color": ATLAN_RED
+            },
+            "Searcher": {
+                "role": "discovery", 
+                "status": "idle", 
+                "capabilities": ["search", "find", "grep", "analyze"],
+                "icon": "F",
+                "color": ATLAN_GREEN
+            },
         }
         self.tasks: List[AgentTask] = []
+        self.task_queue: List[AgentTask] = []
+        self.current_task: Optional[AgentTask] = None
         self.delegation_rules = {
             Intent.CODE: "Coder",
             Intent.DEBUG: "Reviewer",
@@ -110,28 +176,54 @@ class AgentOrchestrator:
             Intent.CHAT: "Coder",
         }
 
-    def delegate(self, intent: Intent, prompt: str) -> Tuple[str, str]:
-        agent = self.delegation_rules.get(intent, "Coder")
-        task_id = f"task_{len(self.tasks)}_{int(time.time())}"
-        task = AgentTask(task_id, intent.value, prompt, agent)
+    def delegate(self, intent: Intent, prompt: str) -> Tuple[str, AgentTask]:
+        agent_name = self.delegation_rules.get(intent, "Coder")
+        task = AgentTask(intent.value, prompt, agent_name)
         self.tasks.append(task)
-        self.agents[agent]["status"] = "active"
-        return agent, task_id
+        self.task_queue.append(task)
+        self.agents[agent_name]["status"] = "active"
+        self._process_queue()
+        return agent_name, task
+
+    def _process_queue(self):
+        if self.current_task and self.current_task.status == TaskStatus.RUNNING:
+            return
+        
+        if self.task_queue:
+            task = self.task_queue.pop(0)
+            task.start()
+            self.current_task = task
+            self._update_gui()
 
     def complete_task(self, task_id: str, result: str):
         for task in self.tasks:
             if task.task_id == task_id:
-                task.status = "completed"
-                task.result = result
-                self.agents[task.agent]["status"] = "idle"
+                task.complete(result)
+                if task.agent in self.agents:
+                    self.agents[task.agent]["status"] = "idle"
+                self.current_task = None
+                self._process_queue()
                 break
 
     def fail_task(self, task_id: str, error: str):
         for task in self.tasks:
             if task.task_id == task_id:
-                task.status = "failed"
-                task.error = error
-                self.agents[task.agent]["status"] = "idle"
+                task.fail(error)
+                if task.agent in self.agents:
+                    self.agents[task.agent]["status"] = "idle"
+                self.current_task = None
+                self._process_queue()
+                break
+
+    def cancel_task(self, task_id: str):
+        for task in self.tasks:
+            if task.task_id == task_id:
+                task.cancel()
+                if task.agent in self.agents:
+                    self.agents[task.agent]["status"] = "idle"
+                if self.current_task and self.current_task.task_id == task_id:
+                    self.current_task = None
+                    self._process_queue()
                 break
 
     def get_active_agents(self) -> List[str]:
@@ -139,69 +231,20 @@ class AgentOrchestrator:
 
     def get_queue_status(self) -> Dict:
         return {
-            "pending": len([t for t in self.tasks if t.status == "pending"]),
-            "completed": len([t for t in self.tasks if t.status == "completed"]),
-            "failed": len([t for t in self.tasks if t.status == "failed"]),
+            "pending": len([t for t in self.tasks if t.status == TaskStatus.PENDING]),
+            "running": len([t for t in self.tasks if t.status == TaskStatus.RUNNING]),
+            "completed": len([t for t in self.tasks if t.status == TaskStatus.COMPLETED]),
+            "failed": len([t for t in self.tasks if t.status == TaskStatus.FAILED]),
             "active_agents": self.get_active_agents(),
+            "current_task": self.current_task.to_dict() if self.current_task else None,
         }
 
+    def clear_completed(self):
+        self.tasks = [t for t in self.tasks if t.status in [TaskStatus.PENDING, TaskStatus.RUNNING]]
 
-class ImageDropZone(QFrame):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setAcceptDrops(True)
-        self.image_callback = None
-        self.setMinimumHeight(80)
-        self.setStyleSheet(f"""
-            QFrame {{
-                background-color: #0a0a0a;
-                border: 2px dashed {ATLAN_CYAN};
-                border-radius: 8px;
-            }}
-            QFrame:hover {{
-                border-color: {ATLAN_GREEN};
-            }}
-        """)
-
-    def set_callback(self, callback):
-        self.image_callback = callback
-
-    def dragEnterEvent(self, event: QDragEnterEvent):
-        if event.mimeData().hasImage() or self._has_image(event.mimeData()):
-            event.acceptProposedAction()
-
-    def dragMoveEvent(self, event):
-        if self._has_image(event.mimeData()):
-            event.acceptProposedAction()
-
-    def dropEvent(self, event: QDropEvent):
-        mime = event.mimeData()
-        if mime.hasImage():
-            image = mime.imageData()
-            if self.image_callback:
-                self.image_callback(image)
-            event.acceptProposedAction()
-        elif self._has_image(mime):
-            if mime.hasUrls():
-                for url in mime.urls():
-                    path = url.toLocalFile()
-                    if path.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp')):
-                        if self.image_callback:
-                            pixmap = QPixmap(path)
-                            self.image_callback(pixmap)
-                        break
-            event.acceptProposedAction()
-
-    def _has_image(self, mime: QMimeData) -> bool:
-        return mime.hasUrls() and any(
-            url.toLocalFile().lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp'))
-            for url in mime.urls()
-        )
-
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, "Drop Image Here or Paste (Ctrl+V)")
+    def _update_gui(self):
+        if self.gui and hasattr(self.gui, 'update_orchestrator_display'):
+            self.gui.update_orchestrator_display()
 
 
 class MatrixOverlay(QWidget):
@@ -228,7 +271,7 @@ class MatrixOverlay(QWidget):
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        w = self.width() // self.cols
+        w = self.width() // max(self.cols, 1)
         for i, drop in enumerate(self.drops):
             color = QColor(0, 255, 65, random.randint(100, 200))
             painter.setPen(color)
@@ -236,7 +279,150 @@ class MatrixOverlay(QWidget):
             font.setBold(True)
             painter.setFont(font)
             char = random.choice(self.matrix_chars)
-            painter.drawText(i * w, int(drop["y"]), w, 20, Qt.AlignmentFlag.AlignCenter, char)
+            if w > 0:
+                painter.drawText(i * w, int(drop["y"]), w, 20, Qt.AlignmentFlag.AlignCenter, char)
+
+
+class TaskQueueWidget(QWidget):
+    task_selected = pyqtSignal(str)
+    
+    def __init__(self, orchestrator: AgentOrchestrator):
+        super().__init__()
+        self.orchestrator = orchestrator
+        self.init_ui()
+        self.update_timer = QTimer()
+        self.update_timer.timeout.connect(self.refresh)
+        self.update_timer.start(500)
+
+    def init_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        
+        header = QLabel("TASK QUEUE")
+        header.setStyleSheet(f"font-weight: bold; color: {ATLAN_GOLD}; padding: 4px;")
+        layout.addWidget(header)
+        
+        self.task_list = QListWidget()
+        self.task_list.itemClicked.connect(lambda item: self.task_selected.emit(item.data(Qt.ItemDataRole.UserRole)))
+        layout.addWidget(self.task_list)
+        
+        stats_layout = QHBoxLayout()
+        self.pending_label = QLabel("Pending: 0")
+        self.running_label = QLabel("Running: 0")
+        self.completed_label = QLabel("Done: 0")
+        stats_layout.addWidget(self.pending_label)
+        stats_layout.addWidget(self.running_label)
+        stats_layout.addWidget(self.completed_label)
+        layout.addLayout(stats_layout)
+
+    def refresh(self):
+        self.task_list.clear()
+        status = self.orchestrator.get_queue_status()
+        
+        for task in self.orchestrator.tasks[-10:]:
+            status_icon = {
+                TaskStatus.PENDING: "○",
+                TaskStatus.RUNNING: "◐",
+                TaskStatus.COMPLETED: "●",
+                TaskStatus.FAILED: "✕",
+                TaskStatus.CANCELLED: "⊘",
+            }.get(task.status, "?")
+            
+            item_text = f"{status_icon} {task.agent}: {task.prompt[:30]}..."
+            item = QListWidgetItem(item_text)
+            item.setData(Qt.ItemDataRole.UserRole, task.task_id)
+            
+            if task.status == TaskStatus.RUNNING:
+                item.setBackground(QColor(ATLAN_MEDIUM))
+            elif task.status == TaskStatus.COMPLETED:
+                item.setBackground(QColor("#0a1a0a"))
+            elif task.status == TaskStatus.FAILED:
+                item.setBackground(QColor("#1a0a0a"))
+            
+            self.task_list.addItem(item)
+        
+        self.pending_label.setText(f"Pending: {status['pending']}")
+        self.running_label.setText(f"Running: {status['running']}")
+        self.completed_label.setText(f"Done: {status['completed']}")
+
+
+class AgentPanelWidget(QWidget):
+    def __init__(self, orchestrator: AgentOrchestrator):
+        super().__init__()
+        self.orchestrator = orchestrator
+        self.status_labels = {}
+        self.init_ui()
+        self.update_timer = QTimer()
+        self.update_timer.timeout.connect(self.refresh)
+        self.update_timer.start(500)
+
+    def init_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        
+        header = QLabel("AGENTS")
+        header.setStyleSheet(f"font-weight: bold; color: {ATLAN_GOLD}; padding: 4px;")
+        layout.addWidget(header)
+        
+        self.agent_widgets = {}
+        for name, data in self.orchestrator.agents.items():
+            agent_frame = self.create_agent_widget(name, data)
+            self.agent_widgets[name] = agent_frame
+            layout.addWidget(agent_frame)
+        
+        layout.addStretch()
+
+    def create_agent_widget(self, name: str, data: Dict) -> QFrame:
+        frame = QFrame()
+        frame.setStyleSheet(f"""
+            QFrame {{
+                background-color: {ATLAN_MEDIUM};
+                border: 1px solid #333;
+                border-radius: 4px;
+                padding: 4px;
+                margin: 2px;
+            }}
+        """)
+        
+        layout = QHBoxLayout(frame)
+        layout.setContentsMargins(8, 4, 8, 4)
+        
+        icon_label = QLabel(data["icon"])
+        icon_label.setStyleSheet(f"""
+            background-color: {data["color"]};
+            color: {ATLAN_DARK};
+            font-weight: bold;
+            border-radius: 12px;
+            min-width: 24px;
+            min-height: 24px;
+            max-width: 24px;
+            max-height: 24px;
+            qproperty-alignment: AlignCenter;
+        """)
+        layout.addWidget(icon_label)
+        
+        info = QWidget()
+        info_layout = QVBoxLayout(info)
+        info_layout.setContentsMargins(0, 0, 0, 0)
+        info_layout.setSpacing(0)
+        
+        name_label = QLabel(name)
+        name_label.setStyleSheet("font-weight: bold;")
+        info_layout.addWidget(name_label)
+        
+        self.status_labels[name] = QLabel(data["status"])
+        self.status_labels[name].setStyleSheet(f"color: #888; font-size: 10px;")
+        info_layout.addWidget(self.status_labels[name])
+        
+        layout.addWidget(info)
+        layout.addStretch()
+        
+        return frame
+
+    def refresh(self):
+        for name, data in self.orchestrator.agents.items():
+            if name in self.status_labels:
+                self.status_labels[name].setText(f"{data['status']} ({', '.join(data['capabilities'][:2])})")
 
 
 class CrackedCodeGUI(QMainWindow):
@@ -247,6 +433,9 @@ class CrackedCodeGUI(QMainWindow):
         self.engine = None
         self.voice: Optional[Any] = None
         self.voice_recording = False
+        self.project_path: Optional[Path] = None
+        self.status_labels = {}
+        
         self.load_config()
         self.setup_atlan_theme()
         self.init_ui()
@@ -257,12 +446,19 @@ class CrackedCodeGUI(QMainWindow):
         self.init_clipboard()
         self.restore_state()
         self.setup_paste_handler()
-        logger.info("CrackedCode GUI started")
+        
+        logger.info("CrackedCode GUI v2.3.9 started")
 
     def init_orchestrator(self):
-        self.orchestrator = AgentOrchestrator()
-        self.update_agents_list()
+        self.orchestrator = AgentOrchestrator(gui_ref=self)
+        self.update_orchestrator_display()
         logger.info("Agent orchestrator initialized")
+
+    def update_orchestrator_display(self):
+        if hasattr(self, 'agent_panel'):
+            self.agent_panel.refresh()
+        if hasattr(self, 'task_queue'):
+            self.task_queue.refresh()
 
     def init_clipboard(self):
         self.clipboard = QGuiApplication.clipboard()
@@ -281,12 +477,14 @@ class CrackedCodeGUI(QMainWindow):
             if hasattr(self, 'terminal'):
                 self.term(f"[ENGINE v{status['version']} loaded]")
                 self.term(f"[OLLAMA: {len(status['ollama_models'])} models]")
+                self.term("[READY] Type your prompt below...")
         except Exception as e:
             logger.error(f"Engine init failed: {e}")
+            self.term(f"[ERROR: Engine failed - {e}]")
 
     def init_voice(self):
         if not VOICE_AVAILABLE:
-            self.term("[VOICE: not available]")
+            self.term("[VOICE: not available - install sounddevice]")
             if hasattr(self, 'voice_btn'):
                 self.voice_btn.setEnabled(False)
             return
@@ -302,7 +500,7 @@ class CrackedCodeGUI(QMainWindow):
                     self.voice_btn.setEnabled(False)
         except Exception as e:
             logger.error(f"Voice init failed: {e}")
-            self.term("[VOICE: init failed]")
+            self.term(f"[VOICE ERROR: {e}]")
             if hasattr(self, 'voice_btn'):
                 self.voice_btn.setEnabled(False)
 
@@ -315,231 +513,398 @@ class CrackedCodeGUI(QMainWindow):
             self.config = {"model": "qwen3:8b-gpu", "project_root": "."}
 
     def setup_atlan_theme(self):
-        self.setWindowTitle("CRACKEDCODE v2.2.0 // ATLANTEAN NEURAL SYSTEM")
-        self.setMinimumSize(1200, 800)
+        self.setWindowTitle("CRACKEDCODE v2.3.9 // ATLANTEAN NEURAL SYSTEM")
+        self.setMinimumSize(1400, 900)
         
         self.atlan_font = QFont("Consolas", 11)
         self.atlan_header = QFont("Consolas", 14, QFont.Weight.Bold)
         
         self.setStyleSheet(f"""
-            QMainWindow {{ background-color: #0a0a0a; }}
-            QWidget {{ background-color: #0a0a0a; color: {ATLAN_GREEN}; font-family: Consolas; }}
-            QMenuBar {{ background-color: #0d0d0d; color: {ATLAN_GREEN}; border-bottom: 2px solid {ATLAN_GREEN}; }}
-            QMenuBar::item:selected {{ background-color: {ATLAN_GREEN}; color: #000; }}
-            QMenu {{ background-color: #0d0d0d; color: {ATLAN_GREEN}; border: 1px solid {ATLAN_GREEN}; }}
-            QMenu::item:selected {{ background-color: {ATLAN_GREEN}; color: #000; }}
-            QToolBar {{ background-color: #0d0d0d; border-bottom: 2px solid {ATLAN_GREEN}; }}
+            QMainWindow {{ background-color: {ATLAN_DARK}; }}
+            QWidget {{ background-color: {ATLAN_DARK}; color: {ATLAN_GREEN}; font-family: Consolas; font-size: 11px; }}
+            QMenuBar {{ background-color: {ATLAN_MEDIUM}; color: {ATLAN_GREEN}; border-bottom: 2px solid {ATLAN_GREEN}; }}
+            QMenuBar::item:selected {{ background-color: {ATLAN_GREEN}; color: {ATLAN_DARK}; }}
+            QMenu {{ background-color: {ATLAN_MEDIUM}; color: {ATLAN_GREEN}; border: 1px solid #333; }}
+            QMenu::item:selected {{ background-color: {ATLAN_GREEN}; color: {ATLAN_DARK}; }}
+            QToolBar {{ background-color: {ATLAN_MEDIUM}; border-bottom: 2px solid {ATLAN_GREEN}; spacing: 4px; padding: 4px; }}
             QPushButton {{ 
-                background-color: #1a1a1a; 
+                background-color: {ATLAN_LIGHT}; 
                 color: {ATLAN_GREEN}; 
                 border: 1px solid {ATLAN_GREEN}; 
-                padding: 6px 12px;
+                padding: 8px 16px;
                 font-family: Consolas;
                 font-weight: bold;
+                border-radius: 4px;
             }}
-            QPushButton:hover {{ background-color: {ATLAN_GREEN}; color: #000; }}
-            QPushButton:checked {{ background-color: {ATLAN_GREEN}; color: #000; }}
+            QPushButton:hover {{ background-color: {ATLAN_GREEN}; color: {ATLAN_DARK}; }}
+            QPushButton:checked {{ background-color: {ATLAN_GREEN}; color: {ATLAN_DARK}; }}
+            QPushButton:pressed {{ background-color: {ATLAN_CYAN}; }}
+            QPushButton:disabled {{ color: #555; border-color: #555; }}
             QTextEdit {{ 
                 background-color: #050505; 
                 color: {ATLAN_GREEN}; 
                 border: 1px solid #333; 
                 font-family: Consolas;
+                border-radius: 4px;
             }}
+            QTextEdit:focus {{ border: 1px solid {ATLAN_GREEN}; }}
             QLineEdit {{ 
                 background-color: #050505; 
                 color: {ATLAN_GREEN}; 
                 border: 1px solid {ATLAN_GREEN}; 
                 font-family: Consolas;
+                padding: 6px;
+                border-radius: 4px;
             }}
+            QLineEdit:focus {{ border: 2px solid {ATLAN_GREEN}; }}
             QListWidget {{ 
                 background-color: #050505; 
                 color: {ATLAN_GREEN}; 
                 border: 1px solid #333; 
+                border-radius: 4px;
             }}
-            QListWidget::item:selected {{ background-color: {ATLAN_GREEN}; color: #000; }}
-            QTabWidget::pane {{ border: 1px solid {ATLAN_GREEN}; }}
+            QListWidget::item:selected {{ background-color: {ATLAN_GREEN}; color: {ATLAN_DARK}; }}
+            QListWidget::item:hover {{ background-color: {ATLAN_LIGHT}; }}
+            QTabWidget::pane {{ border: 1px solid {ATLAN_GREEN}; border-radius: 4px; }}
             QTabBar::tab {{ 
-                background-color: #111; 
+                background-color: {ATLAN_MEDIUM}; 
                 color: {ATLAN_GREEN}; 
                 border: 1px solid #333; 
-                padding: 6px 12px;
+                padding: 8px 16px;
+                border-top-left-radius: 4px;
+                border-top-right-radius: 4px;
             }}
             QTabBar::tab:selected {{ 
                 background-color: {ATLAN_GREEN}; 
-                color: #000; 
+                color: {ATLAN_DARK}; 
             }}
             QGroupBox {{ 
                 border: 2px solid {ATLAN_GREEN}; 
                 margin-top: 10px;
                 font-weight: bold;
+                border-radius: 4px;
+                padding-top: 10px;
             }}
             QGroupBox::title {{ 
                 color: {ATLAN_GOLD}; 
                 subcontrol-origin: margin;
                 left: 10px;
+                padding: 0 4px;
             }}
             QStatusBar {{ 
-                background-color: #0d0d0d; 
+                background-color: {ATLAN_MEDIUM}; 
                 color: {ATLAN_GREEN}; 
                 border-top: 2px solid {ATLAN_GREEN}; 
             }}
             QLabel {{ color: {ATLAN_GREEN}; }}
             QComboBox {{ 
-                background-color: #1a1a1a; 
+                background-color: {ATLAN_LIGHT}; 
                 color: {ATLAN_GREEN}; 
                 border: 1px solid {ATLAN_GREEN}; 
+                padding: 4px;
+                border-radius: 4px;
             }}
             QSplitter::handle {{ background-color: {ATLAN_GREEN}; }}
+            QProgressBar {{
+                border: 1px solid {ATLAN_GREEN};
+                border-radius: 4px;
+                background-color: {ATLAN_DARK};
+                text-align: center;
+                color: {ATLAN_GREEN};
+            }}
+            QProgressBar::chunk {{
+                background-color: {ATLAN_GREEN};
+                border-radius: 3px;
+            }}
+            QScrollBar:vertical {{
+                background: {ATLAN_DARK};
+                width: 12px;
+                border: none;
+            }}
+            QScrollBar::handle:vertical {{
+                background: {ATLAN_GREEN};
+                border-radius: 6px;
+                min-height: 20px;
+            }}
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+                height: 0px;
+            }}
+            QDockWidget {{
+                color: {ATLAN_GREEN};
+                titlebar-close-icon: transparent;
+                titlebar-expand-icon: transparent;
+            }}
+            QDockWidget::title {{
+                background-color: {ATLAN_MEDIUM};
+                color: {ATLAN_GOLD};
+                padding: 4px;
+            }}
         """)
 
     def init_ui(self):
+        self.create_menu_bar()
+        
         central = QWidget()
         self.setCentralWidget(central)
         main = QHBoxLayout(central)
         main.setContentsMargins(4, 4, 4, 4)
         main.setSpacing(4)
         
-        left = self.create_sidebar()
-        main.addWidget(left, 1)
+        left_panel = self.create_left_panel()
+        main.addWidget(left_panel, 1)
         
         right = QWidget()
         rl = QVBoxLayout(right)
         rl.setContentsMargins(0, 0, 0, 0)
+        rl.setSpacing(4)
         
         self.create_toolbar()
         
         self.editor = QTextEdit()
-        self.editor.setPlaceholderText("// Enter code...")
-        rl.addWidget(self.editor, 2)
+        self.editor.setPlaceholderText("")
+        self.editor.setAccessibleName("Code editor - type or paste code here")
+        rl.addWidget(self.editor, 3)
         
-        term = QGroupBox("TERMINAL")
-        tl = QVBoxLayout(term)
         self.terminal = QTextEdit()
         self.terminal.setReadOnly(True)
-        tl.addWidget(self.terminal)
+        self.terminal.setAccessibleName("Terminal output")
+        
+        term_group = QGroupBox("TERMINAL")
+        term_layout = QVBoxLayout(term_group)
+        term_layout.setContentsMargins(4, 4, 4, 4)
+        term_layout.addWidget(self.terminal)
         
         tin = QHBoxLayout()
-        tin.addWidget(QLabel(">"))
+        prompt_label = QLabel(">")
+        prompt_label.setStyleSheet(f"color: {ATLAN_CYAN}; font-weight: bold;")
+        tin.addWidget(prompt_label)
+        
         self.term_input = QLineEdit()
+        self.term_input.setAccessibleName("Command input")
+        self.term_input.setPlaceholderText("Enter prompt or command...")
         self.term_input.returnPressed.connect(self.run_term)
         tin.addWidget(self.term_input)
-        tl.addLayout(tin)
         
-        rl.addWidget(term, 1)
+        send_btn = QPushButton("SEND")
+        send_btn.setAccessibleName("Send command")
+        send_btn.clicked.connect(self.run_term)
+        send_btn.setFixedWidth(80)
+        tin.addWidget(send_btn)
+        
+        term_layout.addLayout(tin)
+        rl.addWidget(term_group, 2)
         
         main.addWidget(right, 3)
         
         self.create_status()
 
-    def create_sidebar(self):
-        panel = QFrame()
-        panel.setMaximumWidth(250)
-        l = QVBoxLayout(panel)
-        l.setSpacing(4)
+    def create_menu_bar(self):
+        menubar = self.menuBar()
+        menubar.setAccessibleName("Main menu")
+        
+        file_menu = menubar.addMenu("FILE")
+        
+        new_action = QAction("NEW PROJECT", self)
+        new_action.setShortcut(QKeySequence("Ctrl+N"))
+        new_action.triggered.connect(self.new_proj)
+        new_action.setAccessibleName("Create new project")
+        file_menu.addAction(new_action)
+        
+        open_action = QAction("OPEN PROJECT", self)
+        open_action.setShortcut(QKeySequence("Ctrl+O"))
+        open_action.triggered.connect(self.open_proj)
+        open_action.setAccessibleName("Open existing project")
+        file_menu.addAction(open_action)
+        
+        file_menu.addSeparator()
+        
+        save_action = QAction("SAVE", self)
+        save_action.setShortcut(QKeySequence("Ctrl+S"))
+        save_action.triggered.connect(self.save_current_file)
+        save_action.setAccessibleName("Save current file")
+        file_menu.addAction(save_action)
+        
+        file_menu.addSeparator()
+        
+        exit_action = QAction("EXIT", self)
+        exit_action.setShortcut(QKeySequence("Ctrl+Q"))
+        exit_action.triggered.connect(self.close)
+        file_menu.addAction(exit_action)
+        
+        edit_menu = menubar.addMenu("EDIT")
+        
+        copy_action = QAction("COPY OUTPUT", self)
+        copy_action.setShortcut(QKeySequence("Ctrl+Shift+C"))
+        copy_action.triggered.connect(self.copy_output)
+        edit_menu.addAction(copy_action)
+        
+        clear_action = QAction("CLEAR TERMINAL", self)
+        clear_action.triggered.connect(self.clear_terminal)
+        edit_menu.addAction(clear_action)
+        
+        view_menu = menubar.addMenu("VIEW")
+        
+        full_action = QAction("TOGGLE FULLSCREEN", self)
+        full_action.setShortcut(QKeySequence("F11"))
+        full_action.triggered.connect(self.toggle_full)
+        view_menu.addAction(full_action)
+        
+        dev_action = QAction("DEV CONSOLE", self)
+        dev_action.setShortcut(QKeySequence("F12"))
+        dev_action.triggered.connect(self.toggle_dev_console)
+        view_menu.addAction(dev_action)
+        
+        help_menu = menubar.addMenu("HELP")
+        
+        docs_action = QAction("DOCUMENTATION", self)
+        docs_action.triggered.connect(self.show_docs)
+        help_menu.addAction(docs_action)
+        
+        about_action = QAction("ABOUT", self)
+        about_action.triggered.connect(self.show_about)
+        help_menu.addAction(about_action)
 
-        lbl = QLabel("PROJECT")
-        l.addWidget(lbl)
-
-        self.files_list = QListWidget()
-        self.files_list.itemDoubleClicked.connect(self.on_file_clicked)
-        self.files_list.setAcceptDrops(True)
-        l.addWidget(self.files_list)
-
+    def create_left_panel(self):
+        dock = QDockWidget("CONTROL CENTER", self)
+        dock.setAllowedAreas(Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea)
+        
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(4, 4, 4, 4)
+        layout.setSpacing(4)
+        
+        project_group = QGroupBox("PROJECT")
+        project_layout = QVBoxLayout(project_group)
+        project_layout.setContentsMargins(4, 10, 4, 4)
+        
+        self.files_tree = QTreeWidget()
+        self.files_tree.setHeaderLabel("Files")
+        self.files_tree.itemDoubleClicked.connect(self.on_file_clicked)
+        self.files_tree.setAccessibleName("Project files tree")
+        project_layout.addWidget(self.files_tree)
+        
         btn_layout = QHBoxLayout()
         new_btn = QPushButton("NEW")
+        new_btn.setAccessibleName("Create new project")
         new_btn.clicked.connect(self.new_proj)
         open_btn = QPushButton("OPEN")
+        open_btn.setAccessibleName("Open project folder")
         open_btn.clicked.connect(self.open_proj)
         btn_layout.addWidget(new_btn)
         btn_layout.addWidget(open_btn)
-        l.addLayout(btn_layout)
-
-        l.addWidget(QLabel(""))
-        l.addWidget(QLabel("AGENTS"))
-
-        self.agents_list = QListWidget()
-        self.agents_list.itemClicked.connect(self.on_agent_selected)
-        l.addWidget(self.agents_list)
-
-        l.addWidget(QLabel(""))
-        l.addWidget(QLabel("TASK"))
-
-        self.task_lbl = QLabel("Idle")
-        l.addWidget(self.task_lbl)
-
+        project_layout.addLayout(btn_layout)
+        
+        layout.addWidget(project_group)
+        
+        self.agent_panel = AgentPanelWidget(self.orchestrator)
+        layout.addWidget(self.agent_panel)
+        
+        self.task_queue = TaskQueueWidget(self.orchestrator)
+        layout.addWidget(self.task_queue)
+        
         self.progress_bar = QProgressBar()
-        self.progress_bar.setMaximumHeight(8)
-        self.progress_bar.setStyleSheet(f"""
-            QProgressBar {{
-                border: 1px solid {ATLAN_GREEN};
-                border-radius: 4px;
-                background-color: #0a0a0a;
-                text-align: center;
-            }}
-            QProgressBar::chunk {{
-                background-color: {ATLAN_GREEN};
-            }}
-        """)
-        l.addWidget(self.progress_bar)
-
-        return panel
+        self.progress_bar.setAccessibleName("Task progress")
+        self.progress_bar.setFixedHeight(20)
+        layout.addWidget(self.progress_bar)
+        
+        dock.setWidget(container)
+        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, dock)
+        
+        return dock
 
     def create_toolbar(self):
         tb = QToolBar()
         tb.setMovable(False)
+        tb.setIconSize(QSize(24, 24))
         self.addToolBar(tb)
-
+        
         self.plan_btn = QPushButton("PLAN")
         self.plan_btn.setCheckable(True)
         self.plan_btn.setChecked(True)
+        self.plan_btn.setAccessibleName("Toggle PLAN mode")
         self.plan_btn.clicked.connect(lambda: self.set_mode("plan"))
         tb.addWidget(self.plan_btn)
-
+        
         self.build_btn = QPushButton("BUILD")
         self.build_btn.setCheckable(True)
         self.build_btn.setChecked(True)
+        self.build_btn.setAccessibleName("Toggle BUILD mode")
         self.build_btn.clicked.connect(lambda: self.set_mode("build"))
         tb.addWidget(self.build_btn)
-
+        
         tb.addSeparator()
-
+        
         exec_btn = QPushButton("EXECUTE")
+        exec_btn.setAccessibleName("Execute code in editor")
         exec_btn.clicked.connect(self.exec_code)
         tb.addWidget(exec_btn)
-
+        
         self.voice_btn = QPushButton("VOICE")
         self.voice_btn.setCheckable(True)
+        self.voice_btn.setAccessibleName("Toggle voice input")
         self.voice_btn.clicked.connect(self.toggle_voice)
         tb.addWidget(self.voice_btn)
-
+        
         tb.addSeparator()
-
+        
         copy_btn = QPushButton("COPY")
+        copy_btn.setAccessibleName("Copy terminal output")
         copy_btn.clicked.connect(self.copy_output)
         tb.addWidget(copy_btn)
-
+        
         clear_btn = QPushButton("CLEAR")
+        clear_btn.setAccessibleName("Clear terminal")
         clear_btn.clicked.connect(self.clear_terminal)
         tb.addWidget(clear_btn)
+        
+        tb.addSeparator()
+        
+        stop_btn = QPushButton("STOP")
+        stop_btn.setAccessibleName("Stop current operation")
+        stop_btn.clicked.connect(self.stop_current_operation)
+        stop_btn.setStyleSheet(f"color: {ATLAN_RED}; border-color: {ATLAN_RED};")
+        tb.addWidget(stop_btn)
 
     def create_status(self):
         sb = QStatusBar()
         self.setStatusBar(sb)
+        
         self.status_lbl = QLabel("READY")
+        self.status_lbl.setAccessibleName("Current status")
         sb.addWidget(self.status_lbl)
         
         self.ollama_lbl = QLabel("OLLAMA: ...")
+        self.ollama_lbl.setAccessibleName("Ollama status")
         sb.addPermanentWidget(self.ollama_lbl)
         
         self.model_lbl = QLabel("MODEL: none")
+        self.model_lbl.setAccessibleName("Current model")
         sb.addPermanentWidget(self.model_lbl)
         
+        self.task_status_lbl = QLabel("Tasks: 0")
+        self.task_status_lbl.setAccessibleName("Task count")
+        sb.addPermanentWidget(self.task_status_lbl)
+        
+        self.time_lbl = QLabel("")
+        sb.addPermanentWidget(self.time_lbl)
+        
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_time)
+        self.timer.start(1000)
+        self.update_time()
+
+    def update_time(self):
+        current_time = time.strftime("%H:%M:%S")
+        self.time_lbl.setText(current_time)
+
     def update_status(self, status: Dict):
         if hasattr(self, 'ollama_lbl'):
-            self.ollama_lbl.setText(f"OLLAMA: {'ON' if status.get('ollama_available') else 'OFF'}")
+            ollama_on = status.get('ollama_available', False)
+            self.ollama_lbl.setText(f"OLLAMA: {'ON' if ollama_on else 'OFF'}")
+            self.ollama_lbl.setStyleSheet(f"color: {'{ATLAN_GREEN}' if ollama_on else '{ATLAN_RED}'};")
         if hasattr(self, 'model_lbl'):
             self.model_lbl.setText(f"MODEL: {status.get('model', 'none')}")
-        
+
     def toggle_dev_console(self):
         status = self.engine.get_status() if self.engine else {}
         
@@ -549,31 +914,38 @@ class CrackedCodeGUI(QMainWindow):
             if not hasattr(self, 'dev_console'):
                 self.dev_console = QTextEdit()
                 self.dev_console.setWindowTitle("Dev Console (F12)")
-                self.dev_console.setGeometry(100, 100, 400, 300)
+                self.dev_console.setGeometry(100, 100, 500, 400)
+                self.dev_console.setStyleSheet("background-color: #0a0a0a; color: #00FF41; font-family: Consolas;")
             
             self.dev_console.setPlainText("")
-            self.dev_console.append("=== DEV CONSOLE v%s ===" % status.get("version", "?"))
-            self.dev_console.append(f"Ollama: {status.get('ollama_available', False)}")
+            self.dev_console.append("=" * 50)
+            self.dev_console.append(f"CRACKEDCODE DEV CONSOLE v{status.get('version', '?')}")
+            self.dev_console.append("=" * 50)
+            self.dev_console.append(f"Ollama Available: {status.get('ollama_available', False)}")
             self.dev_console.append(f"Models: {status.get('ollama_models', [])}")
-            self.dev_console.append(f"Model: {status.get('model', 'none')}")
-            self.dev_console.append(f"Plan: {status.get('plan', False)}")
-            self.dev_console.append(f"Build: {status.get('build', False)}")
-            self.dev_console.append(f"History: {status.get('history_length', 0)} turns")
-            self.dev_console.append("="*30)
+            self.dev_console.append(f"Selected Model: {status.get('model', 'none')}")
+            self.dev_console.append(f"Plan Mode: {status.get('plan', False)}")
+            self.dev_console.append(f"Build Mode: {status.get('build', False)}")
+            self.dev_console.append(f"History Length: {status.get('history_length', 0)}")
+            self.dev_console.append("")
+            self.dev_console.append("ORCHESTRATOR STATUS:")
+            if hasattr(self, 'orchestrator'):
+                qstatus = self.orchestrator.get_queue_status()
+                self.dev_console.append(f"  Pending: {qstatus['pending']}")
+                self.dev_console.append(f"  Running: {qstatus['running']}")
+                self.dev_console.append(f"  Completed: {qstatus['completed']}")
+                self.dev_console.append(f"  Failed: {qstatus['failed']}")
+                self.dev_console.append(f"  Active Agents: {qstatus['active_agents']}")
+            self.dev_console.append("=" * 50)
             self.dev_console.show()
             self.dev_console.raise_()
             self.dev_console.activateWindow()
 
-    def get_ollama_models(self):
-        if self.engine:
-            return self.engine.get_status().get("ollama_models", [])
-        return []
-
     def keyPressEvent(self, event):
-        modifiers = event.modifiers()
-
         if event.key() == Qt.Key.Key_F12:
             self.toggle_dev_console()
+        elif event.key() == Qt.Key.Key_F11:
+            self.toggle_full()
         elif event.key() == Qt.Key.Key_Escape:
             self.stop_current_operation()
         elif event.matches(QKeySequence.StandardKey.Copy):
@@ -582,6 +954,8 @@ class CrackedCodeGUI(QMainWindow):
             self.handle_paste()
         elif event.matches(QKeySequence.StandardKey.SelectAll):
             self.editor.selectAll()
+        elif event.key() == Qt.Key.Key_Return and event.modifiers() == Qt.KeyboardModifier.ControlModifier:
+            self.run_term()
         else:
             super().keyPressEvent(event)
 
@@ -605,10 +979,10 @@ class CrackedCodeGUI(QMainWindow):
             if text:
                 if self._is_code_snippet(text):
                     self.editor.append(text)
-                    self.term(f"[PASTE: {len(text)} chars]")
+                    self.term(f"[PASTE: {len(text)} chars added to editor]")
                 else:
                     self.term_input.setText(text)
-                    self.term(f"[PASTE: text]")
+                    self.term("[PASTE: text to command input]")
 
     def handle_dropped_image(self, image: QImage or QPixmap):
         buffer = io.BytesIO()
@@ -622,7 +996,6 @@ class CrackedCodeGUI(QMainWindow):
             return
         self.last_paste_hash = img_hash
 
-        img_base64 = base64.b64encode(img_bytes).decode()
         self.pending_image = img_bytes
 
         self.term(f"[IMAGE: {image.width()}x{image.height()}, {len(img_bytes)} bytes]")
@@ -631,49 +1004,42 @@ class CrackedCodeGUI(QMainWindow):
             try:
                 import asyncio
                 result = asyncio.run(self.engine.vision.analyze_image(img_bytes))
-                self.term(f"[VISION: {result[:200]}...]")
+                self.term(f"[VISION ANALYSIS]:\n{result[:500]}")
             except Exception as e:
                 self.term(f"[VISION ERROR: {e}]")
 
     def _is_code_snippet(self, text: str) -> bool:
         code_indicators = ['def ', 'class ', 'function ', 'import ', 'from ', 'const ', 'let ', 'var ',
-                         'if (', 'if(', 'for (', 'for(', 'while (', 'while(', 'print(', 'return ']
+                         'if (', 'if(', 'for (', 'for(', 'while (', 'while(', 'print(', 'return ', 'async ', 'await ']
         return any(text.lstrip().startswith(ind) for ind in code_indicators) or text.count('\n') > 2
 
     def copy_output(self):
         text = self.terminal.toPlainText()
         if text:
             self.clipboard.setText(text)
-            self.term("[COPIED: terminal to clipboard]")
+            self.term("[COPIED: terminal content to clipboard]")
 
     def clear_terminal(self):
         self.terminal.clear()
-        self.term("[CLEARED]")
+        self.term("[TERMINAL CLEARED]")
 
     def stop_current_operation(self):
         self.voice_recording = False
         if hasattr(self, 'voice_btn'):
             self.voice_btn.setChecked(False)
-        self.status_lbl.setText("STOPPED")
+        self.set_status("STOPPED")
         self.progress_bar.setValue(0)
-        self.term("[STOPPED]")
+        self.term("[OPERATION STOPPED]")
 
-    def update_agents_list(self):
-        if hasattr(self, 'agents_list'):
-            self.agents_list.clear()
-            active = self.orchestrator.get_active_agents()
-            for name, data in self.orchestrator.agents.items():
-                status = f"[ACTIVE] " if data["status"] == "active" else ""
-                self.agents_list.addItem(f"{status}{name} ({data['role']})")
+    def set_status(self, text: str):
+        if hasattr(self, 'status_lbl'):
+            self.status_lbl.setText(text)
 
-    def on_agent_selected(self, item):
-        agent_name = item.text().split("(")[0].replace("[ACTIVE] ", "").strip()
-        self.term(f"[AGENT: selected {agent_name}]")
-
-    def update_progress(self, value: int, text: str = ""):
-        self.progress_bar.setValue(value)
-        if text:
-            self.task_lbl.setText(text)
+    def update_task_status(self):
+        if hasattr(self, 'orchestrator'):
+            status = self.orchestrator.get_queue_status()
+            total = len(self.orchestrator.tasks)
+            self.task_status_lbl.setText(f"Tasks: {status['completed']}/{total}")
 
     def init_matrix(self):
         self.matrix = MatrixOverlay(self)
@@ -689,9 +1055,7 @@ class CrackedCodeGUI(QMainWindow):
         f = QFileDialog.getExistingDirectory(self, "NEW PROJECT")
         if f:
             self.config["project_root"] = f
-            self.term(f"[PROJECT: {f}]")
-            if hasattr(self, 'task_lbl'):
-                self.task_lbl.setText("Creating project...")
+            self.term(f"[NEW PROJECT: {f}]")
             self.scan_project_files(f)
 
     def open_proj(self):
@@ -699,129 +1063,159 @@ class CrackedCodeGUI(QMainWindow):
         if f:
             self.config["project_root"] = f
             self.term(f"[OPENED: {f}]")
-            if hasattr(self, 'task_lbl'):
-                self.task_lbl.setText("Ready")
             self.scan_project_files(f)
 
     def scan_project_files(self, root):
-        self.files_list.clear()
+        self.files_tree.clear()
         self.project_path = Path(root)
         
         if not self.project_path.exists():
             self.term(f"[ERROR: Path not found: {root}]")
             return
         
-        self.term(f"[LOADING: {root}]")
+        self.term(f"[SCANNING: {root}]")
         
-        count = 0
+        root_item = QTreeWidgetItem([root])
+        self.files_tree.addTopLevelItem(root_item)
+        
+        count = [0]
         try:
-            for p in self.project_path.rglob("*"):
-                if p.is_file():
-                    relative = str(p.relative_to(self.project_path))
-                    self.files_list.addItem(relative)
-                    count += 1
-                    if count > 50:
-                        break
+            def add_items(parent_item, path):
+                try:
+                    for p in sorted(path.iterdir()):
+                        if count[0] > 100:
+                            return
+                        if p.is_file() and not p.name.startswith('.'):
+                            child = QTreeWidgetItem([p.name])
+                            child.setData(0, Qt.ItemDataRole.UserRole, str(p))
+                            parent_item.addChild(child)
+                            count[0] += 1
+                        elif p.is_dir() and not p.name.startswith('.') and not p.name.startswith('__'):
+                            child = QTreeWidgetItem([p.name])
+                            parent_item.addChild(child)
+                            add_items(child, p)
+                except PermissionError:
+                    pass
+            
+            add_items(root_item, self.project_path)
+            root_item.setExpanded(True)
+            
         except Exception as e:
             self.term(f"[ERROR: {e}]")
         
-        self.term(f"[FILES: {count} found]")
-        
-        if hasattr(self, 'task_lbl'):
-            self.task_lbl.setText(f"{count} files")
+        self.term(f"[FILES: {count[0]} loaded]")
+        self.set_status(f"{count[0]} files")
 
     def on_file_clicked(self, item):
-        if hasattr(self, 'project_path'):
-            file_path = self.project_path / item.text()
-            if file_path.exists():
-                content = file_path.read_text(errors='ignore')
-                self.editor.setPlainText(content)
-                self.term(f"[OPENED: {item.text()}]")
-            else:
-                self.term(f"[ERROR: File not found]")
+        file_path = item.data(0, Qt.ItemDataRole.UserRole)
+        if file_path:
+            path = Path(file_path)
+            if path.exists():
+                try:
+                    content = path.read_text(errors='ignore')
+                    self.editor.setPlainText(content)
+                    self.current_file = path
+                    self.term(f"[OPENED: {path.name}]")
+                except Exception as e:
+                    self.term(f"[ERROR: Cannot read {path.name} - {e}]")
 
-    def show_settings(self):
-        self.term("="*50)
-        self.term("LOGIN PAGE IMPLEMENTATION PLAN")
-        self.term("="*50)
-        self.term("")
-        self.term("1. AUTHENTICATION SYSTEM")
-        self.term("   - User database (JSON file with hashed passwords)")
-        self.term("   - Login dialog with username/password fields")
-        self.term("   - Session management with tokens")
-        self.term("   - Optional: OAuth, 2FA support")
-        self.term("")
-        self.term("2. LOGIN PAGE (HTML/CSS/JS)")
-        self.term("   - Embedded webview or PyQt6 QWebEngineView")
-        self.term("   - Atlantean-themed login form")
-        self.term("   - Remember me checkbox")
-        self.term("   - Password reset flow")
-        self.term("")
-        self.term("3. SECURITY FEATURES")
-        self.term("   - Password hashing (bcrypt/argon2)")
-        self.term("   - Rate limiting on login attempts")
-        self.term("   - Session timeout")
-        self.term("   - Audit logging")
-        self.term("")
-        self.term("4. INTEGRATION")
-        self.term("   - Pre-launch login check in gui.py")
-        self.term("   - User context in blackboard")
-        self.term("   - Per-user settings persistence")
-        self.term("")
-        self.term("="*50)
-        self.term("Ready to build? Say YES to proceed.")
-        self.term("="*50)
+    def save_current_file(self):
+        if hasattr(self, 'current_file') and self.current_file:
+            try:
+                content = self.editor.toPlainText()
+                self.current_file.write_text(content)
+                self.term(f"[SAVED: {self.current_file.name}]")
+            except Exception as e:
+                self.term(f"[ERROR: Cannot save - {e}]")
+        else:
+            self.term("[SAVE: No file open]")
 
     def show_docs(self):
         QDesktopServices.openUrl(QUrl("https://github.com/seraphonixstudios/CrackedCodev2"))
 
     def show_about(self):
-        QMessageBox.about(self, "ABOUT",
-            "CRACKEDCODE v2.2.0\n"
-            "ATLANTEAN NEURAL SYSTEM\n"
-            "Local AI Coding Assistant\n\n"
-            "Built with PyQt6 + Matrix Effects\n"
-            "MIT License"
+        QMessageBox.about(self, "ABOUT CRACKEDCODE",
+            f"CRACKEDCODE v2.3.9\n"
+            "ATLANTEAN NEURAL SYSTEM\n\n"
+            "Local AI Coding Assistant\n"
+            "100% Offline - No Cloud Required\n\n"
+            "Built with PyQt6 + Ollama\n"
+            "MIT License\n\n"
+            "Features:\n"
+            "- Agent Orchestration\n"
+            "- Voice Commands\n"
+            "- Image Analysis\n"
+            "- Code Generation\n"
+            "- Task Queue"
         )
 
     def set_mode(self, mode):
         if mode == "plan":
-            self.status_lbl.setText(f"PLAN: {'ON' if self.plan_btn.isChecked() else 'OFF'}")
+            state = "ON" if self.plan_btn.isChecked() else "OFF"
+            self.set_status(f"PLAN: {state}")
+            self.term(f"[MODE] PLAN: {state}")
         elif mode == "build":
-            self.status_lbl.setText(f"BUILD: {'ON' if self.build_btn.isChecked() else 'OFF'}")
-        self.term(f"MODE: {mode}")
+            state = "ON" if self.build_btn.isChecked() else "OFF"
+            self.set_status(f"BUILD: {state}")
+            self.term(f"[MODE] BUILD: {state}")
 
     def exec_code(self):
         code = self.editor.toPlainText()
         if not code.strip():
+            self.term("[EXECUTE: No code to run]")
             return
-        self.term(f">>> EXECUTING...\n{code[:200]}{'...' if len(code) > 200 else ''}")
-        self.status_lbl.setText("EXECUTING...")
+        
+        self.term(f">[EXECUTING] {len(code)} chars...")
+        self.set_status("EXECUTING...")
+        self.progress_bar.setValue(10)
+        
         try:
-            import sys
             import tempfile
             import subprocess
             import os
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+            
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False, encoding='utf-8') as f:
                 f.write(code)
                 tmp_path = f.name
-            result = subprocess.run([sys.executable, tmp_path], capture_output=True, text=True, timeout=30)
+            
+            self.progress_bar.setValue(30)
+            
+            result = subprocess.run(
+                [sys.executable, tmp_path],
+                capture_output=True,
+                text=True,
+                timeout=60,
+                encoding='utf-8'
+            )
+            
+            self.progress_bar.setValue(80)
+            
             try:
                 os.unlink(tmp_path)
             except Exception:
                 pass
+            
             if result.stdout:
-                self.term(f">>> OUTPUT:\n{result.stdout}")
+                self.term(f"[OUTPUT]:\n{result.stdout}")
             if result.stderr:
-                self.term(f">>> ERROR:\n{result.stderr}")
-            self.term(">>> DONE" if result.returncode == 0 else ">>> FAILED")
+                self.term(f"[ERROR]:\n{result.stderr}")
+            
+            if result.returncode == 0:
+                self.term("[DONE] Execution successful")
+                self.set_status("READY")
+            else:
+                self.term(f"[FAILED] Exit code: {result.returncode}")
+                self.set_status("ERROR")
+                
+        except subprocess.TimeoutExpired:
+            self.term("[ERROR] Execution timed out (60s)")
+            self.set_status("TIMEOUT")
         except Exception as e:
-            self.term(f">>> EXECUTION ERROR: {e}")
+            self.term(f"[ERROR] {type(e).__name__}: {e}")
+            self.set_status("ERROR")
         finally:
-            self.status_lbl.setText("READY")
-
-    def debug_code(self):
-        self.term(">>> DEBUG MODE...")
+            self.progress_bar.setValue(100)
+            QTimer.singleShot(500, lambda: self.progress_bar.setValue(0))
 
     def toggle_voice(self):
         if not self.voice or not self.voice.is_available:
@@ -831,40 +1225,14 @@ class CrackedCodeGUI(QMainWindow):
         if self.voice_recording:
             self.voice_recording = False
             self.voice_btn.setChecked(False)
-            self.status_lbl.setText("READY")
-            self.term("[VOICE: stopped]")
+            self.set_status("READY")
+            self.term("[VOICE] Recording stopped")
         else:
             self.voice_recording = True
             self.voice_btn.setChecked(True)
-            self.status_lbl.setText("RECORDING...")
-            self.term("[VOICE: recording - speak now]")
+            self.set_status("RECORDING...")
+            self.term("[VOICE] Recording... Speak now!")
             self._record_voice()
-
-    def detect_voice_command(self, text: str) -> Optional[str]:
-        text_lower = text.lower().strip()
-        for cmd, keywords in VOICE_COMMANDS.items():
-            for keyword in keywords:
-                if text_lower.startswith(keyword) or f" {keyword} " in text_lower:
-                    return cmd
-        return None
-
-    def process_voice_command(self, text: str):
-        cmd = self.detect_voice_command(text)
-        if cmd:
-            self.term(f"[CMD: detected '{cmd}' from '{text[:30]}...']")
-            if cmd == "stop":
-                self.stop_current_operation()
-                return True
-            elif cmd == "voice":
-                self.toggle_voice()
-                return True
-            elif cmd == "save":
-                self.exec_code()
-                return True
-            elif cmd == "copy":
-                self.copy_output()
-                return True
-        return False
 
     def _record_voice(self):
         if not self.voice_recording or not self.voice:
@@ -873,88 +1241,132 @@ class CrackedCodeGUI(QMainWindow):
         try:
             result = self.voice.listen_and_transcribe(duration=5.0)
             if result.success and result.text:
-                transcribed = result.text
-                self.term(f"[VOICE: '{transcribed[:50]}...']")
-
+                transcribed = result.text.strip()
+                self.term(f"[VOICE] '{transcribed}'")
+                
                 if not self.process_voice_command(transcribed):
                     self.term_input.setText(transcribed)
                     if self.orchestrator:
-                        agent, task_id = self.orchestrator.delegate(Intent.CHAT, transcribed)
-                        self.term(f"[DELEGATED: to {agent}]")
-                        self.update_agents_list()
+                        intent = self.engine.parse_intent(transcribed)
+                        agent, task = self.orchestrator.delegate(intent, transcribed)
+                        self.term(f"[DELEGATED] -> {agent}")
+                        self.update_orchestrator_display()
             elif result.error:
-                self.term(f"[VOICE ERROR: {result.error}]")
-
+                self.term(f"[VOICE ERROR] {result.error}")
+            
             if self.voice_recording:
-                QTimer.singleShot(500, self._record_voice)
+                QTimer.singleShot(300, self._record_voice)
         except Exception as e:
             logger.error(f"Voice recording error: {e}")
-            self.term(f"[VOICE ERROR: {e}]")
+            self.term(f"[VOICE ERROR] {e}")
             self.voice_recording = False
             self.voice_btn.setChecked(False)
-            self.status_lbl.setText("READY")
+            self.set_status("READY")
+
+    VOICE_COMMANDS = {
+        "stop": ["stop", "cancel", "abort", "exit", "quit", "halt"],
+        "execute": ["run", "execute", "start", "go", "do it"],
+        "save": ["save", "store", "write to file"],
+        "copy": ["copy", "clipboard", "copy output"],
+        "clear": ["clear", "wipe", "reset"],
+        "voice": ["voice", "speech", "record", "listen"],
+    }
+
+    def process_voice_command(self, text: str) -> bool:
+        text_lower = text.lower().strip()
+        
+        for cmd, keywords in self.VOICE_COMMANDS.items():
+            for keyword in keywords:
+                if keyword in text_lower:
+                    self.term(f"[CMD] Detected: {cmd}")
+                    if cmd == "stop":
+                        self.stop_current_operation()
+                    elif cmd == "execute":
+                        self.exec_code()
+                    elif cmd == "save":
+                        self.save_current_file()
+                    elif cmd == "copy":
+                        self.copy_output()
+                    elif cmd == "clear":
+                        self.clear_terminal()
+                    elif cmd == "voice":
+                        self.toggle_voice()
+                    return True
+        
+        return False
 
     def run_term(self):
         cmd = self.term_input.text().strip()
         if not cmd:
             return
-        self.term(f">> {cmd}")
+        
+        self.term(f"> {cmd}")
         self.term_input.clear()
         self.process_prompt(cmd)
 
     def process_prompt(self, text):
-        self.update_progress(10, "Processing...")
-        self.status_lbl.setText("PROCESSING...")
+        self.set_status("PROCESSING...")
+        self.progress_bar.setValue(10)
 
         if not self.plan_btn.isChecked():
-            self.term("[PLAN OFF]")
-            self.status_lbl.setText("WAITING")
-            self.update_progress(0)
+            self.term("[PLAN MODE OFF - processing skipped]")
+            self.set_status("WAITING")
+            self.progress_bar.setValue(0)
             return
 
         if not self.engine:
-            self.term("[NO ENGINE]")
-            self.status_lbl.setText("ERROR")
-            self.update_progress(0)
+            self.term("[ERROR] No engine available")
+            self.set_status("ERROR")
+            self.progress_bar.setValue(0)
             return
-
-        if self.orchestrator:
-            intent = self.engine.parse_intent(text)
-            agent, task_id = self.orchestrator.delegate(intent, text)
-            self.term(f"[DELEGATED: {text[:30]}... -> {agent}]")
-            self.update_agents_list()
-            self.update_progress(30)
 
         try:
             import asyncio
-            self.update_progress(50)
-            response = asyncio.run(self.engine.process(text))
-
-            self.update_progress(90)
-            if response.success:
-                self.term("<<< " + response.text[:500])
-            else:
-                self.term("[ERROR: " + str(response.error) + "]")
-
-            self.term(f"[took {response.execution_time:.2f}s]")
-
+            
+            intent = self.engine.parse_intent(text)
+            self.progress_bar.setValue(20)
+            
             if self.orchestrator:
-                self.orchestrator.complete_task(task_id, response.text)
-                self.update_agents_list()
-
+                agent, task = self.orchestrator.delegate(intent, text)
+                self.term(f"[INTENT] {intent.value} -> [AGENT] {agent}")
+                self.update_orchestrator_display()
+            
+            self.progress_bar.setValue(40)
+            
+            response = asyncio.run(self.engine.process(text))
+            
+            self.progress_bar.setValue(80)
+            
+            if response.success:
+                self.term(f"< {response.text[:800]}")
+                if len(response.text) > 800:
+                    self.term(f"< ... [{len(response.text) - 800} more chars]")
+            else:
+                self.term(f"[ERROR] {response.error}")
+            
+            self.term(f"[COMPLETED in {response.execution_time:.2f}s]")
+            
+            if self.orchestrator and 'task' in locals():
+                self.orchestrator.complete_task(task.task_id, response.text)
+                self.update_orchestrator_display()
+            
+            self.set_status("READY")
+            
         except Exception as e:
-            self.term("[ERROR: " + type(e).__name__ + "]")
-            if self.orchestrator and 'task_id' in locals():
-                self.orchestrator.fail_task(task_id, str(e))
-                self.update_agents_list()
+            self.term(f"[ERROR] {type(e).__name__}: {e}")
+            self.set_status("ERROR")
+            if 'task' in locals():
+                self.orchestrator.fail_task(task.task_id, str(e))
+                self.update_orchestrator_display()
+        
+        self.progress_bar.setValue(100)
+        QTimer.singleShot(500, lambda: self.progress_bar.setValue(0))
+        self.update_task_status()
 
-        self.update_progress(100, "Done")
-        self.status_lbl.setText("READY")
-        QTimer.singleShot(500, lambda: self.update_progress(0))
-
-    def term(self, text):
-        self.terminal.append(text)
-        self.terminal.moveCursor(QTextCursor.MoveOperation.End)
+    def term(self, text: str):
+        if hasattr(self, 'terminal'):
+            self.terminal.append(text)
+            self.terminal.moveCursor(QTextCursor.MoveOperation.End)
 
     def toggle_full(self):
         if self.isFullScreen():
@@ -964,9 +1376,11 @@ class CrackedCodeGUI(QMainWindow):
 
     def restore_state(self):
         g = self.settings.value("geometry")
-        if g: self.restoreGeometry(g)
+        if g:
+            self.restoreGeometry(g)
         s = self.settings.value("windowState")
-        if s: self.restoreState(s)
+        if s:
+            self.restoreState(s)
 
     def closeEvent(self, e):
         self.settings.setValue("geometry", self.saveGeometry())
@@ -987,6 +1401,9 @@ def main():
     if not check_single():
         QMessageBox.warning(None, "CrackedCode", "Already running!")
         return
+    
+    server = QLocalServer()
+    server.listen("CrackedCode_SingleInstance")
     
     app = QApplication(sys.argv)
     app.setApplicationName("CrackedCode")
