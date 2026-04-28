@@ -3,7 +3,7 @@
 Local AI Coding Assistant with Sci-Fi Neural Interface
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.3.8-blue?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Version-2.3.9-blue?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License">
   <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-orange?style=for-the-badge" alt="Platform">
   <img src="https://img.shields.io/badge/Python-3.10%2B-yellow?style=for-the-badge" alt="Python">
@@ -31,9 +31,9 @@ python test_system.py
 
 | Version | Features |
 |---------|----------|
-| 2.3.8 | Code generation pipeline, CLI CODE subcommand, Swarm integration, 32 E2E tests |
+| 2.3.9 | UX enhancements, Agent orchestration, Voice commands, Image paste/drop |
+| 2.3.8 | Code generation pipeline, CLI CODE subcommand, Swarm integration |
 | 2.3.5 | Project sidebar, agents panel, file watcher, git integration |
-| 2.3.0 | CrackedCodeEngine architecture |
 
 ---
 
@@ -127,13 +127,58 @@ python src/gui.py
 
 ### Features
 
-- **Left Sidebar**: Project files, AGENTS list, TASK status
+- **Left Sidebar**: Project files, AGENTS list, TASK status, Progress bar
 - **Voice Typing**: Click VOICE button to record and transcribe speech (faster-whisper)
 - **Code Editor**: Large text area with syntax
 - **Terminal**: Input prompts, view AI responses
-- **Toolbar**: PLAN/BUILD toggles, VOICE button, EXECUTE button
+- **Toolbar**: PLAN/BUILD toggles, VOICE, EXECUTE, COPY, CLEAR buttons
 - **Matrix Overlay**: Animated rain effect
 - **Atlantean Theme**: Green `#00FF41` on black
+
+### Voice Commands
+
+Natural language commands detected from voice input:
+
+| Command | Keywords | Action |
+|---------|----------|--------|
+| write | write, create, generate, make | Generate code |
+| execute | run, execute, start, launch | Run code |
+| debug | fix, bug, repair | Fix issues |
+| save | save, store | Save to file |
+| copy | copy, clipboard | Copy to clipboard |
+| stop | stop, cancel, abort | Stop operation |
+| voice | voice mode, speak | Toggle voice |
+
+### Agent Orchestration
+
+Tasks are automatically delegated to specialized agents:
+
+```python
+from src.gui import AgentOrchestrator, AgentTask
+
+orchestrator = AgentOrchestrator()
+
+# Tasks delegated based on intent
+agent, task_id = orchestrator.delegate(Intent.CODE, "write a function")
+print(f"Delegated to {agent}")
+```
+
+### Image Paste & Drop
+
+- **Paste images**: Ctrl+V in editor
+- **Drop images**: Drag & drop PNG/JPG/GIF/BMP files
+- Images automatically processed through vision model
+
+### Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| F12 | Toggle Dev Console |
+| Enter | Submit prompt |
+| Escape | Stop current operation |
+| Ctrl+V | Paste (image or text) |
+| Ctrl+C | Copy terminal output |
+| Ctrl+A | Select all in editor |
 
 ### Usage
 
@@ -401,4 +446,4 @@ MIT
 
 ---
 
-**CrackedCode v2.3.8** - The Final Boss of Local AI Coding Agents
+**CrackedCode v2.3.9** - The Final Boss of Local AI Coding Agents
