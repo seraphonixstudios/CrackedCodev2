@@ -12,7 +12,7 @@ Local AI Coding Assistant with Sci-Fi Neural Interface
 
 ## Overview
 
-CrackedCode is a **100% local AI coding assistant** featuring the Atlantean Neural Interface with parallel processing, plan/build modes, and Matrix-style effects. No cloud, no API keys - all running with Ollama.
+CrackedCode is a **100% local AI coding assistant** featuring the Atlantean Neural Interface with agent orchestration, task queue management, voice commands, and Matrix-style effects. No cloud, no API keys - all running with Ollama.
 
 ### Quick Start
 
@@ -31,109 +31,66 @@ python test_system.py
 
 | Version | Features |
 |---------|----------|
-| 2.3.9 | UX enhancements, Agent orchestration, Voice commands, Image paste/drop |
+| 2.3.9 | Complete UI overhaul, Task queue, Agent orchestration, Accessibility |
 | 2.3.8 | Code generation pipeline, CLI CODE subcommand, Swarm integration |
 | 2.3.5 | Project sidebar, agents panel, file watcher, git integration |
 
 ---
 
-## Code Generation Pipeline
-
-The core feature - generate, validate, and execute code from natural language prompts.
-
-### CLI CODE Subcommand
-
-```bash
-# Basic code generation
-python src/main.py code -p "write a hello world function"
-
-# Save to file
-python src/main.py code -p "create hello.py with hello world" -o hello.py
-
-# With validation
-python src/main.py code -p "write a sort function" --validate
-
-# With Swarm (parallel workers)
-python src/main.py code -p "write a parser" --swarm
-
-# Combined options
-python src/main.py code -p "create calculator.py" -o calculator.py --swarm --validate
-```
-
-### Code Generation API
-
-```python
-from src.engine import CrackedCodeEngine
-
-engine = CrackedCodeEngine()
-
-# Generate code from prompt
-response = engine.generate_code("write a function to add two numbers")
-print(response.text)
-
-# Generate and save to file
-response = engine.generate_and_save("create hello.py", "hello.py")
-
-# Validate code
-result = engine.validate_code("def foo(): return 1")
-
-# Execute code
-result = engine.execute_generated_code("print('Hello!')")
-print(result.stdout)
-```
-
-### Swarm Integration
-
-Multiple AI workers collaborate on complex tasks:
-
-```python
-from src.parallel_processor import CodeSwarmCoordinator
-
-swarm = CodeSwarmCoordinator(max_workers=4)
-
-# Generate with swarm
-result = swarm.generate_code("write a REST API")
-print(result.result)
-
-# Generate with validation
-result = swarm.generate_with_validation("create parser", "parser.py")
-print(result.success)
-```
-
----
-
-## Intent Detection
-
-The engine automatically detects what you want:
-
-| Intent | Keywords | Action |
-|--------|----------|--------|
-| CODE | write, create, generate | Generate code |
-| DEBUG | fix, bug, error | Find and fix issues |
-| REVIEW | review, analyze | Analyze code quality |
-| BUILD | build, plan, design | Create implementation plan |
-| EXECUTE | run, execute | Execute shell commands |
-| SEARCH | search, find, grep | Search files |
-| HELP | help | Get assistance |
-| CHAT | other | General conversation |
-
----
-
-## Desktop GUI
+## Desktop GUI (v2.3.9)
 
 ```bash
 python src/gui.py
 ```
 
+### New UI Features
+
+- **Dockable Panels**: Left control center with project files, agents, and task queue
+- **Task Queue Widget**: Real-time status updates with pending/running/completed tracking
+- **Agent Panel**: Visual status indicators with icons and capabilities
+- **File Tree Widget**: Hierarchical project navigation
+- **Menu Bar**: FILE/EDIT/VIEW/HELP with full keyboard shortcuts
+- **Status Bar**: Live clock, task counter, Ollama status
+- **Progress Bar**: Visual feedback during task processing
+
+### Layout
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ MENU BAR: File | Edit | View | Help                       │
+├─────────┬───────────────────────────────────────────────┤
+│ CONTROL │ TOOLBAR: [PLAN][BUILD] [EXECUTE][VOICE]       │
+│ CENTER  ├───────────────────────────────────────────────┤
+│         │                                              │
+│ Project │ CODE EDITOR                                   │
+│ Files   │                                              │
+│         │                                              │
+│ ─────── │                                              │
+│ AGENTS  │                                              │
+│ S A C E │                                              │
+│ R F     │                                              │
+│         ├───────────────────────────────────────────────┤
+│ ─────── │                                              │
+│ TASK    │ TERMINAL: > Command input...                  │
+│ QUEUE   │        [SEND]                                │
+│ ○ ○ ●   │                                              │
+│         ├───────────────────────────────────────────────┤
+│ Progress│ STATUS: READY | OLLAMA: ON | Tasks: 3/5      │
+└─────────┴───────────────────────────────────────────────┘
+```
+
 ### Features
 
-- **Left Sidebar**: Project files, AGENTS list, TASK status, Progress bar
-- **Voice Typing**: Click VOICE button to record and transcribe speech (faster-whisper)
-- **Code Editor**: Large text area with syntax
-- **Terminal**: Input prompts, view AI responses
-- **Toolbar**: PLAN/BUILD toggles, VOICE, EXECUTE, COPY, CLEAR buttons
-- **Matrix Overlay**: Animated rain effect
-- **Atlantean Theme**: Green `#00FF41` on black
+| Feature | Description |
+|---------|-------------|
+| **Project Files** | Tree view with hierarchical navigation |
+| **Agent Panel** | 6 agents with real-time status |
+| **Task Queue** | Live task tracking with status icons |
+| **Voice Typing** | Click VOICE to record (faster-whisper) |
+| **Code Editor** | Full text editor with syntax |
+| **Terminal** | AI response display and input |
+| **Matrix Overlay** | Animated rain effect |
+| **Atlantean Theme** | Green `#00FF41` on black |
 
 ### Voice Commands
 
@@ -141,122 +98,191 @@ Natural language commands detected from voice input:
 
 | Command | Keywords | Action |
 |---------|----------|--------|
-| write | write, create, generate, make | Generate code |
-| execute | run, execute, start, launch | Run code |
-| debug | fix, bug, repair | Fix issues |
-| save | save, store | Save to file |
-| copy | copy, clipboard | Copy to clipboard |
-| stop | stop, cancel, abort | Stop operation |
-| voice | voice mode, speak | Toggle voice |
-
-### Agent Orchestration
-
-Tasks are automatically delegated to specialized agents:
-
-```python
-from src.gui import AgentOrchestrator, AgentTask
-
-orchestrator = AgentOrchestrator()
-
-# Tasks delegated based on intent
-agent, task_id = orchestrator.delegate(Intent.CODE, "write a function")
-print(f"Delegated to {agent}")
-```
-
-### Image Paste & Drop
-
-- **Paste images**: Ctrl+V in editor
-- **Drop images**: Drag & drop PNG/JPG/GIF/BMP files
-- Images automatically processed through vision model
+| stop | stop, cancel, abort, quit | Stop operation |
+| execute | run, execute, go | Run code |
+| save | save, store | Save file |
+| copy | copy, clipboard | Copy output |
+| clear | clear, wipe | Clear terminal |
+| voice | voice, listen | Toggle voice mode |
 
 ### Keyboard Shortcuts
 
-| Key | Action |
-|-----|--------|
-| F12 | Toggle Dev Console |
-| Enter | Submit prompt |
-| Escape | Stop current operation |
-| Ctrl+V | Paste (image or text) |
-| Ctrl+C | Copy terminal output |
-| Ctrl+A | Select all in editor |
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+N` | New project |
+| `Ctrl+O` | Open project |
+| `Ctrl+S` | Save file |
+| `Ctrl+Q` | Quit |
+| `Ctrl+Shift+C` | Copy output |
+| `Ctrl+V` | Paste (image or text) |
+| `Ctrl+A` | Select all |
+| `Ctrl+Enter` | Send prompt |
+| `F11` | Toggle fullscreen |
+| `F12` | Dev console |
+| `Escape` | Stop operation |
 
-### Usage
+### Accessibility
 
-1. **NEW/OPEN** - Select project folder
-2. **Type prompt** + Enter to submit
-3. **EXECUTE** - Run code in editor
-4. **VOICE** - Click to speak your request
-5. **F12** - Dev console
+All widgets have `AccessibleName` for screen readers:
+- `AccessibleName="Code editor"` 
+- `AccessibleName="Command input"`
+- `AccessibleName="Send command"`
+
+---
+
+## Agent Orchestration
+
+Tasks are automatically delegated to specialized agents based on intent:
+
+```python
+from src.gui import AgentOrchestrator, AgentTask, TaskStatus
+
+orchestrator = AgentOrchestrator()
+
+# Delegate based on intent
+agent, task = orchestrator.delegate(Intent.CODE, "write a function")
+print(f"Delegated to {agent} for task {task.task_id}")
+
+# Check queue status
+status = orchestrator.get_queue_status()
+print(f"Pending: {status['pending']}, Running: {status['running']}")
+
+# Complete when done
+orchestrator.complete_task(task.task_id, "generated code here")
+```
+
+### Agent Types
+
+| Agent | Role | Capabilities |
+|-------|------|--------------|
+| Supervisor | Coordinates | Delegate, manage |
+| Architect | Design | Planning, architecture |
+| Coder | Implementation | Code, write, modify |
+| Executor | Execution | Run, execute, test |
+| Reviewer | Analysis | Review, debug, fix |
+| Searcher | Discovery | Search, find, grep |
+
+### Task States
+
+- `○` Pending
+- `◐` Running  
+- `●` Completed
+- `✕` Failed
+- `⊘` Cancelled
+
+---
+
+## Code Generation Pipeline
+
+```bash
+# CLI code generation
+python src/main.py code -p "write a hello world function"
+
+# Save to file
+python src/main.py code -p "create hello.py" -o hello.py
+
+# With validation
+python src/main.py code -p "write function" --validate
+
+# With Swarm
+python src/main.py code -p "write parser" --swarm
+```
+
+### API
+
+```python
+from src.engine import CrackedCodeEngine
+
+engine = CrackedCodeEngine()
+
+# Generate code
+response = engine.generate_code("write a function to add numbers")
+
+# Generate and save
+response = engine.generate_and_save("create hello.py", "hello.py")
+
+# Validate
+result = engine.validate_code("def foo(): return 1")
+
+# Execute
+result = engine.execute_generated_code("print('Hello!')")
+```
+
+---
+
+## Intent Detection
+
+The engine automatically detects user intent:
+
+| Intent | Keywords | Agent |
+|--------|----------|-------|
+| CODE | write, create, generate | Coder |
+| DEBUG | fix, bug, error | Reviewer |
+| REVIEW | review, analyze | Reviewer |
+| BUILD | build, plan, design | Architect |
+| EXECUTE | run, execute | Executor |
+| SEARCH | search, find, grep | Searcher |
+| HELP | help, assist | Supervisor |
+| CHAT | other | Coder |
+
+---
+
+## Image Paste & Drop
+
+- **Paste images**: `Ctrl+V` in editor
+- **Drop images**: Drag & drop PNG/JPG/GIF/BMP
+- Images processed through vision model (llava)
 
 ---
 
 ## Parallel Processor
 
-Multi-core task execution with multiple modes:
-
 ```python
 from src.parallel_processor import (
-    ParallelExecutor, PipelineProcessor, UnifiedCoordinator,
+    ParallelExecutor, PipelineProcessor, CodeSwarmCoordinator,
     ExecutionMode, create_task, batch_create_tasks
 )
-```
 
-### Parallel Execution
-
-```python
+# Parallel execution
 executor = ParallelExecutor(max_workers=4, mode=ExecutionMode.PARALLEL)
 executor.start()
-
-task_specs = [
-    {"id": "task1", "func": worker_add, "args": (5, 3)},
-    {"id": "task2", "func": worker_multiply, "args": (4, 7)},
-]
-tasks = batch_create_tasks(task_specs)
 task_ids = executor.submit_batch(tasks)
 results = executor.wait_for(task_ids)
-
 executor.stop()
-```
 
-### Pipeline Processing
-
-```python
+# Pipeline processing
 pipeline = PipelineProcessor()
 pipeline.add_stage("stage1", lambda x: x * 2)
 pipeline.add_stage("stage2", lambda x: x + 1)
-result = pipeline.execute(5)  # Result: 11
+result = pipeline.execute(5)  # 11
 ```
 
-### Execution Modes
+---
 
-| Mode | Description |
-|------|-------------|
-| SEQUENTIAL | One task at a time |
-| PARALLEL | Multiple workers |
-| PIPELINE | Staged processing |
-| UNIFIED | Multi-method consensus |
+## Voice Typing
+
+```python
+from src.voice_typing import VoiceTyping
+
+voice = VoiceTyping(model_size="base")
+
+# Record and transcribe
+result = voice.listen_and_transcribe(duration=5.0)
+print(result.text, result.confidence)
+
+# Detect voice commands
+cmd = voice.detect_command("stop recording")
+print(cmd)  # "stop"
+```
 
 ---
 
 ## Plan/Build Mode Toggle
 
-```python
-from src.atlan_ui import atlan_ui
-
-# PLAN only - analyze and plan
-atlan_ui.set_mode(plan=True, build=False)
-
-# PLAN + BUILD - full workflow
-atlan_ui.set_mode(plan=True, build=True)
-
-# Execute workflow
-results = atlan_ui.execute_plan("build authentication", 5)
-```
-
 | Mode | Function |
 |------|----------|
-| PLAN only | Analyze and plan tasks |
-| BUILD only | Execute existing plan |
+| PLAN only | Analyze and plan |
+| BUILD only | Execute plan |
 | PLAN + BUILD | Full workflow |
 
 ---
@@ -268,88 +294,13 @@ from src.atlan_ui import *
 
 atlan_ui.print_system_info()
 atlan_ui.loading_sequence("INITIALIZING")
-atlan_ui.print_data_stream("SYSTEM ONLINE", "hex", 1.0)
-atlan_ui.print_status({"NEURAL CORE": "online"})
+atlan_ui.print_data_stream("ONLINE", "hex", 1.0)
 
-# UI Effects
+# Effects
 GlitchEffect.glitch_text("SYSTEM")
 NeuralPulse.progress_bar(7, 10)
 HexGrid.hex_pattern(20, 5)
 MatrixRain(width=40, height=20).start(3.0)
-```
-
----
-
-## Vision System
-
-```python
-from src.main import VisionEngine
-
-vision = VisionEngine(model="llava:13b-gpu")
-
-# Analyze image
-analysis = vision.analyze_image("screenshot.png")
-
-# Extract text (OCR)
-text = vision.extract_text("screenshot.png")
-```
-
----
-
-## Voice Typing
-
-Speech-to-text using faster-whisper:
-
-```python
-from src.voice_typing import VoiceTyping
-
-voice = VoiceTyping()
-result = voice.transcribe()
-print(result.text, result.confidence)
-```
-
----
-
-## CrackedCodeEngine API
-
-```python
-from src.engine import get_engine, Intent
-
-engine = get_engine({"model": "qwen3:8b-gpu"})
-
-status = engine.get_status()
-print(f"Ollama: {status['ollama_available']}")
-print(f"Models: {status['ollama_models']}")
-
-import asyncio
-response = asyncio.run(engine.process("Hello"))
-print(response.text)
-```
-
-### Available Methods
-
-| Method | Description |
-|--------|-------------|
-| `generate_code(prompt)` | Generate code from text |
-| `generate_and_save(prompt, filepath)` | Generate and save to file |
-| `validate_code(code)` | Validate syntax |
-| `execute_generated_code(code)` | Execute in sandbox |
-| `process(text)` | Process natural language |
-| `get_status()` | Get Ollama status |
-
----
-
-## Natural Prompt Engine
-
-```python
-from src.main import NaturalTextPromptEngine, Intent, PromptStyle
-
-engine = NaturalTextPromptEngine()
-result = engine.process("fix the bug in auth.py")
-
-# result = {'intent': 'debug', 'entities': ['auth.py'], ...}
-
-engine.set_style(PromptStyle.TECHNICAL)
 ```
 
 ---
@@ -359,18 +310,17 @@ engine.set_style(PromptStyle.TECHNICAL)
 ```
 crackedcode/
 ├── src/
-│   ├── main.py              # Main application (CLI)
+│   ├── main.py              # CLI application
 │   ├── gui.py               # PyQt6 Desktop GUI
-│   ├── atlan_ui.py         # Sci-Fi UI effects
-│   ├── voice_typing.py     # Voice typing (faster-whisper)
+│   ├── atlan_ui.py          # Sci-Fi UI effects
+│   ├── voice_typing.py      # Voice typing
 │   ├── parallel_processor.py # Parallel executor
-│   ├── engine.py           # CrackedCodeEngine
-│   ├── file_watcher.py    # File change monitor
-│   └── git_integration.py  # Git status/diffs
+│   ├── engine.py            # CrackedCodeEngine
+│   ├── file_watcher.py      # File monitor
+│   └── git_integration.py  # Git integration
 ├── tests/
 ├── test_system.py           # 32 E2E tests
 ├── config.json
-├── pyproject.toml
 └── README.md
 ```
 
@@ -387,13 +337,13 @@ crackedcode/
 }
 ```
 
-### Available Models
+### Models
 
 | Model | Purpose |
 |-------|---------|
-| qwen3:8b-gpu | Default code generation |
-| dolphin-llama3:8b-gpu | General conversation |
-| llava:13b-gpu | Vision/image analysis |
+| qwen3:8b-gpu | Code generation |
+| dolphin-llama3:8b-gpu | Conversation |
+| llava:13b-gpu | Vision |
 
 ---
 
@@ -403,40 +353,19 @@ crackedcode/
 python test_system.py
 ```
 
-### Test Coverage (32 tests)
+### Test Coverage
 
 - Module imports (7)
-- Configuration & Engine (4)
+- Configuration (4)
 - Ollama Bridge (3)
-- Intent parsing (8 intents)
-- Code Execution (sandboxed)
+- Intent parsing (8)
+- Code Execution
 - GUI Components
-- Voice Typing (faster-whisper)
-- File Watcher
-- Git Integration
+- Voice Typing
 - Parallel Executor
 - Pipeline Processor
-- Code Generation Pipeline
-- Code Save & Execute
+- Code Generation
 - E2E Flows
-
----
-
-## Environment Variables
-
-| Variable | Values | Description |
-|----------|--------|-------------|
-| CRACKEDCODE_DEBUG | true/false | Enable debug logging |
-| CRACKEDCODE_VERBOSE | true/false | Verbose output |
-
----
-
-## Keyboard Shortcuts
-
-| Key | Action |
-|-----|--------|
-| F12 | Toggle Dev Console |
-| Enter | Submit prompt |
 
 ---
 
