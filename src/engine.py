@@ -2,6 +2,7 @@ import sys
 import os
 import json
 import logging
+import subprocess
 import threading
 import time
 from pathlib import Path
@@ -169,15 +170,59 @@ Requirements:
 - Add proper error handling
 - Include type hints and docstrings
 - Write clean, production-ready code
+- Follow PEP 8 style guidelines
 
 Task: {prompt}
 
 Output the code in a code block.
 """,
-        Intent.DEBUG: "Find and fix bugs.\n\nTask: {prompt}",
-        Intent.REVIEW: "Analyze code quality.\n\nTask: {prompt}",
-        Intent.BUILD: "Create implementation plan.\n\nTask: {prompt}",
+        Intent.DEBUG: """Find and fix bugs in the following code.
+
+Analysis Steps:
+1. Identify the bug or issue
+2. Explain the root cause
+3. Provide the fixed code
+
+Task: {prompt}
+
+Output analysis and fixed code in a code block.
+""",
+        Intent.REVIEW: """Analyze and review the following code for quality.
+
+Check:
+1. Code structure and organization
+2. Error handling
+3. Performance considerations
+4. Security issues
+5. Best practices
+
+Provide a detailed review with suggestions.
+
+Task: {prompt}
+
+Output review in a code block.
+""",
+        Intent.BUILD: """Create a detailed implementation plan for this task.
+
+Include:
+1. Overall architecture
+2. File structure
+3. Step-by-step implementation
+4. Dependencies required
+5. Testing strategy
+
+Task: {prompt}
+
+Output plan in a code block.
+""",
     }
+    
+    DEBUG_KEYWORDS = ["debug", "fix", "bug", "error", "issue", "problem", "crash", "broken"]
+    CODE_KEYWORDS = ["write", "create", "generate", "build", "make", "new", "implement"]
+    REVIEW_KEYWORDS = ["review", "analyze", "check", "audit", "assess", "improve"]
+    BUILD_KEYWORDS = ["build", "plan", "design", "architecture", "structure", "outline"]
+    EXECUTE_KEYWORDS = ["run", "execute", "test", "start", "launch"]
+    SEARCH_KEYWORDS = ["search", "find", "grep", "locate", "look", "where"]
 
     def __init__(self, config: Dict = None):
         self.config = config or {}
@@ -201,16 +246,38 @@ Output the code in a code block.
         return {"version": "2.3.8", "model": self.model, "plan": self.plan_enabled, "build": self.build_enabled,
                 "ollama_available": ollama["available"], "ollama_models": ollama["models"], "history_length": self.session.history_len()}
 
-    def parse_intent(self, prompt: str) -> PromptRequest:
-        intent = Intent.CHAT
+    def parse_intent(self, prompt: str, confidence_threshold: float = 0.5) -> PromptRequest:
+        """Parse user intent from prompt with improved keyword matching."""
         text = prompt.lower()
-        if any(k in text for k in ["debug", "fix", "bug"]): intent = Intent.DEBUG
-        elif any(k in text for k in ["write", "create"]): intent = Intent.CODE
-        elif any(k in text for k in ["review"]): intent = Intent.REVIEW
-        elif any(k in text for k in ["build", "plan"]): intent = Intent.BUILD
-        elif any(k in text for k in ["run", "execute"]): intent = Intent.EXECUTE
-        elif any(k in text for k in ["search", "find", "grep", "locate"]): intent = Intent.SEARCH
-        return PromptRequest(text=prompt, intent=intent)
+        
+        keyword_scores = {
+            Intent.DEBUG: sum(1 for k in self.DEBUG_KEYWORDS if k in text),
+            Intent.CODE: sum(1 for k in self.CODE_KEYWORDS if k in text),
+            Intent.REVIEW: sum(1 for k in self.REVIEW_KEYWORDS if k in text),
+            Intent.BUILD: sum(1 for k in self.BUILD_KEYWORDS if k in text),
+            Intent.EXECUTE: sum(1 for k in self.EXECUTE_KEYWORDS if k in text),
+            Intent.SEARCH: sum(1 for k in self.SEARCH_KEYWORDS if k in text),
+        }
+        
+        max_score = max(keyword_scores.values())
+        
+        if max_score >= confidence_threshold * 10:
+            intent = max(keyword_scores, key=keyword_scores.get)
+        else:
+            intent = Intent.CHAT
+        
+        context = {
+            "keyword_matches": {k.value: v for k, v in keyword_scores.items()},
+            "confidence": max_score / 10.0,
+            "raw_keywords": [k for k in text.split() if len(k) > 3],
+        }
+        
+        return PromptRequest(
+            text=prompt, 
+            intent=intent, 
+            context=context,
+            timestamp=datetime.now()
+        )
 
     def _extract_code_from_response(self, text: str) -> tuple[str, str]:
         """Extract code from response text, handling code blocks."""
@@ -304,17 +371,180 @@ Output the code in a code block.
         return None
 
     async def process(self, prompt: str) -> AgentResponse:
+        """Process a user prompt with full intent detection and execution."""
         request = self.parse_intent(prompt)
+        
         if not self.plan_enabled and request.intent != Intent.CHAT:
             return AgentResponse(success=False, text="Plan disabled")
-        logger.info(f"Processing: {request.intent.value}")
+        
+        logger.info(f"Processing: {request.intent.value} (confidence: {request.context.get('confidence', 0):.2f})")
+        
         if request.intent == Intent.EXECUTE:
-            return self.executor.run_shell(prompt.replace("run ", "").replace("execute ", "").strip())
+            cmd = prompt.replace("run ", "").replace("execute ", "").strip()
+            return self.executor.run_shell(cmd)
+        
+        if request.intent == Intent.SEARCH:
+            return self._search_files(prompt)
+        
         template = self.PROMPT_TEMPLATES.get(request.intent, "{prompt}")
         response = self.ollama.chat(template.format(prompt=request.text))
+        
         if response.success:
             self.session.add_turn(request, response)
+        
         return response
+    
+    def _search_files(self, prompt: str) -> AgentResponse:
+        """Search for files or content in the project."""
+        search_terms = prompt.lower().replace("search ", "").replace("find ", "").replace("grep ", "").strip()
+        
+        results = []
+        search_path = Path(self.project_root)
+        
+        for pattern in ["*.py", "*.json", "*.txt", "*.md", "*.yaml", "*.yml", "*.toml"]:
+            for file in search_path.rglob(pattern):
+                if self._should_ignore(file):
+                    continue
+                
+                try:
+                    content = file.read_text(errors='ignore')
+                    if search_terms in content.lower():
+                        lines = content.split('\n')
+                        matching_lines = [f"{i+1}: {line}" for i, line in enumerate(lines) if search_terms in line.lower()]
+                        results.append(f"=== {file.relative_to(search_path)} ===")
+                        results.extend(matching_lines[:10])
+                except Exception:
+                    continue
+        
+        if results:
+            return AgentResponse(success=True, text=f"Search results for '{search_terms}':\n\n" + "\n".join(results))
+        else:
+            return AgentResponse(success=True, text=f"No results found for '{search_terms}'")
+    
+    def _should_ignore(self, path: Path) -> bool:
+        """Check if a path should be ignored in searches."""
+        ignore_dirs = {".git", "__pycache__", ".venv", "venv", "node_modules", ".idea", ".vscode", ".pytest_cache", "logs", ".env"}
+        ignore_patterns = {".pyc", ".pyo", ".so", ".dll", ".dylib"}
+        
+        for part in path.parts:
+            if part in ignore_dirs:
+                return True
+        
+        if path.suffix in ignore_patterns:
+            return True
+        
+        return False
+    
+    def validate_code(self, code: str) -> Dict:
+        """Validate generated code for syntax and basic issues."""
+        import ast
+        import re
+        
+        result = {
+            "valid": True,
+            "errors": [],
+            "warnings": [],
+            "line_count": len(code.split('\n')),
+        }
+        
+        try:
+            ast.parse(code)
+        except SyntaxError as e:
+            result["valid"] = False
+            result["errors"].append(f"Syntax error at line {e.lineno}: {e.msg}")
+        
+        if "import " not in code and "from " not in code:
+            result["warnings"].append("No imports found - code may be incomplete")
+        
+        if "def " not in code and "class " not in code:
+            result["warnings"].append("No functions or classes found")
+        
+        if not code.strip().endswith('\n'):
+            result["warnings"].append("File does not end with newline")
+        
+        if len(code) > 10000:
+            result["warnings"].append("Code exceeds 10000 characters - consider splitting")
+        
+        for i, line in enumerate(code.split('\n'), 1):
+            if len(line) > 120:
+                result["warnings"].append(f"Line {i} exceeds 120 characters")
+        
+        return result
+    
+    def execute_generated_code(self, code: str, timeout: int = 30) -> AgentResponse:
+        """Execute generated code in a sandboxed environment."""
+        import tempfile
+        import ast
+        
+        validation = self.validate_code(code)
+        
+        if not validation["valid"]:
+            return AgentResponse(
+                success=False, 
+                error=f"Code validation failed: {validation['errors'][0]}"
+            )
+        
+        try:
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+                f.write(code)
+                temp_path = f.name
+            
+            result = subprocess.run(
+                [sys.executable, temp_path],
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                cwd=self.project_root
+            )
+            
+            os.unlink(temp_path)
+            
+            output = result.stdout
+            if result.stderr:
+                output += f"\n--- STDERR ---\n{result.stderr}"
+            
+            return AgentResponse(
+                success=result.returncode == 0,
+                text=output,
+                execution_time=0.0
+            )
+            
+        except subprocess.TimeoutExpired:
+            return AgentResponse(success=False, error=f"Execution timed out after {timeout}s")
+        except Exception as e:
+            return AgentResponse(success=False, error=str(e))
+    
+    def get_code_stats(self, code: str) -> Dict:
+        """Get statistics about generated code."""
+        import ast
+        
+        lines = code.split('\n')
+        
+        stats = {
+            "total_lines": len(lines),
+            "code_lines": len([l for l in lines if l.strip() and not l.strip().startswith('#')]),
+            "comment_lines": len([l for l in lines if l.strip().startswith('#')]),
+            "blank_lines": len([l for l in lines if not l.strip()]),
+            "functions": 0,
+            "classes": 0,
+            "imports": 0,
+        }
+        
+        try:
+            tree = ast.parse(code)
+            
+            for node in ast.walk(tree):
+                if isinstance(node, ast.FunctionDef):
+                    stats["functions"] += 1
+                elif isinstance(node, ast.ClassDef):
+                    stats["classes"] += 1
+                elif isinstance(node, (ast.Import, ast.ImportFrom)):
+                    stats["imports"] += 1
+                    
+        except SyntaxError:
+            pass
+        
+        return stats
 
 
 _engine: Optional[CrackedCodeEngine] = None

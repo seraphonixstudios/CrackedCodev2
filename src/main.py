@@ -2132,6 +2132,15 @@ def main():
     parser = argparse.ArgumentParser(
         description="CrackedCode - SOTA Local Multi-Agent Coding Swarm"
     )
+    # Subcommand support
+    subparsers = parser.add_subparsers(dest="subcmd")
+    code_parser = subparsers.add_parser("code", help="Generate code via CODE intent")
+    code_parser.add_argument("-p", "--prompt", required=True, help="Code generation prompt")
+    code_parser.add_argument("-o", "--output", dest="output", required=False, help="Optional output file path to save code")
+    code_parser.add_argument("-c", "--config", dest="config", required=False, help="Path to config JSON file")
+    code_parser.add_argument("--swarm", action="store_true", help="Execute code generation via swarm coordinator")
+    code_parser.add_argument("--validate", action="store_true", help="Validate generated code before returning")
+
     parser.add_argument(
         "-c", "--config",
         help="Path to config JSON file",
@@ -2155,6 +2164,54 @@ def main():
 
     args = parser.parse_args()
 
+    # Handle CODE subcommand first
+    if getattr(args, "subcmd", None) == "code":
+        config = _load_config_from_path(getattr(args, "config", None))
+        prompt = getattr(args, "prompt")
+        out = getattr(args, "output", None)
+        use_swarm = getattr(args, "swarm", False)
+        validate = getattr(args, "validate", False)
+        
+        if use_swarm:
+            from src.parallel_processor import CodeSwarmCoordinator
+            coordinator = CodeSwarmCoordinator(max_workers=4)
+            coordinator.start()
+            try:
+                if validate:
+                    result = coordinator.generate_with_validation(prompt, out)
+                else:
+                    result = coordinator.generate_code(prompt, out)
+            finally:
+                coordinator.stop()
+            
+            if result.get("success"):
+                if out:
+                    print(f"CODE generated and saved to: {result.get('filepath')}")
+                else:
+                    print(result.get("code", "")[:500])
+                if validate and result.get("validation"):
+                    v = result["validation"]
+                    print(f"Validation: {'PASS' if v.get('valid') else 'FAIL'}")
+                    if v.get("warnings"):
+                        print(f"Warnings: {v['warnings']}")
+                return 0
+            else:
+                print(f"Code generation failed: {result.get('error', 'Unknown error')}")
+                return 1
+        else:
+            eng = get_engine(config or {})
+            resp = eng.generate_and_save(prompt, out) if out else eng.generate_code(prompt)
+            if resp and resp.success:
+                if validate:
+                    v = eng.validate_code(resp.text)
+                    print(f"Validation: {'PASS' if v.get('valid') else 'FAIL'}")
+                    if v.get("warnings"):
+                        print(f"Warnings: {v['warnings']}")
+                print(resp.text[:500])
+                return 0
+            print(resp.text if resp else 'Code generation failed')
+            return 1
+
     app = CrackedCode(args.config)
 
     if args.model:
@@ -2167,6 +2224,32 @@ def main():
         app.config.set("push_to_talk", True)
 
     app.run()
+
+def cli_code_generate(prompt: str, output_path: str | None = None, config: dict | None = None) -> dict:
+    """CLI helper: generate code from a prompt and optionally save to a file.
+
+    This is a lightweight entry point intended for tests and scripting.
+    It bypasses the interactive UI and uses the engine directly.
+    """
+    eng = get_engine(config or {})
+    resp = eng.generate_and_save(prompt, output_path) if output_path else eng.generate_code(prompt)
+    return {
+        "success": resp.success,
+        "path": output_path or None,
+        "text": resp.text if hasattr(resp, 'text') else str(resp)
+    }
+
+
+def _load_config_from_path(path: str | None) -> dict:
+    if not path:
+        return {}
+    try:
+        import json as _json
+        with open(path, 'r', encoding='utf-8') as f:
+            return _json.load(f)
+    except Exception:
+        return {}
+
 
 
 if __name__ == "__main__":

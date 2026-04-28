@@ -1003,6 +1003,135 @@ def test_exec_code_in_gui() -> bool:
     except Exception as e:
         return FAIL("Exec code in GUI", str(e)[:50])
 
+def test_engine_code_generation_unit() -> bool:
+    print_header("CODE GENERATION UNIT")
+    try:
+        from src.engine import CrackedCodeEngine
+        eng = CrackedCodeEngine({})
+
+        class DummyResp:
+            def __init__(self):
+                self.success = True
+                self.text = "```python\ndef foo():\n    return 1\n```"
+
+        class DummyOllama:
+            def chat(self, model=None, messages=None, options=None):
+                return DummyResp()
+
+        eng.ollama = DummyOllama()
+        resp = eng.generate_code("write a function foo")
+        if resp and resp.success and "def foo" in resp.text:
+            return True
+        return False
+    except Exception as e:
+        return FAIL("CODE GEN UNIT", str(e)[:50])
+
+def test_code_extraction_unit() -> bool:
+    print_header("CODE EXTRACTION")
+    try:
+        from src.engine import CrackedCodeEngine
+        eng = CrackedCodeEngine({})
+        code, fname = eng._extract_code_from_response("Here's code:\n```python\ndef hi():\n  return 2\n```")
+        if "def hi" in code and fname.endswith('.py'):
+            return True
+        return False
+    except Exception as e:
+        return FAIL("CODE EXTRACTION", str(e)[:50])
+
+def test_generate_and_save_unit() -> bool:
+    print_header("CODE SAVE UNIT")
+    try:
+        from src.engine import CrackedCodeEngine
+        eng = CrackedCodeEngine({"project_root": "."})
+        class DummyResp:
+            def __init__(self):
+                self.success = True
+                self.text = "```python\ndef add(a,b):\n    return a+b\n```"
+        class DummyOllama:
+            def chat(self, model=None, messages=None, options=None):
+                return DummyResp()
+        eng.ollama = DummyOllama()
+        with __import__('tempfile').TemporaryDirectory() as td:
+            out_path = __import__('pathlib').Path(td) / 'gen.py'
+            resp = eng.generate_and_save("generate add function", str(out_path))
+            if not resp.success:
+                return False
+            return __import__('pathlib').Path(out_path).exists()
+    except Exception as e:
+        return FAIL("CODE SAVE UNIT", str(e)[:50])
+
+def test_cli_code_generate_entrypoint() -> bool:
+    print_header("CLI CODE GENERATE ENTRYPOINT")
+    try:
+        from src.main import cli_code_generate
+        res = cli_code_generate("generate sample code", output_path=None, config={})
+        if isinstance(res, dict) and "success" in res:
+            return True
+        return False
+    except Exception as e:
+        return FAIL("CLI CODE GENERATE ENTRYPOINT", str(e)[:50])
+
+def test_engine_validation_execution_unit() -> bool:
+    print_header("ENGINE VALIDATION/EXECUTION UNIT")
+    try:
+        from src.engine import CrackedCodeEngine
+        eng = CrackedCodeEngine({})
+        good = eng.validate_code("def foo():\n    return 1\n")
+        bad = eng.validate_code("def foo(:\n    pass\n")
+        return isinstance(good, dict) and good.get('valid', True) and isinstance(bad, dict)
+    except Exception as e:
+        return FAIL("ENGINE VALIDATION UNIT", str(e)[:50])
+
+def test_engine_execution_unit() -> bool:
+    print_header("ENGINE EXECUTION UNIT")
+    try:
+        from src.engine import CrackedCodeEngine
+        eng = CrackedCodeEngine({})
+        code = "print('hello from test')\n"
+        resp = eng.execute_generated_code(code)
+        return resp.success and 'hello' in resp.text
+    except Exception as e:
+        return FAIL("ENGINE EXECUTION UNIT", str(e)[:50])
+
+def test_swarm_coordinator_code() -> bool:
+    print_header("SWARM COORDINATOR CODE")
+    try:
+        from src.parallel_processor import CodeSwarmCoordinator
+        coord = CodeSwarmCoordinator(max_workers=2)
+        coord.start()
+        try:
+            result = coord.generate_code("write a function that adds two numbers", None)
+            coord.stop()
+            if result.get("success"):
+                PASS("Swarm code generation success")
+                return True
+            else:
+                FAIL("Swarm code generation", result.get("error", "Unknown"))
+                return False
+        finally:
+            coord.stop()
+    except Exception as e:
+        return FAIL("SWARM COORDINATOR", str(e)[:50])
+
+def test_swarm_with_validation() -> bool:
+    print_header("SWARM VALIDATION")
+    try:
+        from src.parallel_processor import CodeSwarmCoordinator
+        coord = CodeSwarmCoordinator(max_workers=2)
+        coord.start()
+        try:
+            result = coord.generate_with_validation("write hello world function", None)
+            coord.stop()
+            if result.get("success") and "validation" in result:
+                PASS("Swarm validation success")
+                return True
+            FAIL("Swarm validation", "No validation")
+            return False
+        finally:
+            coord.stop()
+    except Exception as e:
+        return FAIL("SWARM VALIDATION", str(e)[:50])
+
 
 def main() -> int:
     print(f"\n{'='*60}\n  CRACKEDCODE v2.3.8 - E2E TEST SUITE\n{'='*60}\n")
@@ -1038,6 +1167,8 @@ def main() -> int:
         ("Code Generation Pipeline", test_code_generation_pipeline),
         ("Code Save and Execute", test_code_save_and_execute),
         ("Exec Code in GUI", test_exec_code_in_gui),
+        ("Swarm Coordinator Code", test_swarm_coordinator_code),
+        ("Swarm Validation", test_swarm_with_validation),
     ]
     
     results: list[tuple[str, bool]] = []

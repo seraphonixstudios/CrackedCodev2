@@ -101,6 +101,109 @@ class MatrixUI:
         "data": ["▌", "▀", "▐", "▄"],
     }
     
+    ASCII_ART = {}
+    
+    @classmethod
+    def load_ascii_art(cls):
+        cls.ASCII_ART = {
+            "skull": [
+                "      ████████",
+                "    ██          ██",
+                "  ██    ██  ██    ██",
+                "  ██    ██  ██    ██",
+                "  ██              ██",
+                "    ██          ██",
+                "      ████████",
+            ],
+            "robot": [
+                "   ▄▄▄▄▄▄▄▄▄▄▄▄▄▄",
+                "  █              █",
+                "  █  ◉        ◉  █",
+                "  █  ◉        ◉  █",
+                "  █     ░▒░     █",
+                "  █    █████    █",
+                "  █              █",
+                "   ▀▀▀▀▀▀│▀▀▀▀▀▀",
+                "      ╔══╩══╗",
+                "      ║    ║",
+            ],
+            "dragon": [
+                "              ><>",
+                "             <>  <>",
+                "            <> <><> <>",
+                "           <>  <>    <>",
+                "          <>   <>  <>",
+                "         <>    <>  <>",
+                "        <>  █    █  <>",
+                "       <>  █ ██ █ █ <>",
+                "      <>   █ ██ █ █  <>",
+                "     <>    █      █   <>",
+                "    <>     █      █    <>",
+                "   <>      █ ██ █ █     <>",
+                "  <>       █ ██ █ █      <>",
+                " <>        █      █       <>",
+                "<>▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒>",
+            ],
+            "circuit_heart": [
+                "    ┌─┐     ┌─┐",
+                "   ╭┤├╮   ╭┤├╮",
+                "   ││││   ││││",
+                "   ╰┴├╯   ╰┴├╯",
+                "    └─┘     └─┘",
+                "     ╲ ╱   ╲ ╱",
+                "      ╳     ╳",
+                "     ╱ ╲─┐ ╱ ╲",
+                "    ┌────┴────┐",
+                "    │  ◉  ◉  │",
+                "    │  ████  │",
+                "    └────┬────┘",
+                "        │││",
+                "    █───┴───┈█",
+                "  ██         ██",
+            ],
+            "neural_network": [
+                "       ◉──◉──◉",
+                "      ╱ │╲ │╱ │",
+                "     ◉  ◉  ◉  ◉",
+                "    ╱│╲ │╱│╲ │",
+                "   ◉ │◉ │◉ │◉",
+                "  ╱│╲│╲��╱│╲│╱│╲",
+                " ◉  ◉  ◉  ◉  ◉",
+            ],
+            "system_core": [
+                "   ╔═══════════════╗",
+                "   ║  ◉  ◉  ◉  ◉  ║",
+                "   ║ ◉═╪═◉═╪═◉═╪═◉ ║",
+                "   ║  ◉══╬══◉  ◉  ║",
+                "   ║ ◉═╪═◉═╪═◉═╪═◉ ║",
+                "   ║  ◉  ◉  ◉  ◉  ║",
+                "   ╚═══════════════╝",
+            ],
+            "data_cube": [
+                "    ╔══╗",
+                "   ╔╝▓▓╚╗",
+                "  ╔╝▓▓▓╚╗",
+                " ╔╝▓▓▓▓╚╗",
+                " ║▓▓▓▓▓║",
+                " ║▓▓▓▓╚╝",
+                " ║▓▓╚╝",
+                " ╚╝",
+            ],
+            "quantum": [
+                "    ◉",
+                "   ╱│╲",
+                "  ╱ │ ╲",
+                " ◉──┼──◉",
+                " ╲ │ ╱",
+                "  ╲│╱",
+                "   ◉",
+                "   │",
+                "  ◉┼◉",
+            ],
+        }
+
+MatrixUI.load_ascii_art()
+    
 BANNERS = {
         "atlan": [
             "============================================================",
@@ -123,6 +226,140 @@ BANNERS = {
             "============================================================",
         ],
     }
+
+ASCII_ART = {
+    "skull": [
+        "      ████████",
+        "    ██          ██",
+        "  ██    ██  ██    ██",
+        "  ██    ██  ██    ██",
+        "  ██              ██",
+        "    ██          ██",
+        "      ████████",
+    ],
+    "robot": [
+        "   ▄▄▄▄▄▄▄▄▄▄▄▄▄▄",
+        "  █              █",
+        "  █  ◉        ◉  █",
+        "  █  ◉        ◉  █",
+        "  █     ░▒░     █",
+        "  █    █████    █",
+        "  █              █",
+        "   ▀▀▀▀▀▀│▀▀▀▀▀▀",
+        "      ╔══╩══╗",
+        "      ║    ║",
+    ],
+    "dragon": [
+        "              ><>",
+        "             <>  <>",
+        "            <> <><> <>",
+        "           <>  <>    <>",
+        "          <>   <>  <>",
+        "         <>    <>  <>",
+        "        <>  █    █  <>",
+        "       <>  █ ██ █ █ <>",
+        "      <>   █ ██ █ █  <>",
+        "     <>    █      █   <>",
+        "    <>     █      █    <>",
+        "   <>      █ ██ █ █     <>",
+        "  <>       █ ██ █ █      <>",
+        " <>        █      █       <>",
+        "<>▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒>",
+    ],
+    "binary_skull": [
+        "010000010100001101001100",
+        "010100100101001101000100",
+        "010000010101010100010100",
+        "010010010100000101001001",
+        "010000010100001001000100",
+        "010101000101001100010100",
+        "010000100101000101000010",
+    ],
+    "circuit_heart": [
+        "    ┌─┐     ┌─┐",
+        "   ╭┤├╮   ╭┤├╮",
+        "   ││││   ││││",
+        "   ╰┴├╯   ╰┴├╯",
+        "    └─┘     └─┘",
+        "     ╲ ╱   ╲ ╱",
+        "      ╳     ╳",
+        "     ╱ ╲─┐ ╱ ╲",
+        "    ┌────┴────┐",
+        "    │  ◉  ◉  │",
+        "    │  ████  │",
+        "    └────┬────┘",
+        "        │││",
+        "    █───┴───┈█",
+        "  ██         ██",
+    ],
+    "neural_network": [
+        "       ◉──◉──◉",
+        "      ╱ │╲ │╱ │",
+        "     ◉  ◉  ◉  ◉",
+        "    ╱│╲ │╱│╲ │",
+        "   ◉ │◉ │◉ │◉",
+        "  ╱│╲│╲│╱│╲│╱│╲",
+        " ◉  ◉  ◉  ◉  ◉",
+    ],
+    "matrix_rain ascii": [
+        "┋┿┋┿┋┿┋┿",
+        "┃┃┃┃┃┃┃┃┃┃",
+        "┣┿┣┿┣┿┣┿",
+        "┃┃┃┃┃┃┃┃┃┃",
+        "┋┿┋┿┋┿┋┿",
+    ],
+    "system_core": [
+        "   ╔═══════════════╗",
+        "   ║  ◉  ◉  ◉  ◉  ║",
+        "   ║ ◉═╪═◉═╪═◉═╪═◉ ║",
+        "   ║  ◉══╬══◉  ◉  ║",
+        "   ║ ◉═╪═◉═╪═◉═╪═◉ ║",
+        "   ║  ◉  ◉  ◉  ◉  ║",
+        "   ╚═══════════════╝",
+    ],
+    "cyber_eye": [
+        "     ╔██████╗",
+        "   ╔██║▌▌▌██╗",
+        "  ╔██║██▌██║██╗",
+        " ╔██║██▌▌██║██╗",
+        " ╚██║▌▌▌██╝╝",
+        "   ╚█████╝",
+        "      ▌▌",
+        "     █▐▐█",
+        "    █▐█▐█",
+    ],
+    "data_cube": [
+        "    ╔══╗",
+        "   ╔╝▓▓╚╗",
+        "  ╔╝▓▓▓╚╗",
+        " ╔╝▓▓▓▓╚╗",
+        " ║▓▓▓▓▓║",
+        " ║▓▓▓▓╚╝",
+        " ║▓▓╚╝",
+        " ╚╝",
+    ],
+    "quantum": [
+        "    ◉",
+        "   ╱│╲",
+        "  ╱ │ ╲",
+        " ◉──┼──◉",
+        " ╲ │ ╱",
+        "  ╲│╱",
+        "   ◉",
+        "   │",
+        "  ◉┼◉",
+    ],
+    "terminator": [
+        "╔══════════════════════════╗",
+        "║ ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄ ░",
+        "║█                       █░",
+        "║█  ██╗  ██╗  ██╗  ██╗  █░",
+        "║█  ██║  ██║  ██║  ██║  █░",
+        "║█  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  █░",
+        "║█                       █░",
+        "╚══════════════════════════╝",
+    ],
+}
     
 
 # ============================================================================
@@ -707,6 +944,10 @@ atlan_ui = AtlanInterface()
 
 
 def test_interface():
+    print("\n" + "="*70)
+    print(f"{Fore.CYAN}◈ ATLANTEAN UI INTERFACE TEST{Style.RESET_ALL}")
+    print("="*70 + "\n")
+    
     atlan_ui.print_system_info()
     
     atlan_ui.loading_sequence("LOADING MODULES")
@@ -715,25 +956,169 @@ def test_interface():
     
     print(HologramBorder.box("ATLANTEAN SYSTEM\nVERSION 2.1.7\nNEURAL LINK: ACTIVE", "rounded"))
     print()
+    
+    print(f"{Fore.CYAN}◈ Testing ASCII Art Rendering:{Style.RESET_ALL}\n")
+    for art_name in MatrixUI.ASCII_ART:
+        if art_name in ["robot", "system_core", "data_cube", "quantum"]:
+            art = MatrixUI.ASCII_ART[art_name]
+            for line in art:
+                print(Fore.GREEN + line)
+            print()
+    
+    print(f"{Fore.CYAN}◈ Testing NeuralPulse Animation:{Style.RESET_ALL}")
+    NeuralPulse.animate("SYSTEM DIAGNOSTIC", 1.5)
+    
+    print(f"{Fore.CYAN}◈ Testing Progress Bar:{Style.RESET_ALL}")
+    for i in range(0, 11, 2):
+        bar = NeuralPulse.progress_bar(i, 10)
+        print(f"\r{Fore.CYAN}{bar}{Style.RESET_ALL}", end="", flush=True)
+        time.sleep(0.2)
+    print("\n")
+    
+    print(f"{Fore.CYAN}◈ Testing HexGrid:{Style.RESET_ALL}")
+    grid = HexGrid.hex_pattern(18, 6)
+    for line in grid:
+        print(Fore.GREEN + line)
+    print()
+    
+    print(f"{Fore.CYAN}◈ Testing CircuitBoard:{Style.RESET_ALL}")
+    print(CircuitBoard.draw_connection("cpu", "memory"))
+    print(CircuitBoard.draw_connection("input", "process"))
+    components = ["CPU [◉]", "MEMORY [▣]", "GPU [▦]", "NETWORK [▤]"]
+    print(CircuitBoard.render_system(components))
+    print()
+    
+    print(f"{Fore.CYAN}◈ Testing ScannerLine:{Style.RESET_ALL}")
+    ScannerLine.scan("SYSTEM DIAGNOSTIC COMPLETE", 3)
+    print()
+    
+    print(f"{Fore.CYAN}◈ Testing DataDecoder:{Style.RESET_ALL}")
+    test_data = "ATLAN"
+    binary = DataDecoder.binary_stream(test_data)
+    print(f"Binary stream: {binary}\n")
+    
+    test_bytes = b"ATLAS\x00\x01\x02\x03\x04"
+    hexdump = DataDecoder.hex_dump(test_bytes)
+    print(hexdump)
+    print()
+    
+    print(f"{Fore.GREEN}✓ INTERFACE TEST COMPLETE{Style.RESET_ALL}\n")
 
 
 def demo_effects():
-    print("\n=== ATLANTEAN UI EFFECTS DEMO ===\n")
+    print("\n" + "="*70)
+    print(f"{Fore.MAGENTA}◈ ATLANTEAN UI EFFECTS DEMO{Style.RESET_ALL}")
+    print("="*70 + "\n")
     
-    print(GlitchEffect.glitch_text("GLITCH EFFECT TEST"))
+    print(f"{Fore.CYAN}[1] Glitch Effect:{Style.RESET_ALL}")
+    glitch_output = GlitchEffect.glitch_text("SYSTEM BREACH DETECTED")
+    print(f"  {Fore.RED}{glitch_output}{Style.RESET_ALL}")
     print()
     
-    print(NeuralPulse.progress_bar(7, 10))
+    print(f"{Fore.CYAN}[2] Scan Lines:{Style.RESET_ALL}")
+    scan_lines = GlitchEffect.scan_lines("DATA CORRUPTION", 4)
+    for line in scan_lines:
+        print(f"  {line}")
     print()
     
-    print(HexGrid.hex_pattern(20, 5))
+    print(f"{Fore.CYAN}[3] Corruption Effect:{Style.RESET_ALL}")
+    corrupted = GlitchEffect.corrupt("NEURAL LINK COMPROMISED", 0.1)
+    print(f"  {corrupted}")
     print()
     
-    print(CircuitBoard.draw_connection("cpu", "memory"))
+    print(f"{Fore.CYAN}[4] NeuralPulse Frames:{Style.RESET_ALL}")
+    pulse_frames = NeuralPulse.pulse("LINK ESTABLISHED", "matrix")
+    for frame in pulse_frames:
+        print(f"  {frame}")
     print()
     
-    scanner = ScannerLine()
-    scanner.scan("SCANNING SYSTEM", 2)
+    print(f"{Fore.CYAN}[5] NeuralPulse Animation (Live):{Style.RESET_ALL}")
+    NeuralPulse.animate("ESTABLISHING CONNECTION", 2.0)
+    
+    print(f"{Fore.CYAN}[6] Progress Bar Animation:{Style.RESET_ALL}")
+    for i in range(0, 101, 10):
+        bar = NeuralPulse.progress_bar(i, 100, width=30)
+        print(f"\r  {Fore.GREEN}{bar}{Style.RESET_ALL}", end="", flush=True)
+        time.sleep(0.15)
+    print("\n")
+    
+    print(f"{Fore.CYAN}[7] HexGrid Pattern:{Style.RESET_ALL}")
+    hex_pattern = HexGrid.hex_pattern(20, 8)
+    for line in hex_pattern:
+        print(f"  {line}")
+    print()
+    
+    print(f"{Fore.CYAN}[8] HexGrid Render Data:{Style.RESET_ALL}")
+    sample_data = {
+        "CORE": "ACTIVE",
+        "MEM": "4096MB",
+        "CPU": "NEURAL-7",
+        "LINK": "SECURE"
+    }
+    print(HexGrid.render_grid(sample_data, 40))
+    print()
+    
+    print(f"{Fore.CYAN}[9] HologramBorder Styles:{Style.RESET_ALL}")
+    for style in ["single", "double", "rounded", "heavy"]:
+        result = HologramBorder.box(f"Style: {style}", style)
+        print(result)
+    print()
+    
+    print(f"{Fore.CYAN}[10] Circuit Board Components:{Style.RESET_ALL}")
+    conn = CircuitBoard.draw_connection("cpu", "memory")
+    print(f"  {conn}")
+    conn2 = CircuitBoard.draw_connection("data", "process")
+    print(f"  {conn2}")
+    render = CircuitBoard.render_system(["NEURAL CORE", "CACHE UNIT", "OUTPUT NODE"])
+    for line in render.split("\n"):
+        print(f"  {line}")
+    print()
+    
+    print(f"{Fore.CYAN}[11] Scanner Effects:{Style.RESET_ALL}")
+    ScannerLine.scan("DEMO SCAN", 3)
+    radar = ScannerLine.radar_scan("TARGET ACQUIRED", 12)
+    print(radar)
+    print()
+    
+    print(f"{Fore.CYAN}[12] Status Display:{Style.RESET_ALL}")
+    systems = {
+        "CORE": "online",
+        "MATRIX": "loading",
+        "OUTPUT": "warning",
+        "INPUT": "complete"
+    }
+    for name, state in systems.items():
+        print(f"  {StatusDisplay.status(name, state)}")
+    print()
+    
+    print(f"{Fore.CYAN}[13] Full System Status:{Style.RESET_ALL}")
+    full_status = {
+        "NEURAL ENGINE": "online",
+        "CODE MATRIX": "online",
+        "VOICE SYSTEM": "processing",
+        "DEBUG MODE": "complete"
+    }
+    print(StatusDisplay.system_status(full_status))
+    print()
+    
+    print(f"{Fore.CYAN}[14] Matrix DataStream:{Style.RESET_ALL}")
+    stream = DataStream("binary", 40)
+    for _ in range(8):
+        print(f"  {stream.stream_line()}")
+    print()
+    
+    print(f"{Fore.CYAN}[15] Additional ASCII Art:{Style.RESET_ALL}")
+    if "robot" in MatrixUI.ASCII_ART:
+        print(f"  {Fore.GREEN}Robot:{Style.RESET_ALL}")
+        for line in MatrixUI.ASCII_ART["robot"]:
+            print(f"  {line}")
+    if "system_core" in MatrixUI.ASCII_ART:
+        print(f"  {Fore.CYAN}System Core:{Style.RESET_ALL}")
+        for line in MatrixUI.ASCII_ART["system_core"]:
+            print(f"  {line}")
+    print()
+    
+    print(f"{Fore.GREEN}✓ ALL DEMO EFFECTS COMPLETE{Style.RESET_ALL}\n")
 
 
 if __name__ == "__main__":
