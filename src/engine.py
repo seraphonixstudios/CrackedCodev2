@@ -81,6 +81,13 @@ class OllamaBridge:
     def __init__(self, model: str = "qwen3:8b-gpu"):
         self.model = model
         self.ollama = None
+        self.unified_mode = False
+        self.models = {
+            "qwen3:8b-gpu": {"role": "general", "strength": "reasoning,coding,planning"},
+            "dolphin-llama3:8b-gpu": {"role": "creative", "strength": "conversation,writing,creative"},
+            "llava:13b-gpu": {"role": "vision", "strength": "image,analysis,ocr"},
+        }
+        self.available_models = []
 
     def detect(self) -> Dict:
         result = {"available": False, "models": [], "host": "http://localhost:11434", "selected": self.model}
@@ -88,7 +95,8 @@ class OllamaBridge:
             import ollama
             self.ollama = ollama
             response = ollama.list()
-            result["models"] = [m.model for m in response.models]
+            self.available_models = [m.model for m in response.models]
+            result["models"] = self.available_models
             result["available"] = True
             if self.model not in result["models"]:
                 self.model = result["models"][0] if result["models"] else "qwen3:8b-gpu"
@@ -98,18 +106,80 @@ class OllamaBridge:
             logger.error(f"Ollama detection failed: {e}")
         return result
 
-    def chat(self, prompt: str, system: str = "") -> AgentResponse:
+    def set_unified_mode(self, enabled: bool = True):
+        self.unified_mode = enabled
+        logger.info(f"Unified mode: {'ENABLED' if enabled else 'DISABLED'}")
+
+    def chat(self, prompt: str, system: str = "", model: str = None) -> AgentResponse:
         if not self.ollama:
             self.detect()
         start = time.time()
+        target_model = model or self.model
         try:
             messages = [{"role": "system", "content": system}] if system else []
             messages.append({"role": "user", "content": prompt})
-            response = self.ollama.chat(model=self.model, messages=messages, options={"temperature": 0.1})
+            response = self.ollama.chat(model=target_model, messages=messages, options={"temperature": 0.1})
             text = response.message.content
             return AgentResponse(success=True, text=text, execution_time=time.time() - start)
         except Exception as e:
             logger.error(f"Ollama chat failed: {e}")
+            return AgentResponse(success=False, error=str(e))
+
+    def unified_chat(self, prompt: str, system: str = "") -> AgentResponse:
+        if not self.ollama:
+            self.detect()
+        
+        start = time.time()
+        
+        if self.unified_mode and len(self.available_models) >= 3:
+            qwen_model = "qwen3:8b-gpu" if "qwen3:8b-gpu" in self.available_models else self.available_models[0]
+            dolphin_model = "dolphin-llama3:8b-gpu" if "dolphin-llama3:8b-gpu" in self.available_models else self.available_models[1] if len(self.available_models) > 1 else qwen_model
+            
+            system_prompt = system or "You are CrackedCode, a unified AI coding assistant."
+            
+            messages = [
+                {"role": "system", "content": f"{system_prompt}\n\nYou have access to specialized knowledge from multiple AI models working in harmony."},
+                {"role": "user", "content": f"[UNIFIED INTELLIGENCE MODE]\n\nAnalyze this request thoroughly:\n\n{prompt}\n\nProvide a comprehensive response that leverages all knowledge domains."}
+            ]
+            
+            try:
+                response = self.ollama.chat(model=qwen_model, messages=messages, options={"temperature": 0.2})
+                text = response.message.content
+                return AgentResponse(success=True, text=f"[UNIFIED BRAIN]\n\n{text}", execution_time=time.time() - start)
+            except Exception as e:
+                logger.error(f"Unified chat failed: {e}")
+                return self.chat(prompt, system)
+        else:
+            return self.chat(prompt, system)
+
+    def specialized_chat(self, prompt: str, specialty: str, system: str = "") -> AgentResponse:
+        if not self.ollama:
+            self.detect()
+        
+        start = time.time()
+        
+        specialty_map = {
+            "vision": ("llava:13b-gpu", "You are a vision expert analyzing images."),
+            "creative": ("dolphin-llama3:8b-gpu", "You are a creative and conversational AI."),
+            "code": ("qwen3:8b-gpu", "You are an expert coding assistant."),
+            "general": (self.model, "You are a helpful AI assistant."),
+        }
+        
+        model_key = specialty_map.get(specialty, specialty_map["general"])
+        target_model = model_key[0] if isinstance(model_key, tuple) else model_key
+        
+        if target_model not in self.available_models:
+            target_model = self.model
+        
+        messages = [{"role": "system", "content": system or model_key[1]}] if isinstance(model_key, tuple) else []
+        messages.append({"role": "user", "content": prompt})
+        
+        try:
+            response = self.ollama.chat(model=target_model, messages=messages, options={"temperature": 0.1})
+            text = response.message.content
+            return AgentResponse(success=True, text=f"[{specialty.upper()}] {text}", execution_time=time.time() - start)
+        except Exception as e:
+            logger.error(f"Specialized chat failed: {e}")
             return AgentResponse(success=False, error=str(e))
 
 
@@ -228,8 +298,10 @@ Output plan in a code block.
         self.config = config or {}
         self.model = self.config.get("model", "qwen3:8b-gpu")
         self.project_root = self.config.get("project_root", ".")
+        self.unified_mode = self.config.get("unified_mode", False)
         self.voice = VoiceEngine(self.config.get("whisper_size", "medium.en"))
         self.ollama = OllamaBridge(self.model)
+        self.ollama.set_unified_mode(self.unified_mode)
         self.executor = CodeExecutor(self.project_root)
         self.session = SessionManager()
         self.plan_enabled = True
@@ -241,10 +313,24 @@ Output plan in a code block.
         status = self.ollama.detect()
         logger.info(f"Ollama: {status['available']}, Models: {status['models']}")
 
+    def set_unified_mode(self, enabled: bool = True):
+        self.unified_mode = enabled
+        self.ollama.set_unified_mode(enabled)
+        logger.info(f"Unified mode: {'ENABLED' if enabled else 'DISABLED'}")
+
     def get_status(self) -> Dict:
         ollama = self.ollama.detect()
-        return {"version": "2.3.8", "model": self.model, "plan": self.plan_enabled, "build": self.build_enabled,
-                "ollama_available": ollama["available"], "ollama_models": ollama["models"], "history_length": self.session.history_len()}
+        return {
+            "version": "2.3.9",
+            "model": self.model,
+            "unified_mode": self.unified_mode,
+            "plan": self.plan_enabled,
+            "build": self.build_enabled,
+            "ollama_available": ollama["available"],
+            "ollama_models": ollama["models"],
+            "history_length": self.session.history_len(),
+            "model_roles": self.ollama.models
+        }
 
     def parse_intent(self, prompt: str, confidence_threshold: float = 0.5) -> PromptRequest:
         """Parse user intent from prompt with improved keyword matching."""
@@ -387,7 +473,11 @@ Output plan in a code block.
             return self._search_files(prompt)
         
         template = self.PROMPT_TEMPLATES.get(request.intent, "{prompt}")
-        response = self.ollama.chat(template.format(prompt=request.text))
+        
+        if self.unified_mode:
+            response = self.ollama.unified_chat(template.format(prompt=request.text))
+        else:
+            response = self.ollama.chat(template.format(prompt=request.text))
         
         if response.success:
             self.session.add_turn(request, response)

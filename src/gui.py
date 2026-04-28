@@ -866,6 +866,15 @@ class CrackedCodeGUI(QMainWindow):
         stop_btn.setStyleSheet(f"color: {ATLAN_RED}; border-color: {ATLAN_RED};")
         tb.addWidget(stop_btn)
 
+        tb.addSeparator()
+
+        self.unified_btn = QPushButton("UNIFIED")
+        self.unified_btn.setCheckable(True)
+        self.unified_btn.setChecked(self.config.get("unified_mode", False))
+        self.unified_btn.setToolTip("Toggle Unified Intelligence Mode (all models combined)")
+        self.unified_btn.clicked.connect(self.toggle_unified_mode)
+        tb.addWidget(self.unified_btn)
+
     def create_status(self):
         sb = QStatusBar()
         self.setStatusBar(sb)
@@ -906,6 +915,15 @@ class CrackedCodeGUI(QMainWindow):
         if hasattr(self, 'model_lbl'):
             self.model_lbl.setText(f"MODEL: {status.get('model', 'none')}")
 
+    def toggle_unified_mode(self):
+        if hasattr(self, 'engine') and self.engine:
+            enabled = self.unified_btn.isChecked()
+            self.engine.set_unified_mode(enabled)
+            self.config["unified_mode"] = enabled
+            mode_text = "UNIFIED BRAIN" if enabled else "SINGLE MODEL"
+            self.set_status(mode_text)
+            self.term(f"[MODE] {mode_text} {'(All models combined)' if enabled else '(Specialized models)'}")
+
     def toggle_dev_console(self):
         status = self.engine.get_status() if self.engine else {}
         
@@ -925,9 +943,14 @@ class CrackedCodeGUI(QMainWindow):
             self.dev_console.append(f"Ollama Available: {status.get('ollama_available', False)}")
             self.dev_console.append(f"Models: {status.get('ollama_models', [])}")
             self.dev_console.append(f"Selected Model: {status.get('model', 'none')}")
+            self.dev_console.append(f"Unified Mode: {status.get('unified_mode', False)}")
             self.dev_console.append(f"Plan Mode: {status.get('plan', False)}")
             self.dev_console.append(f"Build Mode: {status.get('build', False)}")
             self.dev_console.append(f"History Length: {status.get('history_length', 0)}")
+            self.dev_console.append("")
+            self.dev_console.append("MODEL ROLES:")
+            for model, info in status.get('model_roles', {}).items():
+                self.dev_console.append(f"  {model}: {info.get('role', 'unknown')} ({info.get('strength', '')})")
             self.dev_console.append("")
             self.dev_console.append("ORCHESTRATOR STATUS:")
             if hasattr(self, 'orchestrator'):

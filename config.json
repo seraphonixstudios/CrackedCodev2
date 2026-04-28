@@ -1,10 +1,11 @@
 {
   "name": "CrackedCode",
-  "version": "2.1.8",
-  "description": "Local Multi-Agent Coding Swarm with Voice I/O",
+  "version": "2.3.9",
+  "description": "Local Multi-Agent Coding Swarm with Voice I/O and Unified Intelligence",
   "model": "qwen3:8b-gpu",
   "vision_model": "llava:13b-gpu",
   "secondary_model": "dolphin-llama3:8b-gpu",
+  "unified_mode": false,
   "whisper_size": "medium.en",
   "tts_voice": "en_US-lessac-medium",
   "sample_rate": 16000,
