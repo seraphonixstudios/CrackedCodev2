@@ -3,7 +3,7 @@
 Local AI Coding Assistant with Sci-Fi Neural Interface
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.4.0-blue?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Version-2.5.0-blue?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License">
   <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-orange?style=for-the-badge" alt="Platform">
   <img src="https://img.shields.io/badge/Python-3.10%2B-yellow?style=for-the-badge" alt="Python">
@@ -31,6 +31,7 @@ python test_system.py
 
 | Version | Features |
 |---------|----------|
+| 2.5.0 | Complete UI/UX overhaul, toast notifications, searchable terminal, command history, tab management, pulse indicators, task filtering |
 | 2.4.0 | Streaming responses, response caching, context management, retry logic, tabbed editor |
 | 2.3.9 | Complete UI overhaul, Task queue, Agent orchestration, Accessibility |
 | 2.3.8 | Code generation pipeline, CLI CODE subcommand, Swarm integration |
@@ -38,7 +39,7 @@ python test_system.py
 
 ---
 
-## Desktop GUI (v2.4.0)
+## Desktop GUI (v2.5.0)
 
 ```bash
 python src/gui.py
@@ -46,7 +47,20 @@ python src/gui.py
 
 ### New UI Features
 
-- **Dockable Panels**: Left control center with project files, agents, and task queue
+- **Toast Notifications**: Animated notifications with auto-dismiss and color-coded types
+- **Searchable Terminal**: Ctrl+F to search and highlight terminal output
+- **Command History**: Up/Down arrow keys to navigate previous commands
+- **Pulse Indicators**: Animated status dots for real-time agent activity
+- **Task Filtering**: Filter tasks by status (ALL/PEND/RUN/DONE/FAIL)
+- **Tab Management**: Rename tabs on double-click, modified indicators (*)
+- **File Tree Icons**: Extension-based colored icons for files
+- **Matrix Rain Toggle**: Ctrl+M or MATRIX button for sci-fi effect
+- **Refresh File Tree**: One-click refresh of project files
+- **Cache Size Display**: Real-time cache monitoring in status bar
+- **Enhanced Progress Bar**: Gradient animation with smooth transitions
+- **Improved Styling**: Rounded corners, hover states, better contrast
+
+### Dockable Panels**: Left control center with project files, agents, and task queue
 - **Task Queue Widget**: Real-time status updates with pending/running/completed tracking
 - **Agent Panel**: Visual status indicators with icons and capabilities
 - **File Tree Widget**: Hierarchical project navigation
@@ -115,15 +129,21 @@ Natural language commands detected from voice input:
 |----------|--------|
 | `Ctrl+N` | New project |
 | `Ctrl+O` | Open project |
+| `Ctrl+T` | New tab |
 | `Ctrl+S` | Save file |
+| `Ctrl+Shift+S` | Save as |
 | `Ctrl+Q` | Quit |
 | `Ctrl+Shift+C` | Copy output |
+| `Ctrl+L` | Clear terminal |
 | `Ctrl+V` | Paste (image or text) |
 | `Ctrl+A` | Select all |
 | `Ctrl+Enter` | Send prompt |
+| `Ctrl+F` | Find in terminal |
+| `Ctrl+M` | Toggle matrix rain |
 | `F11` | Toggle fullscreen |
 | `F12` | Dev console |
 | `Escape` | Stop operation |
+| `Up/Down` | Command history |
 
 ---
 
@@ -448,4 +468,4 @@ MIT
 
 ---
 
-**CrackedCode v2.4.0** - The Final Boss of Local AI Coding Agents
+**CrackedCode v2.5.0** - The Final Boss of Local AI Coding Agents
