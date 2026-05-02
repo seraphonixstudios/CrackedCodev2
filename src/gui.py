@@ -848,7 +848,7 @@ class CrackedCodeGUI(QMainWindow):
         self.restore_state()
         self.setup_paste_handler()
         
-        logger.info("CrackedCode GUI v2.5.0 started")
+        logger.info("CrackedCode GUI v2.6.0 started")
 
     def init_orchestrator(self):
         self.orchestrator = AgentOrchestrator(gui_ref=self)
@@ -914,7 +914,7 @@ class CrackedCodeGUI(QMainWindow):
             self.config = {"model": "qwen3:8b-gpu", "project_root": "."}
 
     def setup_atlan_theme(self):
-        self.setWindowTitle("CRACKEDCODE v2.5.0 // ATLANTEAN NEURAL SYSTEM")
+        self.setWindowTitle("CRACKEDCODE v2.6.0 // AUTONOMOUS NEURAL SYSTEM")
         self.setMinimumSize(1400, 900)
         
         self.atlan_font = QFont("Consolas", 11)
@@ -923,96 +923,150 @@ class CrackedCodeGUI(QMainWindow):
         self.setStyleSheet(f"""
             QMainWindow {{ background-color: {ATLAN_DARK}; }}
             QWidget {{ background-color: {ATLAN_DARK}; color: {ATLAN_GREEN}; font-family: Consolas; font-size: 11px; }}
+            QToolTip {{
+                background-color: {ATLAN_MEDIUM};
+                color: {ATLAN_GREEN};
+                border: 1px solid {ATLAN_GREEN};
+                border-radius: 4px;
+                padding: 4px 8px;
+                font-family: Consolas;
+                font-size: 11px;
+            }}
             QMenuBar {{ background-color: {ATLAN_MEDIUM}; color: {ATLAN_GREEN}; border-bottom: 2px solid {ATLAN_GREEN}; }}
             QMenuBar::item:selected {{ background-color: {ATLAN_GREEN}; color: {ATLAN_DARK}; }}
             QMenu {{ background-color: {ATLAN_MEDIUM}; color: {ATLAN_GREEN}; border: 1px solid {ATLAN_BORDER}; }}
             QMenu::item:selected {{ background-color: {ATLAN_GREEN}; color: {ATLAN_DARK}; }}
             QToolBar {{ background-color: {ATLAN_MEDIUM}; border-bottom: 2px solid {ATLAN_GREEN}; spacing: 4px; padding: 4px; }}
-            QPushButton {{ 
-                background-color: {ATLAN_LIGHT}; 
-                color: {ATLAN_GREEN}; 
-                border: 1px solid {ATLAN_GREEN}; 
+            QPushButton {{
+                background-color: {ATLAN_LIGHT};
+                color: {ATLAN_GREEN};
+                border: 1px solid {ATLAN_GREEN};
                 padding: 8px 16px;
                 font-family: Consolas;
                 font-weight: bold;
                 border-radius: 6px;
                 min-height: 28px;
             }}
-            QPushButton:hover {{ background-color: {ATLAN_GREEN}; color: {ATLAN_DARK}; }}
-            QPushButton:checked {{ background-color: {ATLAN_GREEN}; color: {ATLAN_DARK}; }}
-            QPushButton:pressed {{ background-color: {ATLAN_CYAN}; }}
-            QPushButton:disabled {{ color: #555; border-color: #555; }}
-            QTextEdit {{ 
-                background-color: #050505; 
-                color: {ATLAN_GREEN}; 
-                border: 1px solid {ATLAN_BORDER}; 
+            QPushButton:hover {{
+                background-color: {ATLAN_GREEN};
+                color: {ATLAN_DARK};
+                border: 1px solid {ATLAN_CYAN};
+            }}
+            QPushButton:checked {{
+                background-color: {ATLAN_GREEN};
+                color: {ATLAN_DARK};
+                border: 1px solid {ATLAN_CYAN};
+            }}
+            QPushButton:pressed {{ background-color: {ATLAN_CYAN}; color: {ATLAN_DARK}; }}
+            QPushButton:disabled {{ color: #555; border-color: #555; background-color: {ATLAN_DARK}; }}
+            QTextEdit {{
+                background-color: #050505;
+                color: {ATLAN_GREEN};
+                border: 1px solid {ATLAN_BORDER};
                 font-family: Consolas;
                 border-radius: 6px;
                 padding: 4px;
+                selection-background-color: {ATLAN_GREEN};
+                selection-color: {ATLAN_DARK};
             }}
             QTextEdit:focus {{ border: 1px solid {ATLAN_GREEN}; }}
-            QLineEdit {{ 
-                background-color: #050505; 
-                color: {ATLAN_GREEN}; 
-                border: 1px solid {ATLAN_GREEN}; 
+            QLineEdit {{
+                background-color: #050505;
+                color: {ATLAN_GREEN};
+                border: 1px solid {ATLAN_GREEN};
                 font-family: Consolas;
                 padding: 6px;
                 border-radius: 6px;
+                selection-background-color: {ATLAN_GREEN};
+                selection-color: {ATLAN_DARK};
             }}
-            QLineEdit:focus {{ border: 2px solid {ATLAN_GREEN}; }}
-            QListWidget {{ 
-                background-color: #050505; 
-                color: {ATLAN_GREEN}; 
-                border: 1px solid {ATLAN_BORDER}; 
+            QLineEdit:focus {{ border: 2px solid {ATLAN_CYAN}; }}
+            QListWidget {{
+                background-color: #050505;
+                color: {ATLAN_GREEN};
+                border: 1px solid {ATLAN_BORDER};
                 border-radius: 6px;
+                outline: none;
             }}
-            QListWidget::item:selected {{ background-color: {ATLAN_GREEN}; color: {ATLAN_DARK}; }}
-            QListWidget::item:hover {{ background-color: {ATLAN_LIGHT}; }}
+            QListWidget::item:selected {{
+                background-color: {ATLAN_GREEN};
+                color: {ATLAN_DARK};
+                border-radius: 3px;
+            }}
+            QListWidget::item:hover {{ background-color: {ATLAN_LIGHT}; border-radius: 3px; }}
             QTabWidget::pane {{ border: 1px solid {ATLAN_GREEN}; border-radius: 6px; }}
-            QTabBar::tab {{ 
-                background-color: {ATLAN_MEDIUM}; 
-                color: {ATLAN_GREEN}; 
-                border: 1px solid {ATLAN_BORDER}; 
+            QTabBar::tab {{
+                background-color: {ATLAN_MEDIUM};
+                color: {ATLAN_GREEN};
+                border: 1px solid {ATLAN_BORDER};
                 padding: 8px 16px;
                 border-top-left-radius: 6px;
                 border-top-right-radius: 6px;
                 margin-right: 2px;
             }}
-            QTabBar::tab:selected {{ 
-                background-color: {ATLAN_GREEN}; 
-                color: {ATLAN_DARK}; 
+            QTabBar::tab:selected {{
+                background-color: {ATLAN_GREEN};
+                color: {ATLAN_DARK};
                 font-weight: bold;
             }}
-            QTabBar::tab:hover {{ 
-                background-color: {ATLAN_LIGHT}; 
-            }}
-            QGroupBox {{ 
-                border: 2px solid {ATLAN_GREEN}; 
+            QTabBar::tab:hover {{ background-color: {ATLAN_LIGHT}; }}
+            QGroupBox {{
+                border: 2px solid {ATLAN_GREEN};
                 margin-top: 10px;
                 font-weight: bold;
                 border-radius: 6px;
                 padding-top: 10px;
             }}
-            QGroupBox::title {{ 
-                color: {ATLAN_GOLD}; 
+            QGroupBox::title {{
+                color: {ATLAN_GOLD};
                 subcontrol-origin: margin;
                 left: 10px;
                 padding: 0 4px;
             }}
-            QStatusBar {{ 
-                background-color: {ATLAN_MEDIUM}; 
-                color: {ATLAN_GREEN}; 
-                border-top: 2px solid {ATLAN_GREEN}; 
+            QStatusBar {{
+                background-color: {ATLAN_MEDIUM};
+                color: {ATLAN_GREEN};
+                border-top: 2px solid {ATLAN_GREEN};
             }}
             QLabel {{ color: {ATLAN_GREEN}; }}
-            QComboBox {{ 
-                background-color: {ATLAN_LIGHT}; 
-                color: {ATLAN_GREEN}; 
-                border: 1px solid {ATLAN_GREEN}; 
+            QComboBox {{
+                background-color: {ATLAN_LIGHT};
+                color: {ATLAN_GREEN};
+                border: 1px solid {ATLAN_GREEN};
+                padding: 4px 8px;
+                border-radius: 6px;
+                min-width: 80px;
+            }}
+            QComboBox:hover {{ border: 1px solid {ATLAN_CYAN}; }}
+            QComboBox::drop-down {{ border: none; width: 20px; }}
+            QComboBox::down-arrow {{ image: none; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 6px solid {ATLAN_GREEN}; }}
+            QComboBox QAbstractItemView {{
+                background-color: {ATLAN_MEDIUM};
+                color: {ATLAN_GREEN};
+                border: 1px solid {ATLAN_GREEN};
+                selection-background-color: {ATLAN_GREEN};
+                selection-color: {ATLAN_DARK};
+            }}
+            QSpinBox {{
+                background-color: {ATLAN_LIGHT};
+                color: {ATLAN_GREEN};
+                border: 1px solid {ATLAN_GREEN};
                 padding: 4px;
                 border-radius: 6px;
             }}
+            QSpinBox::up-button, QSpinBox::down-button {{ width: 16px; background: {ATLAN_MEDIUM}; border: 1px solid {ATLAN_BORDER}; }}
+            QSpinBox::up-button:hover, QSpinBox::down-button:hover {{ background: {ATLAN_GREEN}; }}
+            QSlider::groove:horizontal {{ height: 6px; background: {ATLAN_MEDIUM}; border-radius: 3px; }}
+            QSlider::handle:horizontal {{
+                background: {ATLAN_GREEN};
+                width: 14px;
+                height: 14px;
+                border-radius: 7px;
+                margin: -4px 0;
+            }}
+            QSlider::handle:horizontal:hover {{ background: {ATLAN_CYAN}; }}
             QSplitter::handle {{ background-color: {ATLAN_GREEN}; width: 3px; }}
+            QSplitter::handle:hover {{ background-color: {ATLAN_CYAN}; }}
             QProgressBar {{
                 border: 1px solid {ATLAN_GREEN};
                 border-radius: 6px;
@@ -1035,26 +1089,87 @@ class CrackedCodeGUI(QMainWindow):
                 border-radius: 6px;
                 min-height: 20px;
             }}
-            QScrollBar::handle:vertical:hover {{
-                background: {ATLAN_CYAN};
+            QScrollBar::handle:vertical:hover {{ background: {ATLAN_CYAN}; }}
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0px; }}
+            QScrollBar:horizontal {{
+                background: {ATLAN_DARK};
+                height: 12px;
+                border: none;
             }}
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
-                height: 0px;
+            QScrollBar::handle:horizontal {{
+                background: {ATLAN_GREEN};
+                border-radius: 6px;
+                min-width: 20px;
             }}
+            QScrollBar::handle:horizontal:hover {{ background: {ATLAN_CYAN}; }}
+            QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{ width: 0px; }}
             QDockWidget::title {{
                 background-color: {ATLAN_MEDIUM};
                 color: {ATLAN_GOLD};
                 padding: 6px;
                 font-weight: bold;
             }}
-            QTreeWidget {{ 
-                background-color: #050505; 
-                color: {ATLAN_GREEN}; 
-                border: 1px solid {ATLAN_BORDER}; 
+            QDialog {{
+                background-color: {ATLAN_DARK};
+                border: 2px solid {ATLAN_GREEN};
+                border-radius: 8px;
+            }}
+            QDialog QPushButton {{
+                background-color: {ATLAN_LIGHT};
+                color: {ATLAN_GREEN};
+                border: 1px solid {ATLAN_GREEN};
+                padding: 8px 20px;
+                border-radius: 6px;
+                font-weight: bold;
+            }}
+            QDialog QPushButton:hover {{
+                background-color: {ATLAN_GREEN};
+                color: {ATLAN_DARK};
+            }}
+            QDialog QTextEdit {{
+                background-color: #050505;
+                color: {ATLAN_GREEN};
+                border: 1px solid {ATLAN_BORDER};
                 border-radius: 6px;
             }}
-            QTreeWidget::item:selected {{ background-color: {ATLAN_GREEN}; color: {ATLAN_DARK}; }}
-            QTreeWidget::item:hover {{ background-color: {ATLAN_LIGHT}; }}
+            QDialog QLineEdit {{
+                background-color: #050505;
+                color: {ATLAN_GREEN};
+                border: 1px solid {ATLAN_GREEN};
+                border-radius: 6px;
+                padding: 6px;
+            }}
+            QDialog QLabel {{ color: {ATLAN_GREEN}; font-weight: bold; }}
+            QTreeWidget {{
+                background-color: #050505;
+                color: {ATLAN_GREEN};
+                border: 1px solid {ATLAN_BORDER};
+                border-radius: 6px;
+                outline: none;
+            }}
+            QTreeWidget::item:selected {{
+                background-color: {ATLAN_GREEN};
+                color: {ATLAN_DARK};
+                border-radius: 3px;
+            }}
+            QTreeWidget::item:hover {{ background-color: {ATLAN_LIGHT}; border-radius: 3px; }}
+            QHeaderView::section {{
+                background-color: {ATLAN_MEDIUM};
+                color: {ATLAN_GOLD};
+                padding: 4px;
+                border: 1px solid {ATLAN_BORDER};
+                font-weight: bold;
+            }}
+            QCheckBox {{ color: {ATLAN_GREEN}; spacing: 6px; }}
+            QCheckBox::indicator {{
+                width: 14px;
+                height: 14px;
+                border: 1px solid {ATLAN_GREEN};
+                border-radius: 3px;
+                background: {ATLAN_DARK};
+            }}
+            QCheckBox::indicator:checked {{ background: {ATLAN_GREEN}; }}
+            QCheckBox::indicator:hover {{ border: 1px solid {ATLAN_CYAN}; }}
         """)
 
     def init_ui(self):
@@ -2069,28 +2184,83 @@ class CrackedCodeGUI(QMainWindow):
         QDesktopServices.openUrl(QUrl("https://github.com/seraphonixstudios/CrackedCodev2"))
 
     def show_about(self):
-        QMessageBox.about(self, "ABOUT CRACKEDCODE",
-            f"CRACKEDCODE v2.5.0\n"
-            "ATLANTEAN NEURAL SYSTEM\n\n"
-            "Local AI Coding Assistant\n"
-            "100% Offline - No Cloud Required\n\n"
-            "Built with PyQt6 + Ollama\n"
-            "MIT License\n\n"
-            "Features:\n"
-            "- Agent Orchestration\n"
-            "- Voice Commands\n"
-            "- Image Analysis\n"
-            "- Code Generation\n"
-            "- Task Queue\n"
-            "- Streaming Responses\n"
-            "- Tabbed Editor\n"
-            "- Response Caching\n"
-            "- Unified Intelligence Mode\n"
-            "- Terminal Search\n"
-            "- Matrix Rain Effect\n"
-            "- Command History\n"
-            "- Toast Notifications"
+        dialog = QDialog(self)
+        dialog.setWindowTitle("ABOUT CRACKEDCODE")
+        dialog.setMinimumSize(450, 520)
+        dialog.setModal(True)
+
+        layout = QVBoxLayout(dialog)
+        layout.setSpacing(12)
+        layout.setContentsMargins(24, 24, 24, 24)
+
+        title = QLabel("CRACKEDCODE")
+        title.setStyleSheet(f"font-size: 24px; font-weight: bold; color: {ATLAN_GREEN}; font-family: Consolas;")
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(title)
+
+        subtitle = QLabel("AUTONOMOUS NEURAL SYSTEM v2.6.0")
+        subtitle.setStyleSheet(f"font-size: 12px; color: {ATLAN_GOLD}; font-family: Consolas;")
+        subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(subtitle)
+
+        desc = QLabel("Local AI Coding Assistant\n100% Offline - No Cloud Required")
+        desc.setStyleSheet("font-size: 11px; color: #888; font-family: Consolas;")
+        desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(desc)
+
+        line = QFrame()
+        line.setFrameShape(QFrame.Shape.HLine)
+        line.setStyleSheet(f"background-color: {ATLAN_GREEN};")
+        line.setFixedHeight(1)
+        layout.addWidget(line)
+
+        features_text = (
+            "<b style='color:#FFD700'>Core Features:</b><br>"
+            "- Autonomous Application Production (OpenClaw-style)<br>"
+            "- Agent Orchestration & Multi-Agent Swarm<br>"
+            "- Voice Commands & Voice Typing<br>"
+            "- Image Analysis & Vision Processing<br>"
+            "- Code Generation & Execution<br>"
+            "- Task Queue & Pipeline Processing<br>"
+            "<br>"
+            "<b style='color:#FFD700'>Engine Features:</b><br>"
+            "- Streaming Responses<br>"
+            "- Response Caching with SHA256<br>"
+            "- Context Management (20 turns)<br>"
+            "- Retry Logic with Exponential Backoff<br>"
+            "- Unified Intelligence Mode<br>"
+            "<br>"
+            "<b style='color:#FFD700'>UI Features:</b><br>"
+            "- Tabbed Editor with Syntax Highlighting<br>"
+            "- Searchable Terminal (Ctrl+F)<br>"
+            "- Command History & Autocomplete<br>"
+            "- Toast Notifications<br>"
+            "- Matrix Rain Effect<br>"
+            "- File Tree with Icons<br>"
+            "- Pulse Indicators & Task Filtering"
         )
+
+        features = QLabel(features_text)
+        features.setStyleSheet("font-size: 11px; color: #00FF41; font-family: Consolas; line-height: 1.6;")
+        features.setWordWrap(True)
+        layout.addWidget(features)
+
+        line2 = QFrame()
+        line2.setFrameShape(QFrame.Shape.HLine)
+        line2.setStyleSheet(f"background-color: {ATLAN_GREEN};")
+        line2.setFixedHeight(1)
+        layout.addWidget(line2)
+
+        tech = QLabel("Built with PyQt6 + Ollama | MIT License")
+        tech.setStyleSheet("font-size: 10px; color: #666; font-family: Consolas;")
+        tech.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(tech)
+
+        close_btn = QPushButton("CLOSE")
+        close_btn.clicked.connect(dialog.close)
+        layout.addWidget(close_btn)
+
+        dialog.exec()
 
     def set_mode(self, mode):
         if mode == "plan":

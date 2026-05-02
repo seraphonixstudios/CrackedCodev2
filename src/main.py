@@ -1908,7 +1908,7 @@ class AgentSwarm:
 
 
 class CrackedCode:
-    VERSION = "2.3.8"
+    VERSION = "2.6.0"
     BANNER = """
 ============================================================
   CRACKEDCODE v{version} - Local AI Coding Assistant

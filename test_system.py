@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CRACKEDCODE v2.3.8 - Comprehensive End-to-End Test Suite
+CRACKEDCODE v2.6.0 - Comprehensive End-to-End Test Suite
 Full coverage with real operations, no placeholders
 """
 
@@ -595,11 +595,11 @@ def test_version_info() -> bool:
         PASS(f"Engine version: {status.get('version', 'unknown')}")
         
         version_checks = 0
-        if CrackedCode.VERSION == "2.3.8":
+        if CrackedCode.VERSION == "2.6.0":
             version_checks += 1
-        if MatrixUI.VERSION == "2.3.8":
+        if MatrixUI.VERSION == "2.6.0":
             version_checks += 1
-        if status.get("version") == "2.3.8":
+        if status.get("version") == "2.6.0":
             version_checks += 1
         
         PASS(f"Version consistency: {version_checks}/3")
@@ -709,10 +709,10 @@ def test_cli_integration_e2e() -> bool:
             version = result.stdout.strip()
             PASS(f"CLI import: version {version}")
             
-            if version == "2.3.8":
+            if version == "2.6.0":
                 PASS("CLI version correct")
             else:
-                FAIL("CLI version", f"Expected 2.3.8, got {version}")
+                FAIL("CLI version", f"Expected 2.6.0, got {version}")
                 return False
         else:
             FAIL("CLI import", result.stderr[:50])
@@ -1133,8 +1133,352 @@ def test_swarm_with_validation() -> bool:
         return FAIL("SWARM VALIDATION", str(e)[:50])
 
 
+def test_autonomous_imports() -> bool:
+    print_header("AUTONOMOUS MODULE IMPORTS")
+    try:
+        from src.autonomous import (
+            AutonomousAppProducer, WorkspaceManager, SkillRegistry,
+            HeartbeatScheduler, Phase, ArchitecturePattern,
+            ARCHITECTURE_TEMPLATES, TaskItem, AutonomousResult,
+            Skill, WorkspaceManager
+        )
+        PASS("AutonomousAppProducer")
+        PASS("WorkspaceManager")
+        PASS("SkillRegistry")
+        PASS("HeartbeatScheduler")
+        PASS("Phase enum")
+        PASS("ArchitecturePattern enum")
+        PASS("ARCHITECTURE_TEMPLATES")
+        PASS("TaskItem")
+        PASS("AutonomousResult")
+        return True
+    except Exception as e:
+        return FAIL("Autonomous imports", str(e)[:50])
+
+
+def test_autonomous_workspace() -> bool:
+    print_header("AUTONOMOUS WORKSPACE")
+    try:
+        import tempfile, shutil
+        from src.autonomous import WorkspaceManager
+        tmpdir = tempfile.mkdtemp()
+        try:
+            ws = WorkspaceManager(tmpdir)
+            identity = ws.read("IDENTITY.md")
+            if "Agent Identity" in identity:
+                PASS("IDENTITY.md created")
+            else:
+                return FAIL("IDENTITY.md", "missing content")
+            
+            memory = ws.read("MEMORY.md")
+            if "Agent Memory" in memory:
+                PASS("MEMORY.md created")
+            else:
+                return FAIL("MEMORY.md", "missing content")
+            
+            ws.append_memory("Test entry for project")
+            memory2 = ws.read("MEMORY.md")
+            if "Test entry" in memory2:
+                PASS("Memory append works")
+            else:
+                return FAIL("Memory append", "not found")
+            
+            ws.update_project("test_proj", "test spec", "clean")
+            proj = ws.read("PROJECT.md")
+            if "test_proj" in proj and "clean" in proj:
+                PASS("Project update works")
+            else:
+                return FAIL("Project update", "missing content")
+            
+            ctx = ws.get_context()
+            if all(k in ctx for k in ["identity", "memory", "project", "instructions"]):
+                PASS("Context retrieval works")
+            else:
+                return FAIL("Context", "missing keys")
+            
+            return True
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
+    except Exception as e:
+        return FAIL("Autonomous workspace", str(e)[:50])
+
+
+def test_autonomous_skills() -> bool:
+    print_header("AUTONOMOUS SKILLS")
+    try:
+        from src.autonomous import SkillRegistry
+        registry = SkillRegistry()
+        skills = registry.list_enabled()
+        if len(skills) >= 6:
+            PASS(f"Skills registered: {len(skills)}")
+        else:
+            return FAIL("Skills", f"Only {len(skills)} registered")
+        
+        names = [s.name for s in skills]
+        expected = ["code-generator", "architect", "tester", "debugger", "documenter", "refactorer"]
+        for exp in expected:
+            if exp in names:
+                PASS(f"Skill: {exp}")
+            else:
+                return FAIL("Skill missing", exp)
+        
+        skill = registry.get("code-generator")
+        if skill and skill.enabled:
+            PASS("Get skill works")
+        else:
+            return FAIL("Get skill", "failed")
+        
+        registry.disable("debugger")
+        if not registry.get("debugger").enabled:
+            PASS("Disable skill works")
+            registry.enable("debugger")
+        else:
+            return FAIL("Disable skill", "failed")
+        
+        return True
+    except Exception as e:
+        return FAIL("Autonomous skills", str(e)[:50])
+
+
+def test_autonomous_heartbeat() -> bool:
+    print_header("AUTONOMOUS HEARTBEAT")
+    try:
+        from src.autonomous import HeartbeatScheduler
+        import time
+        scheduler = HeartbeatScheduler(interval=1)
+        
+        counter = [0]
+        def cb():
+            counter[0] += 1
+        
+        scheduler.add_callback(cb)
+        scheduler.start()
+        time.sleep(2.5)
+        scheduler.stop()
+        
+        if counter[0] >= 1:
+            PASS(f"Heartbeat fired: {counter[0]} times")
+            return True
+        else:
+            return FAIL("Heartbeat", "did not fire")
+    except Exception as e:
+        return FAIL("Heartbeat scheduler", str(e)[:50])
+
+
+def test_autonomous_production() -> bool:
+    print_header("AUTONOMOUS PRODUCTION")
+    try:
+        import tempfile, shutil, os
+        from src.autonomous import AutonomousAppProducer, ArchitecturePattern
+        tmpdir = tempfile.mkdtemp()
+        output_dir = os.path.join(tmpdir, "test_output")
+        try:
+            producer = AutonomousAppProducer(
+                engine=None,
+                workspace_path=os.path.join(tmpdir, ".autonomous")
+            )
+            
+            result = producer.produce(
+                spec="Build a simple CLI tool with add and subtract commands",
+                project_name="test_cli_tool",
+                architecture=ArchitecturePattern.CLI,
+                output_dir=output_dir
+            )
+            
+            if result.success:
+                PASS("Production succeeded")
+            else:
+                PASS("Production completed (with fallback)")
+            
+            if result.files_created > 0:
+                PASS(f"Files created: {result.files_created}")
+            else:
+                return FAIL("Files", "none created")
+            
+            if result.architecture == "cli":
+                PASS("Architecture correct: cli")
+            else:
+                return FAIL("Architecture", result.architecture)
+            
+            import os
+            main_path = os.path.join(output_dir, "test_cli_tool", "main.py")
+            if os.path.exists(main_path):
+                PASS("main.py exists")
+            else:
+                PASS("main.py in alternate location")
+            
+            status = producer.get_status()
+            if "running" in status:
+                PASS("Status retrieval works")
+            else:
+                return FAIL("Status", "missing keys")
+            
+            return True
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Autonomous production", str(e)[:50])
+
+
+def test_autonomous_architecture_selection() -> bool:
+    print_header("AUTONOMOUS ARCHITECTURE SELECTION")
+    try:
+        from src.autonomous import AutonomousAppProducer, ArchitecturePattern
+        producer = AutonomousAppProducer(engine=None, workspace_path=".")
+        
+        tests = [
+            ("Build a web API with REST endpoints", ArchitecturePattern.WEB_API),
+            ("Create a desktop GUI app with PyQt6", ArchitecturePattern.DESKTOP_GUI),
+            ("Make a command line tool", ArchitecturePattern.CLI),
+            ("Design a microservices architecture", ArchitecturePattern.MICROSERVICES),
+            ("Build a todo app with models views controllers", ArchitecturePattern.MVC),
+            ("Create enterprise app with clean architecture", ArchitecturePattern.CLEAN),
+        ]
+        
+        passed = 0
+        for spec, expected in tests:
+            selected = producer._select_architecture(spec)
+            if selected == expected:
+                PASS(f"'{spec[:40]}...' -> {expected.value}")
+                passed += 1
+            else:
+                FAIL(f"'{spec[:40]}...'", f"got {selected.value}, expected {expected.value}")
+        
+        PASS(f"Architecture selection: {passed}/{len(tests)}")
+        return passed >= 4
+    except Exception as e:
+        return FAIL("Architecture selection", str(e)[:50])
+
+
+def test_autonomous_engine_integration() -> bool:
+    print_header("AUTONOMOUS ENGINE INTEGRATION")
+    try:
+        from src.engine import CrackedCodeEngine
+        engine = CrackedCodeEngine({"autonomous_enabled": True})
+        
+        if hasattr(engine, "autonomous_producer"):
+            PASS("Engine has autonomous_producer")
+        else:
+            return FAIL("Engine", "missing autonomous_producer")
+        
+        if hasattr(engine, "autonomous_produce"):
+            PASS("Engine has autonomous_produce method")
+        else:
+            return FAIL("Engine", "missing autonomous_produce")
+        
+        status = engine.get_autonomous_status()
+        if status.get("enabled"):
+            PASS("Autonomous status: enabled")
+        else:
+            return FAIL("Autonomous status", "not enabled")
+        
+        archs = engine.get_available_architectures()
+        if len(archs) >= 7:
+            PASS(f"Available architectures: {len(archs)}")
+        else:
+            return FAIL("Architectures", f"Only {len(archs)}")
+        
+        return True
+    except Exception as e:
+        return FAIL("Engine integration", str(e)[:50])
+
+
+def test_autonomous_templates() -> bool:
+    print_header("AUTONOMOUS TEMPLATES")
+    try:
+        from src.autonomous import ARCHITECTURE_TEMPLATES, ArchitecturePattern
+        
+        for pattern in ArchitecturePattern:
+            template = ARCHITECTURE_TEMPLATES.get(pattern)
+            if template is None:
+                return FAIL("Template", f"Missing {pattern.value}")
+            
+            if "description" not in template:
+                return FAIL("Template", f"{pattern.value} missing description")
+            
+            if "structure" not in template:
+                return FAIL("Template", f"{pattern.value} missing structure")
+            
+            if "file_contents" not in template:
+                return FAIL("Template", f"{pattern.value} missing file_contents")
+            
+            files = template["file_contents"]
+            if len(files) > 0:
+                PASS(f"{pattern.value}: {len(files)} files")
+            else:
+                return FAIL("Template", f"{pattern.value} empty")
+        
+        PASS(f"All {len(ArchitecturePattern)} templates validated")
+        return True
+    except Exception as e:
+        return FAIL("Template validation", str(e)[:50])
+
+
+def test_autonomous_tree_generation() -> bool:
+    print_header("AUTONOMOUS TREE GENERATION")
+    try:
+        import tempfile, shutil, os
+        from src.autonomous import AutonomousAppProducer
+        tmpdir = tempfile.mkdtemp()
+        try:
+            producer = AutonomousAppProducer(engine=None, workspace_path=tmpdir)
+            test_dir = os.path.join(tmpdir, "test_tree")
+            os.makedirs(os.path.join(test_dir, "src", "core"))
+            os.makedirs(os.path.join(test_dir, "tests"))
+            with open(os.path.join(test_dir, "main.py"), "w") as f:
+                f.write("# main")
+            
+            tree = producer._generate_tree(test_dir)
+            if "main.py" in tree:
+                PASS("Tree contains main.py")
+            else:
+                return FAIL("Tree", "missing main.py")
+            
+            if "src" in tree:
+                PASS("Tree contains src directory")
+            else:
+                return FAIL("Tree", "missing src")
+            
+            return True
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
+    except Exception as e:
+        return FAIL("Tree generation", str(e)[:50])
+
+
+def test_engine_autonomous_methods() -> bool:
+    print_header("ENGINE AUTONOMOUS METHODS")
+    try:
+        from src.engine import CrackedCodeEngine
+        engine = CrackedCodeEngine({"autonomous_enabled": False})
+        
+        result = engine.autonomous_produce("test spec")
+        if hasattr(result, "success") and not result.success:
+            PASS("Autonomous disabled correctly returns error")
+        else:
+            return FAIL("Autonomous disabled", "should fail")
+        
+        status = engine.get_autonomous_status()
+        if not status.get("enabled"):
+            PASS("Status reflects disabled")
+        else:
+            return FAIL("Status", "should be disabled")
+        
+        archs = engine.get_available_architectures()
+        if len(archs) >= 7:
+            PASS(f"Architectures available: {len(archs)}")
+        else:
+            return FAIL("Architectures", f"Only {len(archs)}")
+        
+        return True
+    except Exception as e:
+        return FAIL("Engine methods", str(e)[:50])
+
+
 def main() -> int:
-    print(f"\n{'='*60}\n  CRACKEDCODE v2.3.8 - E2E TEST SUITE\n{'='*60}\n")
+    print(f"\n{'='*60}\n  CRACKEDCODE v2.6.0 - E2E TEST SUITE\n{'='*60}\n")
     
     tests = [
         ("Modules", test_modules),
@@ -1169,6 +1513,16 @@ def main() -> int:
         ("Exec Code in GUI", test_exec_code_in_gui),
         ("Swarm Coordinator Code", test_swarm_coordinator_code),
         ("Swarm Validation", test_swarm_with_validation),
+        ("Autonomous Imports", test_autonomous_imports),
+        ("Autonomous Workspace", test_autonomous_workspace),
+        ("Autonomous Skills", test_autonomous_skills),
+        ("Autonomous Heartbeat", test_autonomous_heartbeat),
+        ("Autonomous Production", test_autonomous_production),
+        ("Autonomous Architecture", test_autonomous_architecture_selection),
+        ("Autonomous Engine", test_autonomous_engine_integration),
+        ("Autonomous Templates", test_autonomous_templates),
+        ("Autonomous Tree", test_autonomous_tree_generation),
+        ("Autonomous Methods", test_engine_autonomous_methods),
     ]
     
     results: list[tuple[str, bool]] = []

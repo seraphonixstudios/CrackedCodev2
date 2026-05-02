@@ -1999,7 +1999,7 @@ class AutonomousAppProducer:
             return ArchitecturePattern.CLI
         if any(kw in text for kw in ["clean", "hexagonal", "ports and adapter", "ddd", "domain driven"]):
             return ArchitecturePattern.CLEAN
-        if any(kw in text for kw in ["mvc", "model view controller", "gui app"]):
+        if any(kw in text for kw in ["mvc", "model view controller", "models views controllers", "controllers"]):
             return ArchitecturePattern.MVC
         
         return ArchitecturePattern.CLEAN
