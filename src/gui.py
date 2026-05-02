@@ -6,6 +6,7 @@ import json
 import logging
 import random
 import time
+import threading
 import traceback
 import io
 import re
@@ -1209,6 +1210,12 @@ class CrackedCodeGUI(QMainWindow):
         matrix_action.triggered.connect(self.toggle_matrix)
         view_menu.addAction(matrix_action)
         
+        autonomous_action = QAction("AUTONOMOUS PRODUCTION", self)
+        autonomous_action.setShortcut(QKeySequence("Ctrl+A"))
+        autonomous_action.setToolTip("Open autonomous production dialog (Ctrl+A)")
+        autonomous_action.triggered.connect(self.show_autonomous_dialog)
+        view_menu.addAction(autonomous_action)
+        
         full_action = QAction("TOGGLE FULLSCREEN", self)
         full_action.setShortcut(QKeySequence("F11"))
         full_action.setToolTip("Toggle fullscreen (F11)")
@@ -1374,6 +1381,15 @@ class CrackedCodeGUI(QMainWindow):
         
         tb.addSeparator()
         
+        self.autonomous_btn = QPushButton("AUTONOMOUS")
+        self.autonomous_btn.setCheckable(True)
+        self.autonomous_btn.setChecked(self.config.get("autonomous_enabled", True))
+        self.autonomous_btn.setToolTip("Toggle autonomous production mode (Ctrl+A)")
+        self.autonomous_btn.clicked.connect(self.toggle_autonomous_mode)
+        tb.addWidget(self.autonomous_btn)
+        
+        tb.addSeparator()
+        
         self.matrix_btn = QPushButton("MATRIX")
         self.matrix_btn.setCheckable(True)
         self.matrix_btn.setChecked(False)
@@ -1463,6 +1479,170 @@ class CrackedCodeGUI(QMainWindow):
             self.matrix.toggle()
             self.matrix_visible = not self.matrix_visible
             self.term(f"[MATRIX] {'ON' if self.matrix_visible else 'OFF'}")
+
+    def toggle_autonomous_mode(self):
+        enabled = self.autonomous_btn.isChecked()
+        self.config["autonomous_enabled"] = enabled
+        if self.engine:
+            self.engine.autonomous_enabled = enabled
+        self.term(f"[AUTONOMOUS] {'ENABLED' if enabled else 'DISABLED'}")
+        if enabled:
+            self.show_autonomous_dialog()
+
+    def show_autonomous_dialog(self):
+        """Show autonomous production dialog."""
+        from src.autonomous import ArchitecturePattern, ARCHITECTURE_TEMPLATES
+        
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Autonomous Application Producer")
+        dialog.setMinimumSize(600, 500)
+        dialog.setModal(True)
+        
+        layout = QVBoxLayout(dialog)
+        
+        title = QLabel("Autonomous Application Producer")
+        title.setStyleSheet("font-size: 16px; font-weight: bold; color: #00ff41;")
+        layout.addWidget(title)
+        
+        desc = QLabel("Describe your application in natural language. The AI will autonomously design, code, test, and deliver a complete project.")
+        desc.setWordWrap(True)
+        layout.addWidget(desc)
+        
+        layout.addWidget(QLabel("Specification:"))
+        spec_edit = QTextEdit()
+        spec_edit.setPlaceholderText("e.g., Build a todo list application with a web API, user authentication, and SQLite storage...")
+        spec_edit.setMinimumHeight(100)
+        layout.addWidget(spec_edit)
+        
+        arch_layout = QHBoxLayout()
+        arch_layout.addWidget(QLabel("Architecture:"))
+        arch_combo = QComboBox()
+        for pattern in ArchitecturePattern:
+            arch_combo.addItem(f"{pattern.value} - {ARCHITECTURE_TEMPLATES[pattern]['description']}")
+        arch_layout.addWidget(arch_combo)
+        layout.addLayout(arch_layout)
+        
+        name_layout = QHBoxLayout()
+        name_layout.addWidget(QLabel("Project name (optional):"))
+        name_edit = QLineEdit()
+        name_edit.setPlaceholderText("Auto-generated from specification")
+        name_layout.addWidget(name_edit)
+        layout.addLayout(name_layout)
+        
+        output_layout = QHBoxLayout()
+        output_layout.addWidget(QLabel("Output directory (optional):"))
+        output_edit = QLineEdit()
+        output_edit.setPlaceholderText("./projects/{project_name}")
+        output_layout.addWidget(output_edit)
+        layout.addLayout(output_layout)
+        
+        progress_bar = QProgressBar()
+        progress_bar.setVisible(False)
+        layout.addWidget(progress_bar)
+        
+        progress_label = QLabel("")
+        progress_label.setVisible(False)
+        layout.addWidget(progress_label)
+        
+        button_layout = QHBoxLayout()
+        produce_btn = QPushButton("PRODUCE")
+        produce_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #00ff41;
+                color: #0a0a0a;
+                font-weight: bold;
+                padding: 8px 24px;
+                border: none;
+                border-radius: 4px;
+            }
+            QPushButton:hover {
+                background-color: #00cc33;
+            }
+        """)
+        cancel_btn = QPushButton("Cancel")
+        button_layout.addStretch()
+        button_layout.addWidget(produce_btn)
+        button_layout.addWidget(cancel_btn)
+        layout.addLayout(button_layout)
+        
+        self._autonomous_producing = False
+        
+        def on_produce():
+            if self._autonomous_producing:
+                return
+            self._autonomous_producing = True
+            
+            spec = spec_edit.toPlainText().strip()
+            if not spec:
+                progress_label.setText("Please enter a specification.")
+                progress_label.setVisible(True)
+                self._autonomous_producing = False
+                return
+            
+            project_name = name_edit.text().strip() or None
+            output_dir = output_edit.text().strip() or None
+            arch_value = arch_combo.currentText().split(" - ")[0]
+            
+            progress_bar.setVisible(True)
+            progress_label.setVisible(True)
+            progress_bar.setValue(0)
+            progress_label.setText("Starting autonomous production...")
+            produce_btn.setEnabled(False)
+            cancel_btn.setText("Cancel")
+            
+            def progress_cb(message, progress):
+                progress_bar.setValue(int(progress * 100))
+                progress_label.setText(message)
+            
+            def phase_cb(phase, message):
+                progress_label.setText(f"[{phase.value.upper()}] {message}")
+            
+            def run_production():
+                try:
+                    from src.autonomous import ArchitecturePattern
+                    arch_enum = ArchitecturePattern(arch_value)
+                except ValueError:
+                    arch_enum = None
+                
+                result = self.engine.autonomous_produce(
+                    spec=spec,
+                    project_name=project_name,
+                    architecture=arch_enum.value if arch_enum else None,
+                    output_dir=output_dir,
+                    progress_callback=progress_cb,
+                    phase_callback=phase_cb,
+                )
+                
+                self._autonomous_producing = False
+                
+                if result.success:
+                    progress_label.setText(f"SUCCESS: {result.summary}")
+                    self.term(f"[AUTONOMOUS] {result.summary}")
+                    self.show_notification(f"Project produced: {result.files_created} files", NotificationType.SUCCESS)
+                else:
+                    progress_label.setText(f"COMPLETED WITH ISSUES: {result.summary}")
+                    self.term(f"[AUTONOMOUS] {result.summary}")
+                    if result.errors:
+                        for err in result.errors[:3]:
+                            self.term(f"  ERROR: {err}")
+                    self.show_notification(f"Production completed with issues", NotificationType.WARNING)
+                
+                produce_btn.setEnabled(True)
+                cancel_btn.setText("Close")
+            
+            thread = threading.Thread(target=run_production, daemon=True)
+            thread.start()
+        
+        def on_cancel():
+            if self._autonomous_producing:
+                if self.engine and self.engine._autonomous_producer:
+                    self.engine._autonomous_producer.cancel()
+                    progress_label.setText("Cancelling...")
+            else:
+                dialog.close()
+        
+        produce_btn.clicked.connect(on_produce)
+        cancel_btn.clicked.connect(on_cancel)
 
     def show_notification(self, message: str, ntype: NotificationType = NotificationType.INFO):
         if not hasattr(self, 'notification_area'):

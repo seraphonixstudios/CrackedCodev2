@@ -3,7 +3,7 @@
 Local AI Coding Assistant with Sci-Fi Neural Interface
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.5.0-blue?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Version-2.6.0-blue?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License">
   <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-orange?style=for-the-badge" alt="Platform">
   <img src="https://img.shields.io/badge/Python-3.10%2B-yellow?style=for-the-badge" alt="Python">
@@ -12,7 +12,7 @@ Local AI Coding Assistant with Sci-Fi Neural Interface
 
 ## Overview
 
-CrackedCode is a **100% local AI coding assistant** featuring the Atlantean Neural Interface with agent orchestration, task queue management, voice commands, streaming responses, response caching, and Matrix-style effects. No cloud, no API keys - all running with Ollama.
+CrackedCode is a **100% local AI coding assistant** featuring autonomous application production (OpenClaw-style), agent orchestration, task queue management, voice commands, streaming responses, response caching, and Matrix-style effects. No cloud, no API keys - all running with Ollama.
 
 ### Quick Start
 
@@ -23,6 +23,9 @@ python src/gui.py
 # CLI with code generation
 python src/main.py code -p "write a function to add numbers"
 
+# Autonomous production
+python src/main.py autonomous -p "Build a todo app with web API and SQLite"
+
 # Run tests
 python test_system.py
 ```
@@ -31,11 +34,11 @@ python test_system.py
 
 | Version | Features |
 |---------|----------|
+| 2.6.0 | Autonomous application production, SOTA architecture templates, persistent workspace, skill system, heartbeat scheduler |
 | 2.5.0 | Complete UI/UX overhaul, toast notifications, searchable terminal, command history, tab management, pulse indicators, task filtering |
 | 2.4.0 | Streaming responses, response caching, context management, retry logic, tabbed editor |
 | 2.3.9 | Complete UI overhaul, Task queue, Agent orchestration, Accessibility |
 | 2.3.8 | Code generation pipeline, CLI CODE subcommand, Swarm integration |
-| 2.3.5 | Project sidebar, agents panel, file watcher, git integration |
 
 ---
 
@@ -136,7 +139,7 @@ Natural language commands detected from voice input:
 | `Ctrl+Shift+C` | Copy output |
 | `Ctrl+L` | Clear terminal |
 | `Ctrl+V` | Paste (image or text) |
-| `Ctrl+A` | Select all |
+| `Ctrl+A` | Autonomous production |
 | `Ctrl+Enter` | Send prompt |
 | `Ctrl+F` | Find in terminal |
 | `Ctrl+M` | Toggle matrix rain |
@@ -298,6 +301,94 @@ result = engine.execute_generated_code("print('Hello!')")
 
 ---
 
+## Autonomous Application Production (v2.6.0)
+
+OpenClaw-style autonomous agent that takes a high-level specification and autonomously designs, codes, tests, and delivers complete applications.
+
+### Production Pipeline
+
+```
+Specification → Analysis → Architecture → Scaffold → Code → Tests → Self-Correction → Delivery
+```
+
+| Phase | Description |
+|-------|-------------|
+| **1. Analyze** | Extract requirements, identify features and constraints |
+| **2. Architect** | Design system architecture with component diagrams |
+| **3. Scaffold** | Create project file structure from templates |
+| **4. Code** | Generate production-ready code for all files |
+| **5. Test** | Run tests and validate functionality |
+| **6. Correct** | Self-correct test failures autonomously (up to 3 iterations) |
+| **7. Deliver** | Generate documentation and finalize project |
+
+### Usage
+
+```python
+from src.engine import CrackedCodeEngine
+
+engine = CrackedCodeEngine()
+
+# Autonomous production
+result = engine.autonomous_produce(
+    spec="Build a todo list app with web API and SQLite storage",
+    project_name="todo_app",
+    architecture="clean",
+    output_dir="./projects/todo_app"
+)
+
+print(f"Files: {result.files_created}")
+print(f"Tests: {result.tests_passed} passed, {result.tests_failed} failed")
+print(f"Duration: {result.duration:.1f}s")
+```
+
+### Architecture Templates
+
+| Pattern | Use Case | Structure |
+|---------|----------|-----------|
+| **MVC** | GUI applications | Models, Views, Controllers |
+| **Clean** | Enterprise apps | Domain, Adapters, Infrastructure (Hexagonal) |
+| **Layered** | Traditional apps | Presentation, Service, Repository, Domain |
+| **CLI** | Command-line tools | Commands, Core, Utils |
+| **Web API** | RESTful services | API, Controllers, Models, Services |
+| **Desktop GUI** | PyQt6 applications | UI, Models, Controllers, Resources |
+| **Microservices** | Distributed systems | Gateway, Services, Shared |
+
+### Persistent Workspace
+
+The autonomous agent maintains persistent memory across sessions (OpenClaw style):
+
+```
+.autonomous/
+├── IDENTITY.md          # Agent identity and capabilities
+├── MEMORY.md            # Cross-session memory and lessons learned
+├── PROJECT.md           # Current project context
+├── TASKS.md             # Task queue and history
+├── STANDING_INSTRUCTIONS.md  # Code standards and preferences
+├── REQUIREMENTS.md      # Analyzed requirements
+└── ARCHITECTURE.md      # Architecture design decisions
+```
+
+### Skill System
+
+Composable skills that the autonomous agent can use:
+
+| Skill | Description | Tools |
+|-------|-------------|-------|
+| **code-generator** | Production-ready code generation | write_file, read_file, execute_shell |
+| **architect** | System architecture design | write_file, read_file |
+| **tester** | Comprehensive test creation | write_file, execute_shell, read_file |
+| **debugger** | Autonomous bug fixing | read_file, write_file, execute_shell |
+| **documenter** | Documentation generation | write_file, read_file |
+| **refactorer** | Code quality improvement | read_file, write_file, execute_shell |
+
+### GUI Usage
+
+1. Click **AUTONOMOUS** button in toolbar or press **Ctrl+A**
+2. Enter specification in natural language
+3. Select architecture pattern
+4. Click **PRODUCE**
+5. Monitor real-time progress
+
 ## Intent Detection
 
 The engine automatically detects user intent:
@@ -452,6 +543,7 @@ crackedcode/
 │   ├── voice_typing.py      # Voice typing
 │   ├── parallel_processor.py # Parallel executor
 │   ├── engine.py            # CrackedCodeEngine
+│   ├── autonomous.py        # Autonomous production system
 │   ├── file_watcher.py      # File monitor
 │   └── git_integration.py  # Git integration
 ├── tests/
@@ -468,4 +560,4 @@ MIT
 
 ---
 
-**CrackedCode v2.5.0** - The Final Boss of Local AI Coding Agents
+**CrackedCode v2.6.0** - Autonomous AI Coding Agent with SOTA Architecture Production

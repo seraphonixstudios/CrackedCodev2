@@ -1,6 +1,7 @@
 import sys
 import os
 import json
+import re
 import logging
 import subprocess
 import threading
@@ -381,18 +382,43 @@ Output plan in a code block.
 """,
     }
     
-    DEBUG_KEYWORDS = ["debug", "fix", "bug", "error", "issue", "problem", "crash", "broken"]
-    CODE_KEYWORDS = ["write", "create", "generate", "build", "make", "new", "implement"]
-    REVIEW_KEYWORDS = ["review", "analyze", "check", "audit", "assess", "improve"]
-    BUILD_KEYWORDS = ["build", "plan", "design", "architecture", "structure", "outline"]
-    EXECUTE_KEYWORDS = ["run", "execute", "test", "start", "launch"]
-    SEARCH_KEYWORDS = ["search", "find", "grep", "locate", "look", "where"]
+    DEBUG_KEYWORDS = {
+        "direct": ["debug", "bug", "error", "crash", "broken", "stacktrace", "traceback", "exception", "segfault", "overflow"],
+        "phrases": ["fix bug", "fix error", "fix crash", "fix issue", "what's wrong", "what is wrong", "why is it failing", "why does it fail", "not working", "doesn't work", "won't work", "should be doing"],
+        "negative": ["feature", "enhancement", "improve", "optimize", "refactor"],
+    }
+    CODE_KEYWORDS = {
+        "direct": ["write", "create", "generate", "make", "implement", "code", "script", "function", "class", "program", "app", "application", "build a tool", "build an app", "build a script"],
+        "phrases": ["write code", "write a function", "write a script", "write a program", "create a function", "create a class", "generate code", "generate a function", "implement this", "implement a", "how do i code", "how to code"],
+        "negative": ["review", "explain", "understand", "plan", "design"],
+    }
+    REVIEW_KEYWORDS = {
+        "direct": ["review", "analyze", "audit", "assess", "critique", "inspect", "examine", "evaluate", "refactor", "clean"],
+        "phrases": ["code review", "review code", "review this", "look over", "best practices", "code smells", "is this good", "how to improve", "make better", "what's wrong with"],
+        "negative": ["build", "create", "write", "generate", "new"],
+    }
+    BUILD_KEYWORDS = {
+        "direct": ["plan", "design", "architecture", "outline", "blueprint", "roadmap", "strategy", "specification", "spec"],
+        "phrases": ["how to build", "how to implement", "build plan", "implementation plan", "step by step", "step-by-step", "approach to", "design the", "architecture for", "plan the", "plan out", "design for"],
+        "negative": ["run", "execute", "test", "debug", "fix"],
+    }
+    EXECUTE_KEYWORDS = {
+        "direct": ["run", "execute", "test", "start", "launch", "invoke", "trigger", "compile", "deploy", "install"],
+        "phrases": ["run the tests", "run tests", "run it", "execute this", "test the code", "test this", "run the code", "start the app", "launch the", "how to run", "how to execute", "how to test"],
+        "negative": ["plan", "design", "write", "create", "review"],
+    }
+    SEARCH_KEYWORDS = {
+        "direct": ["search", "grep", "locate", "where", "query", "scan", "browse", "list", "show"],
+        "phrases": ["find file", "find where", "find all", "find the", "search for", "grep for", "where is", "where are", "show me where", "locate the", "look for", "look up"],
+        "negative": ["create", "build", "write", "generate", "execute"],
+    }
 
     def __init__(self, config: Dict = None):
         self.config = config or {}
         self.model = self.config.get("model", "qwen3:8b-gpu")
         self.project_root = self.config.get("project_root", ".")
         self.unified_mode = self.config.get("unified_mode", False)
+        self.autonomous_enabled = self.config.get("autonomous_enabled", True)
         self.voice = VoiceEngine(self.config.get("whisper_size", "medium.en"))
         self.ollama = OllamaBridge(self.model)
         self.ollama.set_unified_mode(self.unified_mode)
@@ -400,6 +426,7 @@ Output plan in a code block.
         self.session = SessionManager()
         self.plan_enabled = True
         self.build_enabled = True
+        self._autonomous_producer = None
         self._check()
         logger.info("CrackedCodeEngine initialized")
 
@@ -429,35 +456,109 @@ Output plan in a code block.
             "context_length": cache_stats["context_length"],
         }
 
-    def parse_intent(self, prompt: str, confidence_threshold: float = 0.5) -> PromptRequest:
-        """Parse user intent from prompt with improved keyword matching."""
-        text = prompt.lower()
+    def parse_intent(self, prompt: str, confidence_threshold: float = 0.3) -> PromptRequest:
+        """Parse user intent from prompt with robust multi-layer matching."""
+        text = prompt.lower().strip()
+        words = re.findall(r'\b\w+\b', text)
+        word_set = set(words)
         
-        keyword_scores = {
-            Intent.DEBUG: sum(1 for k in self.DEBUG_KEYWORDS if k in text),
-            Intent.CODE: sum(1 for k in self.CODE_KEYWORDS if k in text),
-            Intent.REVIEW: sum(1 for k in self.REVIEW_KEYWORDS if k in text),
-            Intent.BUILD: sum(1 for k in self.BUILD_KEYWORDS if k in text),
-            Intent.EXECUTE: sum(1 for k in self.EXECUTE_KEYWORDS if k in text),
-            Intent.SEARCH: sum(1 for k in self.SEARCH_KEYWORDS if k in text),
+        keyword_sets = {
+            Intent.DEBUG: self.DEBUG_KEYWORDS,
+            Intent.CODE: self.CODE_KEYWORDS,
+            Intent.REVIEW: self.REVIEW_KEYWORDS,
+            Intent.BUILD: self.BUILD_KEYWORDS,
+            Intent.EXECUTE: self.EXECUTE_KEYWORDS,
+            Intent.SEARCH: self.SEARCH_KEYWORDS,
         }
         
-        max_score = max(keyword_scores.values())
+        intent_scores = {}
         
-        if max_score >= confidence_threshold * 10:
-            intent = max(keyword_scores, key=keyword_scores.get)
-        else:
+        for intent, keywords in keyword_sets.items():
+            score = 0
+            
+            for kw in keywords["direct"]:
+                if " " in kw:
+                    if kw in text:
+                        score += 3
+                else:
+                    if kw in word_set:
+                        score += 2
+            
+            for phrase in keywords["phrases"]:
+                if phrase in text:
+                    score += 4
+            
+            for neg in keywords["negative"]:
+                if " " in neg:
+                    if neg in text:
+                        score -= 2
+                else:
+                    if neg in word_set:
+                        score -= 1
+            
+            intent_scores[intent] = max(score, 0)
+        
+        intent_scores[Intent.CHAT] = 0
+        
+        max_score = max(intent_scores.values())
+        top_intents = [i for i, s in intent_scores.items() if s == max_score]
+        
+        tiebreaker_priority = [
+            Intent.DEBUG,
+            Intent.EXECUTE,
+            Intent.SEARCH,
+            Intent.REVIEW,
+            Intent.BUILD,
+            Intent.CODE,
+            Intent.CHAT,
+        ]
+        
+        if max_score >= 2:
+            if len(top_intents) > 1:
+                for p in tiebreaker_priority:
+                    if p in top_intents:
+                        intent = p
+                        break
+                else:
+                    intent = top_intents[0]
+            else:
+                intent = top_intents[0]
+        elif max_score == 1:
             intent = Intent.CHAT
+        else:
+            has_question = any(text.startswith(q) for q in ["how ", "what ", "why ", "can ", "is ", "are ", "do ", "does ", "when ", "where "])
+            has_command = any(text.startswith(c) for c in ["run ", "start ", "open ", "show ", "list ", "get ", "set "])
+            
+            if has_command or "code" in word_set or "function" in word_set or "file" in word_set:
+                intent = Intent.CODE
+            elif has_question:
+                if any(w in word_set for w in ["debug", "error", "bug", "fail", "broken"]):
+                    intent = Intent.DEBUG
+                elif any(w in word_set for w in ["review", "better", "improve", "optimize"]):
+                    intent = Intent.REVIEW
+                elif any(w in word_set for w in ["plan", "design", "architect", "build", "start"]):
+                    intent = Intent.BUILD
+                elif any(w in word_set for w in ["run", "execute", "test", "install"]):
+                    intent = Intent.EXECUTE
+                else:
+                    intent = Intent.CHAT
+            else:
+                intent = Intent.CHAT
+        
+        total_possible = 20
+        confidence = min(max_score / total_possible, 1.0)
         
         context = {
-            "keyword_matches": {k.value: v for k, v in keyword_scores.items()},
-            "confidence": max_score / 10.0,
-            "raw_keywords": [k for k in text.split() if len(k) > 3],
+            "keyword_matches": {k.value: v for k, v in intent_scores.items()},
+            "confidence": round(confidence, 2),
+            "word_count": len(words),
+            "is_question": text.endswith("?") or any(text.startswith(q) for q in ["how ", "what ", "why ", "can "]),
+            "has_code_reference": any(w in word_set for w in ["code", "function", "class", "file", "method", "module"]),
         }
         
         return PromptRequest(
-            text=prompt, 
-            intent=intent, 
+            text=prompt,
+            intent=intent,
             context=context,
             timestamp=datetime.now()
         )
@@ -735,6 +836,84 @@ Output plan in a code block.
             pass
         
         return stats
+
+    @property
+    def autonomous_producer(self):
+        if self._autonomous_producer is None and self.autonomous_enabled:
+            from src.autonomous import AutonomousAppProducer
+            self._autonomous_producer = AutonomousAppProducer(
+                engine=self,
+                workspace_path=str(Path(self.project_root) / ".autonomous")
+            )
+        return self._autonomous_producer
+
+    def autonomous_produce(self, spec: str, project_name: str = None, architecture: str = None,
+                          output_dir: str = None, progress_callback: Callable = None,
+                          phase_callback: Callable = None) -> Any:
+        """Autonomously produce a complete application from specification.
+        
+        OpenClaw-style autonomous agent that handles the full development cycle:
+        1. Analyze requirements
+        2. Design architecture (auto-selects or uses specified pattern)
+        3. Create project scaffold
+        4. Generate all code files
+        5. Write and run tests
+        6. Self-correct test failures
+        7. Generate documentation and deliver
+        
+        Args:
+            spec: High-level specification (natural language)
+            project_name: Project name (auto-generated from spec if not provided)
+            architecture: Architecture pattern - mvc, clean, layered, cli, web_api, desktop_gui, microservices
+            output_dir: Output directory (defaults to ./projects/{project_name})
+            progress_callback: Callback(message: str, progress: float) for progress updates
+            phase_callback: Callback(phase: Phase, message: str) for phase transitions
+            
+        Returns:
+            AutonomousResult with production details
+        """
+        if not self.autonomous_enabled:
+            return AgentResponse(success=False, error="Autonomous mode is disabled")
+        
+        producer = self.autonomous_producer
+        if progress_callback:
+            producer.set_progress_callback(progress_callback)
+        if phase_callback:
+            producer.set_phase_callback(phase_callback)
+        
+        arch_enum = None
+        if architecture:
+            from src.autonomous import ArchitecturePattern
+            try:
+                arch_enum = ArchitecturePattern(architecture.lower())
+            except ValueError:
+                pass
+        
+        result = producer.produce(
+            spec=spec,
+            project_name=project_name,
+            architecture=arch_enum,
+            output_dir=output_dir,
+        )
+        
+        return result
+
+    def get_autonomous_status(self) -> Dict:
+        """Get autonomous producer status."""
+        if self._autonomous_producer is None:
+            return {"available": False, "enabled": self.autonomous_enabled}
+        status = self._autonomous_producer.get_status()
+        status["available"] = True
+        status["enabled"] = self.autonomous_enabled
+        return status
+
+    def get_available_architectures(self) -> List[Dict[str, str]]:
+        """Get list of available architecture patterns."""
+        from src.autonomous import ARCHITECTURE_TEMPLATES, ArchitecturePattern
+        return [
+            {"name": p.value, "description": ARCHITECTURE_TEMPLATES[p]["description"]}
+            for p in ArchitecturePattern
+        ]
 
 
 _engine: Optional[CrackedCodeEngine] = None
