@@ -3,7 +3,7 @@
 Local AI Coding Assistant with Sci-Fi Neural Interface
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.3.9-blue?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Version-2.4.0-blue?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License">
   <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-orange?style=for-the-badge" alt="Platform">
   <img src="https://img.shields.io/badge/Python-3.10%2B-yellow?style=for-the-badge" alt="Python">
@@ -12,7 +12,7 @@ Local AI Coding Assistant with Sci-Fi Neural Interface
 
 ## Overview
 
-CrackedCode is a **100% local AI coding assistant** featuring the Atlantean Neural Interface with agent orchestration, task queue management, voice commands, and Matrix-style effects. No cloud, no API keys - all running with Ollama.
+CrackedCode is a **100% local AI coding assistant** featuring the Atlantean Neural Interface with agent orchestration, task queue management, voice commands, streaming responses, response caching, and Matrix-style effects. No cloud, no API keys - all running with Ollama.
 
 ### Quick Start
 
@@ -31,13 +31,14 @@ python test_system.py
 
 | Version | Features |
 |---------|----------|
+| 2.4.0 | Streaming responses, response caching, context management, retry logic, tabbed editor |
 | 2.3.9 | Complete UI overhaul, Task queue, Agent orchestration, Accessibility |
 | 2.3.8 | Code generation pipeline, CLI CODE subcommand, Swarm integration |
 | 2.3.5 | Project sidebar, agents panel, file watcher, git integration |
 
 ---
 
-## Desktop GUI (v2.3.9)
+## Desktop GUI (v2.4.0)
 
 ```bash
 python src/gui.py
@@ -49,9 +50,12 @@ python src/gui.py
 - **Task Queue Widget**: Real-time status updates with pending/running/completed tracking
 - **Agent Panel**: Visual status indicators with icons and capabilities
 - **File Tree Widget**: Hierarchical project navigation
+- **Tabbed Editor**: Multiple file tabs with close functionality
 - **Menu Bar**: FILE/EDIT/VIEW/HELP with full keyboard shortcuts
 - **Status Bar**: Live clock, task counter, Ollama status
 - **Progress Bar**: Visual feedback during task processing
+- **Streaming Responses**: Real-time character-by-character output
+- **Matrix Overlay**: Animated rain effect
 
 ### Layout
 
@@ -60,20 +64,20 @@ python src/gui.py
 │ MENU BAR: File | Edit | View | Help                       │
 ├─────────┬───────────────────────────────────────────────┤
 │ CONTROL │ TOOLBAR: [PLAN][BUILD] [EXECUTE][VOICE]       │
-│ CENTER  ├───────────────────────────────────────────────┤
-│         │                                              │
-│ Project │ CODE EDITOR                                   │
-│ Files   │                                              │
-│         │                                              │
-│ ─────── │                                              │
-│ AGENTS  │                                              │
-│ S A C E │                                              │
-│ R F     │                                              │
+│ CENTER  │ [UNIFIED] [STREAM]                            │
 │         ├───────────────────────────────────────────────┤
-│ ─────── │                                              │
+│ Project │ CODE EDITOR (Tabbed)                           │
+│ Files   │ [untitled] [file1.py] [file2.py]              │
+│         │                                               │
+│ ─────── │                                               │
+│ AGENTS  │                                               │
+│ S A C E │                                               │
+│ R F     │                                               │
+│         ├───────────────────────────────────────────────┤
+│ ─────── │                                               │
 │ TASK    │ TERMINAL: > Command input...                  │
 │ QUEUE   │        [SEND]                                │
-│ ○ ○ ●   │                                              │
+│ ○ ○ ●   │                                               │
 │         ├───────────────────────────────────────────────┤
 │ Progress│ STATUS: READY | OLLAMA: ON | Tasks: 3/5      │
 └─────────┴───────────────────────────────────────────────┘
@@ -87,8 +91,8 @@ python src/gui.py
 | **Agent Panel** | 6 agents with real-time status |
 | **Task Queue** | Live task tracking with status icons |
 | **Voice Typing** | Click VOICE to record (faster-whisper) |
-| **Code Editor** | Full text editor with syntax |
-| **Terminal** | AI response display and input |
+| **Code Editor** | Tabbed text editor with multiple files |
+| **Terminal** | AI response display with streaming |
 | **Matrix Overlay** | Animated rain effect |
 | **Atlantean Theme** | Green `#00FF41` on black |
 
@@ -121,12 +125,76 @@ Natural language commands detected from voice input:
 | `F12` | Dev console |
 | `Escape` | Stop operation |
 
-### Accessibility
+---
 
-All widgets have `AccessibleName` for screen readers:
-- `AccessibleName="Code editor"` 
-- `AccessibleName="Command input"`
-- `AccessibleName="Send command"`
+## Streaming Responses (v2.4.0)
+
+Enable real-time character-by-character output from the AI:
+
+```python
+# In GUI: Click STREAM button in toolbar
+# In config: "streaming_enabled": true
+
+# Programmatic usage:
+response = await engine.process(prompt, streaming=True, callback=lambda chunk: print(chunk, end=""))
+```
+
+### Benefits
+- Immediate feedback during generation
+- Better user experience for long responses
+- Can cancel mid-stream if needed
+
+---
+
+## Response Caching (v2.4.0)
+
+Automatic caching of responses to reduce redundant API calls:
+
+```python
+# Cache is enabled by default
+# Cache key: hash of (model, system_prompt, prompt)
+
+# Clear cache:
+engine.ollama.clear_cache()
+
+# Get cache stats:
+stats = engine.ollama.get_cache_stats()
+# {"size": 15, "context_length": 10, "max_context": 20}
+```
+
+### Benefits
+- Faster response for repeated queries
+- Reduced load on Ollama
+- Automatic cache management
+
+---
+
+## Context Management (v2.4.0)
+
+Automatic conversation history tracking:
+
+```python
+# Context is maintained automatically
+# Max context window: 20 turns (configurable)
+
+# Clear context:
+engine.ollama.clear_context()
+
+# Context is sent with each request for coherent conversations
+```
+
+---
+
+## Retry Logic (v2.4.0)
+
+Automatic retry on failed requests:
+
+```python
+# Default: 2 retries with exponential backoff
+# Configurable in config.json: "max_retries": 2
+
+# Backoff: 0.5s, 1s, 1.5s between retries
+```
 
 ---
 
@@ -239,7 +307,7 @@ The engine automatically detects user intent:
 
 ```python
 from src.parallel_processor import (
-    ParallelExecutor, PipelineProcessor, CodeSwarmCoordinator,
+    ParallelExecutor, PipelineProcessor, UnifiedCoordinator,
     ExecutionMode, create_task, batch_create_tasks
 )
 
@@ -255,6 +323,12 @@ pipeline = PipelineProcessor()
 pipeline.add_stage("stage1", lambda x: x * 2)
 pipeline.add_stage("stage2", lambda x: x + 1)
 result = pipeline.execute(5)  # 11
+
+# Unified resolution
+coordinator = UnifiedCoordinator(max_workers=3)
+coordinator.start()
+task_id = coordinator.submit_resolution_task("test", [func1, func2, func3])
+resolution = coordinator.resolve(task_id)
 ```
 
 ---
@@ -277,52 +351,22 @@ print(cmd)  # "stop"
 
 ---
 
-## Plan/Build Mode Toggle
+## Unified Intelligence Mode
 
-| Mode | Function |
-|------|----------|
-| PLAN only | Analyze and plan |
-| BUILD only | Execute plan |
-| PLAN + BUILD | Full workflow |
+Combine all 3 Ollama models into a single brain:
 
----
+| Mode | Description |
+|------|-------------|
+| **UNIFIED** | Combines all models for comprehensive responses |
+| **SINGLE** | Uses specialized models for specific tasks |
 
-## Atlantean Sci-Fi UI
+### Model Roles
 
-```python
-from src.atlan_ui import *
-
-atlan_ui.print_system_info()
-atlan_ui.loading_sequence("INITIALIZING")
-atlan_ui.print_data_stream("ONLINE", "hex", 1.0)
-
-# Effects
-GlitchEffect.glitch_text("SYSTEM")
-NeuralPulse.progress_bar(7, 10)
-HexGrid.hex_pattern(20, 5)
-MatrixRain(width=40, height=20).start(3.0)
-```
-
----
-
-## File Structure
-
-```
-crackedcode/
-├── src/
-│   ├── main.py              # CLI application
-│   ├── gui.py               # PyQt6 Desktop GUI
-│   ├── atlan_ui.py          # Sci-Fi UI effects
-│   ├── voice_typing.py      # Voice typing
-│   ├── parallel_processor.py # Parallel executor
-│   ├── engine.py            # CrackedCodeEngine
-│   ├── file_watcher.py      # File monitor
-│   └── git_integration.py  # Git integration
-├── tests/
-├── test_system.py           # 32 E2E tests
-├── config.json
-└── README.md
-```
+| Model | Role | Strength |
+|-------|------|----------|
+| qwen3:8b-gpu | General/Code | Reasoning, coding, planning |
+| dolphin-llama3:8b-gpu | Creative | Conversation, writing |
+| llava:13b-gpu | Vision | Image analysis, OCR |
 
 ---
 
@@ -333,7 +377,12 @@ crackedcode/
   "model": "qwen3:8b-gpu",
   "temperature": 0.1,
   "max_tokens": 4096,
-  "ollama_host": "http://127.0.0.1:11434"
+  "ollama_host": "http://127.0.0.1:11434",
+  "unified_mode": false,
+  "streaming_enabled": true,
+  "cache_enabled": true,
+  "max_context": 20,
+  "max_retries": 2
 }
 ```
 
@@ -366,6 +415,30 @@ python test_system.py
 - Pipeline Processor
 - Code Generation
 - E2E Flows
+- Response Caching
+- Context Management
+- Streaming Responses
+
+---
+
+## File Structure
+
+```
+crackedcode/
+├── src/
+│   ├── main.py              # CLI application
+│   ├── gui.py               # PyQt6 Desktop GUI
+│   ├── atlan_ui.py          # Sci-Fi UI effects
+│   ├── voice_typing.py      # Voice typing
+│   ├── parallel_processor.py # Parallel executor
+│   ├── engine.py            # CrackedCodeEngine
+│   ├── file_watcher.py      # File monitor
+│   └── git_integration.py  # Git integration
+├── tests/
+├── test_system.py           # E2E tests
+├── config.json
+└── README.md
+```
 
 ---
 
@@ -375,4 +448,4 @@ MIT
 
 ---
 
-**CrackedCode v2.3.9** - The Final Boss of Local AI Coding Agents
+**CrackedCode v2.4.0** - The Final Boss of Local AI Coding Agents

@@ -9,7 +9,7 @@ import wave
 import threading
 import platform
 from pathlib import Path
-from typing import Optional, Callable
+from typing import Optional, Callable, Dict
 from dataclasses import dataclass
 
 import numpy as np

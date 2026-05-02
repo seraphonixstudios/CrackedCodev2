@@ -214,7 +214,7 @@ def log_task_event(task_id: int, agent: str, event: str, details: str = ""):
 def log_session_start():
     log_info("=" * 60)
     log_info("CrackedCode Session Started")
-    log_info(f"Version: 2.3.8")
+    log_info(f"Version: 2.3.9")
     log_info(f"Platform: {platform.system()} {platform.release()}")
     log_info(f"Python: {platform.python_version()}")
     log_info(f"Debug Mode: {DEBUG_MODE}")

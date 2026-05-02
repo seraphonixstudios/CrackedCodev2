@@ -6,7 +6,7 @@ import subprocess
 import threading
 import time
 from pathlib import Path
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -88,6 +88,10 @@ class OllamaBridge:
             "llava:13b-gpu": {"role": "vision", "strength": "image,analysis,ocr"},
         }
         self.available_models = []
+        self._cache: Dict[str, AgentResponse] = {}
+        self._max_retries = 2
+        self._context_window: List[Dict] = []
+        self._max_context = 20
 
     def detect(self) -> Dict:
         result = {"available": False, "models": [], "host": "http://localhost:11434", "selected": self.model}
@@ -110,20 +114,97 @@ class OllamaBridge:
         self.unified_mode = enabled
         logger.info(f"Unified mode: {'ENABLED' if enabled else 'DISABLED'}")
 
-    def chat(self, prompt: str, system: str = "", model: str = None) -> AgentResponse:
+    def _get_cache_key(self, prompt: str, system: str, model: str) -> str:
+        import hashlib
+        content = f"{model}:{system}:{prompt}"
+        return hashlib.sha256(content.encode()).hexdigest()[:16]
+
+    def chat(self, prompt: str, system: str = "", model: str = None, use_cache: bool = True) -> AgentResponse:
         if not self.ollama:
             self.detect()
+        
+        cache_key = self._get_cache_key(prompt, system, model or self.model)
+        if use_cache and cache_key in self._cache:
+            logger.info(f"Cache hit for query")
+            return self._cache[cache_key]
+        
         start = time.time()
         target_model = model or self.model
+        
+        for attempt in range(self._max_retries + 1):
+            try:
+                messages = [{"role": "system", "content": system}] if system else []
+                messages.extend(self._context_window[-self._max_context:])
+                messages.append({"role": "user", "content": prompt})
+                
+                response = self.ollama.chat(model=target_model, messages=messages, options={"temperature": 0.1})
+                text = response.message.content
+                
+                self._context_window.append({"role": "user", "content": prompt})
+                self._context_window.append({"role": "assistant", "content": text})
+                if len(self._context_window) > self._max_context * 2:
+                    self._context_window = self._context_window[-self._max_context:]
+                
+                result = AgentResponse(success=True, text=text, execution_time=time.time() - start)
+                
+                if use_cache:
+                    self._cache[cache_key] = result
+                
+                return result
+            except Exception as e:
+                logger.error(f"Ollama chat failed (attempt {attempt + 1}/{self._max_retries + 1}): {e}")
+                if attempt < self._max_retries:
+                    time.sleep(0.5 * (attempt + 1))
+                    continue
+                return AgentResponse(success=False, error=str(e))
+        
+        return AgentResponse(success=False, error="Max retries exceeded")
+
+    def chat_stream(self, prompt: str, system: str = "", model: str = None, callback: Callable[[str], None] = None):
+        if not self.ollama:
+            self.detect()
+        
+        target_model = model or self.model
+        
         try:
             messages = [{"role": "system", "content": system}] if system else []
+            messages.extend(self._context_window[-self._max_context:])
             messages.append({"role": "user", "content": prompt})
-            response = self.ollama.chat(model=target_model, messages=messages, options={"temperature": 0.1})
-            text = response.message.content
-            return AgentResponse(success=True, text=text, execution_time=time.time() - start)
+            
+            stream = self.ollama.chat(model=target_model, messages=messages, stream=True, options={"temperature": 0.1})
+            
+            full_response = ""
+            for chunk in stream:
+                if hasattr(chunk, 'message') and hasattr(chunk.message, 'content'):
+                    text = chunk.message.content
+                    full_response += text
+                    if callback:
+                        callback(text)
+            
+            self._context_window.append({"role": "user", "content": prompt})
+            self._context_window.append({"role": "assistant", "content": full_response})
+            if len(self._context_window) > self._max_context * 2:
+                self._context_window = self._context_window[-self._max_context:]
+            
+            return AgentResponse(success=True, text=full_response, execution_time=0.0)
         except Exception as e:
-            logger.error(f"Ollama chat failed: {e}")
+            logger.error(f"Ollama stream chat failed: {e}")
             return AgentResponse(success=False, error=str(e))
+
+    def clear_cache(self):
+        self._cache.clear()
+        logger.info("Cache cleared")
+
+    def clear_context(self):
+        self._context_window.clear()
+        logger.info("Context cleared")
+
+    def get_cache_stats(self) -> Dict:
+        return {
+            "size": len(self._cache),
+            "context_length": len(self._context_window),
+            "max_context": self._max_context,
+        }
 
     def unified_chat(self, prompt: str, system: str = "") -> AgentResponse:
         if not self.ollama:
@@ -145,6 +226,19 @@ class OllamaBridge:
             try:
                 response = self.ollama.chat(model=qwen_model, messages=messages, options={"temperature": 0.2})
                 text = response.message.content
+                
+                dolphin_messages = [
+                    {"role": "system", "content": "You are a creative AI assistant. Review and enhance the following response with creative insights."},
+                    {"role": "user", "content": f"Original response:\n\n{text}\n\nProvide additional creative perspectives and enhancements:"}
+                ]
+                
+                try:
+                    dolphin_response = self.ollama.chat(model=dolphin_model, messages=dolphin_messages, options={"temperature": 0.3})
+                    creative_additions = dolphin_response.message.content
+                    text = f"{text}\n\n--- Creative Insights ---\n{creative_additions}"
+                except Exception as e:
+                    logger.warning(f"Dolphin model enhancement failed: {e}")
+                
                 return AgentResponse(success=True, text=f"[UNIFIED BRAIN]\n\n{text}", execution_time=time.time() - start)
             except Exception as e:
                 logger.error(f"Unified chat failed: {e}")
@@ -320,8 +414,9 @@ Output plan in a code block.
 
     def get_status(self) -> Dict:
         ollama = self.ollama.detect()
+        cache_stats = self.ollama.get_cache_stats()
         return {
-            "version": "2.3.9",
+            "version": "2.4.0",
             "model": self.model,
             "unified_mode": self.unified_mode,
             "plan": self.plan_enabled,
@@ -329,7 +424,9 @@ Output plan in a code block.
             "ollama_available": ollama["available"],
             "ollama_models": ollama["models"],
             "history_length": self.session.history_len(),
-            "model_roles": self.ollama.models
+            "model_roles": self.ollama.models,
+            "cache_size": cache_stats["size"],
+            "context_length": cache_stats["context_length"],
         }
 
     def parse_intent(self, prompt: str, confidence_threshold: float = 0.5) -> PromptRequest:
@@ -456,7 +553,7 @@ Output plan in a code block.
                 return match.group(1)
         return None
 
-    async def process(self, prompt: str) -> AgentResponse:
+    async def process(self, prompt: str, streaming: bool = False, callback: Callable = None) -> AgentResponse:
         """Process a user prompt with full intent detection and execution."""
         request = self.parse_intent(prompt)
         
@@ -473,11 +570,14 @@ Output plan in a code block.
             return self._search_files(prompt)
         
         template = self.PROMPT_TEMPLATES.get(request.intent, "{prompt}")
+        formatted_prompt = template.format(prompt=request.text)
         
         if self.unified_mode:
-            response = self.ollama.unified_chat(template.format(prompt=request.text))
+            response = self.ollama.unified_chat(formatted_prompt)
+        elif streaming and callback:
+            response = self.ollama.chat_stream(formatted_prompt, callback=callback)
         else:
-            response = self.ollama.chat(template.format(prompt=request.text))
+            response = self.ollama.chat(formatted_prompt)
         
         if response.success:
             self.session.add_turn(request, response)

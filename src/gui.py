@@ -435,6 +435,10 @@ class CrackedCodeGUI(QMainWindow):
         self.voice_recording = False
         self.project_path: Optional[Path] = None
         self.status_labels = {}
+        self.current_file: Optional[Path] = None
+        self.open_files: Dict[str, QTextEdit] = {}
+        self.streaming_active = False
+        self.notification_queue = []
         
         self.load_config()
         self.setup_atlan_theme()
@@ -447,7 +451,7 @@ class CrackedCodeGUI(QMainWindow):
         self.restore_state()
         self.setup_paste_handler()
         
-        logger.info("CrackedCode GUI v2.3.9 started")
+        logger.info("CrackedCode GUI v2.4.0 started")
 
     def init_orchestrator(self):
         self.orchestrator = AgentOrchestrator(gui_ref=self)
@@ -513,7 +517,7 @@ class CrackedCodeGUI(QMainWindow):
             self.config = {"model": "qwen3:8b-gpu", "project_root": "."}
 
     def setup_atlan_theme(self):
-        self.setWindowTitle("CRACKEDCODE v2.3.9 // ATLANTEAN NEURAL SYSTEM")
+        self.setWindowTitle("CRACKEDCODE v2.4.0 // ATLANTEAN NEURAL SYSTEM")
         self.setMinimumSize(1400, 900)
         
         self.atlan_font = QFont("Consolas", 11)
@@ -655,10 +659,18 @@ class CrackedCodeGUI(QMainWindow):
         
         self.create_toolbar()
         
+        self.tab_widget = QTabWidget()
+        self.tab_widget.setTabsClosable(True)
+        self.tab_widget.tabCloseRequested.connect(self.close_tab)
+        self.tab_widget.currentChanged.connect(self.on_tab_changed)
+        
         self.editor = QTextEdit()
         self.editor.setPlaceholderText("Enter code here...")
         self.editor.setToolTip("Code editor - type or paste code here")
-        rl.addWidget(self.editor, 3)
+        self.tab_widget.addTab(self.editor, "untitled")
+        self.open_files["untitled"] = self.editor
+        
+        rl.addWidget(self.tab_widget, 3)
         
         self.terminal = QTextEdit()
         self.terminal.setReadOnly(True)
@@ -875,6 +887,15 @@ class CrackedCodeGUI(QMainWindow):
         self.unified_btn.clicked.connect(self.toggle_unified_mode)
         tb.addWidget(self.unified_btn)
 
+        tb.addSeparator()
+
+        self.stream_btn = QPushButton("STREAM")
+        self.stream_btn.setCheckable(True)
+        self.stream_btn.setChecked(self.config.get("streaming_enabled", True))
+        self.stream_btn.setToolTip("Toggle streaming responses (character by character)")
+        self.stream_btn.clicked.connect(self.toggle_streaming)
+        tb.addWidget(self.stream_btn)
+
     def create_status(self):
         sb = QStatusBar()
         self.setStatusBar(sb)
@@ -924,6 +945,58 @@ class CrackedCodeGUI(QMainWindow):
             self.set_status(mode_text)
             self.term(f"[MODE] {mode_text} {'(All models combined)' if enabled else '(Specialized models)'}")
 
+    def toggle_streaming(self):
+        enabled = self.stream_btn.isChecked()
+        self.config["streaming_enabled"] = enabled
+        mode_text = "STREAMING ON" if enabled else "STREAMING OFF"
+        self.set_status(mode_text)
+        self.term(f"[STREAM] {mode_text}")
+
+    def close_tab(self, index):
+        if self.tab_widget.count() > 1:
+            tab_name = self.tab_widget.tabText(index)
+            if tab_name in self.open_files:
+                del self.open_files[tab_name]
+            self.tab_widget.removeTab(index)
+            self.term(f"[TAB] Closed {tab_name}")
+
+    def on_tab_changed(self, index):
+        tab_name = self.tab_widget.tabText(index)
+        self.editor = self.tab_widget.widget(index)
+        self.set_status(f"Editing: {tab_name}")
+
+    def new_tab(self, name: str = None):
+        if name is None:
+            name = f"file_{self.tab_widget.count()}"
+        editor = QTextEdit()
+        editor.setPlaceholderText("Enter code here...")
+        editor.setStyleSheet(self.editor.styleSheet())
+        self.tab_widget.addTab(editor, name)
+        self.open_files[name] = editor
+        self.tab_widget.setCurrentWidget(editor)
+        self.editor = editor
+        self.term(f"[TAB] Created {name}")
+
+    def open_file_in_tab(self, filepath: Path):
+        name = filepath.name
+        if name in self.open_files:
+            self.tab_widget.setCurrentWidget(self.open_files[name])
+            return
+        
+        try:
+            content = filepath.read_text(errors='ignore')
+            editor = QTextEdit()
+            editor.setPlainText(content)
+            editor.setStyleSheet(self.editor.styleSheet())
+            self.tab_widget.addTab(editor, name)
+            self.open_files[name] = editor
+            self.tab_widget.setCurrentWidget(editor)
+            self.editor = editor
+            self.current_file = filepath
+            self.term(f"[OPENED] {filepath.name}")
+        except Exception as e:
+            self.term(f"[ERROR] Cannot open {filepath.name}: {e}")
+
     def toggle_dev_console(self):
         status = self.engine.get_status() if self.engine else {}
         
@@ -944,6 +1017,9 @@ class CrackedCodeGUI(QMainWindow):
             self.dev_console.append(f"Models: {status.get('ollama_models', [])}")
             self.dev_console.append(f"Selected Model: {status.get('model', 'none')}")
             self.dev_console.append(f"Unified Mode: {status.get('unified_mode', False)}")
+            self.dev_console.append(f"Streaming: {self.config.get('streaming_enabled', True)}")
+            self.dev_console.append(f"Cache Size: {status.get('cache_size', 0)}")
+            self.dev_console.append(f"Context Length: {status.get('context_length', 0)}")
             self.dev_console.append(f"Plan Mode: {status.get('plan', False)}")
             self.dev_console.append(f"Build Mode: {status.get('build', False)}")
             self.dev_console.append(f"History Length: {status.get('history_length', 0)}")
@@ -1135,13 +1211,7 @@ class CrackedCodeGUI(QMainWindow):
         if file_path:
             path = Path(file_path)
             if path.exists():
-                try:
-                    content = path.read_text(errors='ignore')
-                    self.editor.setPlainText(content)
-                    self.current_file = path
-                    self.term(f"[OPENED: {path.name}]")
-                except Exception as e:
-                    self.term(f"[ERROR: Cannot read {path.name} - {e}]")
+                self.open_file_in_tab(path)
 
     def save_current_file(self):
         if hasattr(self, 'current_file') and self.current_file:
@@ -1152,14 +1222,22 @@ class CrackedCodeGUI(QMainWindow):
             except Exception as e:
                 self.term(f"[ERROR: Cannot save - {e}]")
         else:
-            self.term("[SAVE: No file open]")
+            filename, _ = QFileDialog.getSaveFileName(self, "SAVE FILE", "", "Python Files (*.py);;All Files (*)")
+            if filename:
+                try:
+                    content = self.editor.toPlainText()
+                    Path(filename).write_text(content)
+                    self.current_file = Path(filename)
+                    self.term(f"[SAVED: {filename}]")
+                except Exception as e:
+                    self.term(f"[ERROR: Cannot save - {e}]")
 
     def show_docs(self):
         QDesktopServices.openUrl(QUrl("https://github.com/seraphonixstudios/CrackedCodev2"))
 
     def show_about(self):
         QMessageBox.about(self, "ABOUT CRACKEDCODE",
-            f"CRACKEDCODE v2.3.9\n"
+            f"CRACKEDCODE v2.4.0\n"
             "ATLANTEAN NEURAL SYSTEM\n\n"
             "Local AI Coding Assistant\n"
             "100% Offline - No Cloud Required\n\n"
@@ -1170,7 +1248,11 @@ class CrackedCodeGUI(QMainWindow):
             "- Voice Commands\n"
             "- Image Analysis\n"
             "- Code Generation\n"
-            "- Task Queue"
+            "- Task Queue\n"
+            "- Streaming Responses\n"
+            "- Tabbed Editor\n"
+            "- Response Caching\n"
+            "- Unified Intelligence Mode"
         )
 
     def set_mode(self, mode):
@@ -1354,24 +1436,42 @@ class CrackedCodeGUI(QMainWindow):
                 agent, task = self.orchestrator.delegate(intent, text)
                 self.term(f"[INTENT] {intent.value} -> [AGENT] {agent}")
                 self.update_orchestrator_display()
-            
+
             self.progress_bar.setValue(40)
             
-            response = asyncio.run(self.engine.process(text))
+            streaming = self.config.get("streaming_enabled", True)
+            full_response = ""
+            
+            if streaming:
+                self.term("< ", end="")
+                
+                def stream_callback(chunk):
+                    nonlocal full_response
+                    full_response += chunk
+                    self.terminal.insertPlainText(chunk)
+                    self.terminal.moveCursor(QTextCursor.MoveOperation.End)
+                    QApplication.processEvents()
+                
+                response = asyncio.run(self.engine.process(text, streaming=True, callback=stream_callback))
+                self.term("")
+            else:
+                response = asyncio.run(self.engine.process(text))
+                full_response = response.text
             
             self.progress_bar.setValue(80)
             
             if response.success:
-                self.term(f"< {response.text[:800]}")
-                if len(response.text) > 800:
-                    self.term(f"< ... [{len(response.text) - 800} more chars]")
+                if not streaming:
+                    self.term(f"< {response.text[:800]}")
+                    if len(response.text) > 800:
+                        self.term(f"< ... [{len(response.text) - 800} more chars]")
             else:
                 self.term(f"[ERROR] {response.error}")
             
             self.term(f"[COMPLETED in {response.execution_time:.2f}s]")
             
             if self.orchestrator and 'task' in locals():
-                self.orchestrator.complete_task(task.task_id, response.text)
+                self.orchestrator.complete_task(task.task_id, full_response or response.text)
                 self.update_orchestrator_display()
             
             self.set_status("READY")
@@ -1387,9 +1487,11 @@ class CrackedCodeGUI(QMainWindow):
         QTimer.singleShot(500, lambda: self.progress_bar.setValue(0))
         self.update_task_status()
 
-    def term(self, text: str):
+    def term(self, text: str, end: str = "\n"):
         if hasattr(self, 'terminal'):
             self.terminal.append(text)
+            if end == "":
+                pass
             self.terminal.moveCursor(QTextCursor.MoveOperation.End)
 
     def toggle_full(self):
