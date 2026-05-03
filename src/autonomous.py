@@ -1,7 +1,6 @@
 import os
 import json
 import time
-import logging
 import threading
 import hashlib
 from pathlib import Path
@@ -10,7 +9,9 @@ from typing import Optional, Dict, List, Callable, Any
 from dataclasses import dataclass, field
 from enum import Enum
 
-logger = logging.getLogger("AutonomousSystem")
+from src.logger_config import get_logger
+
+logger = get_logger("AutonomousSystem")
 
 
 class Phase(Enum):

@@ -11,9 +11,9 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 import hashlib
-import logging
+from src.logger_config import get_logger
 
-logger = logging.getLogger("FileWatcher")
+logger = get_logger("FileWatcher")
 
 ChangeType = Enum("ChangeType", ["CREATED", "MODIFIED", "DELETED", "MOVED"])
 

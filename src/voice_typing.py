@@ -27,8 +27,9 @@ try:
 except ImportError:
     WHISPER_AVAILABLE = False
 
-import logging
-logger = logging.getLogger("VoiceTyping")
+from src.logger_config import get_logger
+
+logger = get_logger("VoiceTyping")
 
 AUDIO_CONFIG = {
     "sample_rate": 16000,

@@ -659,7 +659,11 @@ Output plan in a code block.
         request = self.parse_intent(prompt)
         
         if not self.plan_enabled and request.intent != Intent.CHAT:
-            return AgentResponse(success=False, text="Plan disabled")
+            return AgentResponse(success=False, text="Plan mode is disabled")
+        
+        if not self.build_enabled and request.intent == Intent.BUILD:
+            logger.info("BUILD mode disabled, falling back to CODE intent")
+            request.intent = Intent.CODE
         
         logger.info(f"Processing: {request.intent.value} (confidence: {request.context.get('confidence', 0):.2f})")
         
@@ -704,7 +708,8 @@ Output plan in a code block.
                         matching_lines = [f"{i+1}: {line}" for i, line in enumerate(lines) if search_terms in line.lower()]
                         results.append(f"=== {file.relative_to(search_path)} ===")
                         results.extend(matching_lines[:10])
-                except Exception:
+                except Exception as e:
+                    logger.debug(f"Search skip {file}: {e}")
                     continue
         
         if results:

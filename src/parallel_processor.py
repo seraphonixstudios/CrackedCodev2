@@ -33,16 +33,13 @@ from typing import Optional, List, Dict, Any, Callable, Tuple
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-import logging
 import traceback
 import random
 import statistics
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger('ParallelProcessor')
+from src.logger_config import get_logger
+
+logger = get_logger('ParallelProcessor')
 
 
 # ============================================================================

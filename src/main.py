@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 CrackedCode - Local AI Coding Assistant
-Version: 2.3.9
+Version: 2.6.0
 """
 
 import os
@@ -14,7 +14,6 @@ import time
 import platform
 import re
 import traceback
-import logging
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Optional, Dict, List, Any, Tuple

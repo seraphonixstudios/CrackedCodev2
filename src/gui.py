@@ -3,7 +3,6 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import json
-import logging
 import random
 import time
 import threading
@@ -1282,7 +1281,7 @@ class CrackedCodeGUI(QMainWindow):
         save_as_action = QAction("SAVE AS", self)
         save_as_action.setShortcut(QKeySequence("Ctrl+Shift+S"))
         save_as_action.setToolTip("Save as new file (Ctrl+Shift+S)")
-        save_as_action.triggered.connect(self.save_current_file)
+        save_as_action.triggered.connect(self.save_file_as)
         file_menu.addAction(save_as_action)
         
         file_menu.addSeparator()
@@ -1803,8 +1802,9 @@ class CrackedCodeGUI(QMainWindow):
     def on_tab_changed(self, index):
         tab_name = self.tab_widget.tabText(index)
         self.editor = self.tab_widget.widget(index)
-        if not self.editor.eventFilter:
+        if self.editor and not hasattr(self.editor, '_has_event_filter'):
             self.editor.installEventFilter(self)
+            self.editor._has_event_filter = True
         self.set_status(f"Editing: {tab_name}")
 
     def on_modification_changed(self, modified: bool):
@@ -2103,8 +2103,8 @@ class CrackedCodeGUI(QMainWindow):
                             child.setIcon(0, self.get_folder_icon())
                             parent_item.addChild(child)
                             add_items(child, p)
-                except PermissionError:
-                    pass
+                except PermissionError as e:
+                    logger.warning(f"Permission denied scanning {p}: {e}")
             
             add_items(root_item, self.project_path)
             root_item.setExpanded(True)
@@ -2177,6 +2177,27 @@ class CrackedCodeGUI(QMainWindow):
                     self.show_notification(f"Saved {filename}", NotificationType.SUCCESS)
                 except Exception as e:
                     self.term(f"[ERROR: Cannot save - {e}]")
+
+    def save_file_as(self):
+        """Save current editor content to a new file (always prompts)."""
+        default_name = self.current_file.name if hasattr(self, 'current_file') and self.current_file else "untitled.py"
+        filename, _ = QFileDialog.getSaveFileName(
+            self, "SAVE AS", default_name,
+            "Python Files (*.py);;All Files (*)"
+        )
+        if filename:
+            try:
+                content = self.editor.toPlainText()
+                path = Path(filename)
+                path.write_text(content, encoding="utf-8")
+                self.current_file = path
+                current = self.tab_widget.currentIndex()
+                self.tab_widget.setTabText(current, path.name)
+                self.term(f"[SAVED AS: {path.name}]")
+                self.show_notification(f"Saved as {path.name}", NotificationType.SUCCESS)
+            except Exception as e:
+                self.term(f"[ERROR: Cannot save - {e}]")
+                self.show_notification(f"Save failed: {e}", NotificationType.ERROR)
 
     def show_docs(self):
         QDesktopServices.openUrl(QUrl("https://github.com/seraphonixstudios/CrackedCodev2"))
@@ -2263,10 +2284,14 @@ class CrackedCodeGUI(QMainWindow):
     def set_mode(self, mode):
         if mode == "plan":
             state = "ON" if self.plan_btn.isChecked() else "OFF"
+            if self.engine:
+                self.engine.plan_enabled = self.plan_btn.isChecked()
             self.set_status(f"PLAN: {state}")
             self.term(f"[MODE] PLAN: {state}")
         elif mode == "build":
             state = "ON" if self.build_btn.isChecked() else "OFF"
+            if self.engine:
+                self.engine.build_enabled = self.build_btn.isChecked()
             self.set_status(f"BUILD: {state}")
             self.term(f"[MODE] BUILD: {state}")
 
@@ -2303,8 +2328,8 @@ class CrackedCodeGUI(QMainWindow):
             
             try:
                 os.unlink(tmp_path)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"Could not remove temp file {tmp_path}: {e}")
             
             if result.stdout:
                 self.term(f"[OUTPUT]:\n{result.stdout}")
@@ -2545,8 +2570,8 @@ def main():
         server = QLocalServer()
         try:
             server.listen("CrackedCode_SingleInstance")
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Single instance server error: {e}")
         
         app = QApplication(sys.argv)
         app.setApplicationName("CrackedCode")
