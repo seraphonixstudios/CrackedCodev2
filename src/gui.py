@@ -1170,6 +1170,10 @@ class CrackedCodeGUI(QMainWindow):
         """)
 
     def init_ui(self):
+        # Create terminal first (menu bar references it)
+        self.terminal = SearchableTerminal()
+        self.terminal.setToolTip("Terminal output - Ctrl+F to search")
+        
         self.create_menu_bar()
         
         central = QWidget()
@@ -1203,9 +1207,6 @@ class CrackedCodeGUI(QMainWindow):
         self.open_files["untitled"] = self.editor
         
         rl.addWidget(self.tab_widget, 3)
-        
-        self.terminal = SearchableTerminal()
-        self.terminal.setToolTip("Terminal output - Ctrl+F to search")
         
         term_group = QGroupBox("TERMINAL")
         term_layout = QVBoxLayout(term_group)
@@ -1517,13 +1518,9 @@ class CrackedCodeGUI(QMainWindow):
         self.status_lbl.setToolTip("Current status")
         sb.addWidget(self.status_lbl)
         
-        sb.addSeparator()
-        
         self.cache_lbl = QLabel("Cache: 0")
         self.cache_lbl.setToolTip("Response cache size")
         sb.addPermanentWidget(self.cache_lbl)
-        
-        sb.addSeparator()
         
         self.ollama_lbl = QLabel("OLLAMA: ...")
         self.ollama_lbl.setToolTip("Ollama connection status")
@@ -1536,8 +1533,6 @@ class CrackedCodeGUI(QMainWindow):
         self.task_status_lbl = QLabel("Tasks: 0")
         self.task_status_lbl.setToolTip("Task count")
         sb.addPermanentWidget(self.task_status_lbl)
-        
-        sb.addSeparator()
         
         self.time_lbl = QLabel("")
         sb.addPermanentWidget(self.time_lbl)
