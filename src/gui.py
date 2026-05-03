@@ -2548,34 +2548,29 @@ class CrackedCodeGUI(QMainWindow):
         e.accept()
 
 
-def check_single():
-    sock = QLocalSocket()
-    sock.connectToServer("CrackedCode_SingleInstance")
-    if sock.state() == QLocalSocket.LocalSocketState.ConnectedState:
-        return False
-    return True
-
-
 def main():
     try:
-        if not check_single():
-            QMessageBox.warning(None, "CrackedCode", "Already running!")
-            return
-        
-        server = QLocalServer()
-        try:
-            server.listen("CrackedCode_SingleInstance")
-        except Exception as e:
-            logger.warning(f"Single instance server error: {e}")
-        
         app = QApplication(sys.argv)
         app.setApplicationName("CrackedCode")
         app.setOrganizationName("SeraphonixStudios")
         
+        # Check single instance AFTER QApplication exists
+        sock = QLocalSocket()
+        sock.connectToServer("CrackedCode_SingleInstance")
+        if sock.state() == QLocalSocket.LocalSocketState.ConnectedState:
+            QMessageBox.warning(None, "CrackedCode", "Already running!")
+            return
+        
+        # Clean up stale socket from previous crash, then create server
+        QLocalServer.removeServer("CrackedCode_SingleInstance")
+        server = QLocalServer()
+        if not server.listen("CrackedCode_SingleInstance"):
+            logger.warning(f"Single instance server failed: {server.errorString()}")
+        
         win = CrackedCodeGUI()
         win.show()
         
-        sys.exit(app.exec())
+        app.exec()
     except Exception as e:
         print(f"GUI Error: {e}")
         import traceback
