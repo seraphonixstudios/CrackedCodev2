@@ -490,15 +490,15 @@ def test_voice_typing_availability() -> bool:
     print_header("VOICE TYPING")
     
     try:
-        from src.voice_typing import VoiceTyping
+        from src.voice_engine import UnifiedVoiceEngine, VoiceConfig
         
-        vt = VoiceTyping(model_size="base")
+        vt = UnifiedVoiceEngine(VoiceConfig(stt_model_size="base"))
         
-        PASS(f"Voice typing available: {vt.is_available}")
-        PASS(f"Device: {vt.device}")
-        
-        if not vt.is_available:
-            PASS("Voice typing gracefully unavailable (expected without audio)")
+        PASS(f"Voice engine created: {vt is not None}")
+        status = vt.status
+        PASS(f"STT available: {status['stt_available']}")
+        PASS(f"TTS available: {status['tts_available']}")
+        PASS(f"TTS backend: {status['tts_backend']}")
         
         return True
         
@@ -831,24 +831,21 @@ def test_voice_system_e2e() -> bool:
     print_header("VOICE SYSTEM E2E")
     
     try:
-        from src.voice_typing import VoiceTyping, TranscriptionResult
+        from src.voice_engine import (
+            UnifiedVoiceEngine, VoiceConfig, STTResult,
+            TTSResult, VoiceCommand, CommandType
+        )
         
-        vt = VoiceTyping(model_size="base")
+        engine = UnifiedVoiceEngine(VoiceConfig(stt_model_size="base"))
         
-        PASS(f"Voice typing initialized")
-        PASS(f"Device: {vt.device}")
+        PASS("UnifiedVoiceEngine created")
+        status = engine.status
+        PASS(f"STT available: {status['stt_available']}")
+        PASS(f"TTS available: {status['tts_available']}")
+        PASS(f"TTS backend: {status['tts_backend']}")
         
-        if vt._available:
-            PASS("Audio libraries available")
-        else:
-            PASS("Audio libraries not available (expected without microphone)")
-        
-        if vt.is_available:
-            PASS("Whisper model loaded")
-        else:
-            PASS("Whisper model not loaded (expected without GPU)")
-        
-        result = TranscriptionResult(
+        # Test STTResult dataclass
+        result = STTResult(
             text="Test transcription",
             language="en",
             confidence=0.95,
@@ -857,14 +854,29 @@ def test_voice_system_e2e() -> bool:
         )
         
         if result.success:
-            PASS(f"TranscriptionResult: {result.text}")
+            PASS(f"STTResult: {result.text}")
             PASS(f"Confidence: {result.confidence:.2f}")
         else:
-            FAIL("TranscriptionResult", "Should be successful")
+            FAIL("STTResult", "Should be successful")
             return False
         
-        devices = vt.get_devices()
-        PASS(f"Input devices: {len(devices)}")
+        # Test TTSResult
+        tts_result = TTSResult(text="Hello", success=True)
+        PASS(f"TTSResult: {tts_result.text}")
+        
+        # Test command parsing
+        cmd = engine.processor.parse("save the file")
+        if cmd.command_type == CommandType.SAVE:
+            PASS(f"Command detected: {cmd.command_type.value}")
+        else:
+            return FAIL("Command detection", f"got {cmd.command_type.value}")
+        
+        # Test speak (fallback should work)
+        speak_result = engine.speak("Voice system test")
+        if speak_result.success:
+            PASS(f"TTS speak: {speak_result.backend.value}")
+        else:
+            return FAIL("TTS speak", speak_result.error)
         
         return True
         
@@ -1476,6 +1488,178 @@ def test_engine_autonomous_methods() -> bool:
         return FAIL("Engine methods", str(e)[:50])
 
 
+def test_voice_engine_imports() -> bool:
+    print_header("VOICE ENGINE IMPORTS")
+    try:
+        from src.voice_engine import (
+            UnifiedVoiceEngine, STTEngine, TTSEngine,
+            VoiceCommandProcessor, VoiceSession, VoiceActivityDetector,
+            VoiceConfig, STTResult, TTSResult, VoiceCommand,
+            CommandType, VoiceMode, TTSBackend, get_voice_engine
+        )
+        PASS("UnifiedVoiceEngine")
+        PASS("STTEngine")
+        PASS("TTSEngine")
+        PASS("VoiceCommandProcessor")
+        PASS("VoiceSession")
+        PASS("VoiceActivityDetector")
+        PASS("VoiceConfig")
+        PASS("STTResult")
+        PASS("TTSResult")
+        PASS("VoiceCommand")
+        PASS("CommandType")
+        PASS("VoiceMode")
+        PASS("TTSBackend")
+        PASS("get_voice_engine")
+        return True
+    except Exception as e:
+        return FAIL("Voice engine imports", str(e)[:50])
+
+
+def test_voice_tts_backends() -> bool:
+    print_header("VOICE TTS BACKENDS")
+    try:
+        from src.voice_engine import TTSEngine, VoiceConfig, TTSBackend
+        tts = TTSEngine(VoiceConfig())
+        backends = tts.get_available_backends()
+        PASS(f"Available backends: {[b.value for b in backends]}")
+        if len(backends) >= 1:
+            PASS("At least one TTS backend available")
+        else:
+            return FAIL("TTS backends", "none available")
+        # Test fallback always works
+        result = tts.speak("Test")
+        if result.success:
+            PASS(f"TTS speak works: {result.backend.value}")
+        else:
+            return FAIL("TTS speak", result.error)
+        return True
+    except Exception as e:
+        return FAIL("TTS backends", str(e)[:50])
+
+
+def test_voice_command_parsing() -> bool:
+    print_header("VOICE COMMAND PARSING")
+    try:
+        from src.voice_engine import VoiceCommandProcessor, CommandType
+        processor = VoiceCommandProcessor()
+        test_cases = [
+            ("write a python function", CommandType.WRITE),
+            ("run the code", CommandType.EXECUTE),
+            ("fix the bug in main.py", CommandType.DEBUG),
+            ("search for todo items", CommandType.SEARCH),
+            ("save this file", CommandType.SAVE),
+            ("open app.py", CommandType.OPEN),
+            ("clear the terminal", CommandType.CLEAR),
+            ("stop everything", CommandType.STOP),
+            ("help me", CommandType.HELP),
+            ("random nonsense", CommandType.UNKNOWN),
+        ]
+        passed = 0
+        for text, expected in test_cases:
+            cmd = processor.parse(text)
+            if cmd.command_type == expected:
+                passed += 1
+        PASS(f"Command parsing: {passed}/{len(test_cases)}")
+        if passed >= 8:
+            return True
+        return FAIL("Command parsing", f"only {passed}/{len(test_cases)}")
+    except Exception as e:
+        return FAIL("Command parsing", str(e)[:50])
+
+
+def test_voice_param_extraction() -> bool:
+    print_header("VOICE PARAM EXTRACTION")
+    try:
+        from src.voice_engine import VoiceCommandProcessor
+        processor = VoiceCommandProcessor()
+        cmd = processor.parse("write a function in app.py")
+        if cmd.params.get("filename") == "app.py":
+            PASS("Filename extracted")
+        else:
+            return FAIL("Filename", str(cmd.params))
+        cmd2 = processor.parse("create a class called User")
+        if cmd2.params.get("type") == "class" and cmd2.params.get("name") == "User":
+            PASS("Type and name extracted")
+        else:
+            return FAIL("Type/name", str(cmd2.params))
+        return True
+    except Exception as e:
+        return FAIL("Param extraction", str(e)[:50])
+
+
+def test_voice_command_execution() -> bool:
+    print_header("VOICE COMMAND EXECUTION")
+    try:
+        from src.voice_engine import VoiceCommandProcessor, CommandType, VoiceCommand
+        processor = VoiceCommandProcessor()
+        executed = []
+        def handler(cmd):
+            executed.append(cmd.command_type.value)
+        processor.register_handler(CommandType.SAVE, handler)
+        cmd = VoiceCommand(raw_text="save file", command_type=CommandType.SAVE)
+        result = processor.execute(cmd)
+        if result and "save" in executed:
+            PASS("Handler executed")
+        else:
+            return FAIL("Handler", "not executed")
+        # Unknown command should not execute
+        cmd2 = VoiceCommand(raw_text="blah", command_type=CommandType.UNKNOWN)
+        result2 = processor.execute(cmd2)
+        if not result2:
+            PASS("Unknown command rejected")
+        else:
+            return FAIL("Unknown command", "should not execute")
+        return True
+    except Exception as e:
+        return FAIL("Command execution", str(e)[:50])
+
+
+def test_voice_singleton() -> bool:
+    print_header("VOICE ENGINE SINGLETON")
+    try:
+        from src.voice_engine import UnifiedVoiceEngine, get_voice_engine
+        e1 = get_voice_engine()
+        e2 = get_voice_engine()
+        if e1 is e2:
+            PASS("Singleton works")
+        else:
+            return FAIL("Singleton", "different instances")
+        e3 = UnifiedVoiceEngine()
+        if e3 is e1:
+            PASS("Constructor returns same instance")
+        else:
+            return FAIL("Singleton constructor", "different instances")
+        return True
+    except Exception as e:
+        return FAIL("Voice singleton", str(e)[:50])
+
+
+def test_voice_hotword_detection() -> bool:
+    print_header("VOICE HOTWORD DETECTION")
+    try:
+        from src.voice_engine import UnifiedVoiceEngine, VoiceConfig
+        # Bypass singleton to get fresh config
+        engine = UnifiedVoiceEngine.__new__(UnifiedVoiceEngine)
+        engine._initialized = False
+        engine.__init__(VoiceConfig(hotword="cracked code", hotword_sensitivity=0.5))
+        if engine.detect_hotword("cracked code help me"):
+            PASS("Exact hotword detected")
+        else:
+            return FAIL("Exact hotword")
+        if engine.detect_hotword("cracked help"):
+            PASS("Partial hotword detected")
+        else:
+            return FAIL("Partial hotword")
+        if not engine.detect_hotword("hello world"):
+            PASS("Non-hotword rejected")
+        else:
+            return FAIL("Non-hotword", "should not match")
+        return True
+    except Exception as e:
+        return FAIL("Hotword detection", str(e)[:50])
+
+
 def main() -> int:
     print(f"\n{'='*60}\n  CRACKEDCODE v2.6.0 - E2E TEST SUITE\n{'='*60}\n")
     
@@ -1489,6 +1673,13 @@ def main() -> int:
         ("Code Executor", test_code_executor),
         ("GUI", test_gui_import),
         ("Voice Typing", test_voice_typing_availability),
+        ("Voice Engine Imports", test_voice_engine_imports),
+        ("Voice TTS Backends", test_voice_tts_backends),
+        ("Voice Command Parsing", test_voice_command_parsing),
+        ("Voice Param Extraction", test_voice_param_extraction),
+        ("Voice Command Execution", test_voice_command_execution),
+        ("Voice Singleton", test_voice_singleton),
+        ("Voice Hotword", test_voice_hotword_detection),
         ("File Watcher", test_file_watcher),
         ("Git Integration", test_git_integration),
         ("Ollama Connection", test_ollama_connection),

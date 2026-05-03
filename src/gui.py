@@ -34,7 +34,10 @@ from PyQt6.QtNetwork import QLocalSocket, QLocalServer
 from src.engine import get_engine, CrackedCodeEngine, Intent
 
 try:
-    from src.voice_typing import VoiceTyping
+    from src.voice_engine import (
+        UnifiedVoiceEngine, VoiceConfig, CommandType,
+        STTResult, TTSResult, VoiceCommand
+    )
     VOICE_AVAILABLE = True
 except ImportError:
     VOICE_AVAILABLE = False
@@ -989,28 +992,55 @@ class CrackedCodeGUI(QMainWindow):
     def init_voice(self):
         if not VOICE_AVAILABLE:
             if hasattr(self, 'terminal'):
-                self.term("[VOICE: not available - install sounddevice]")
+                self.term("[VOICE: not available - install dependencies]")
             if hasattr(self, 'voice_btn'):
                 self.voice_btn.setEnabled(False)
             return
-        
+
         try:
-            self.voice = VoiceTyping(model_size="base")
-            if self.voice.is_available:
-                if hasattr(self, 'terminal'):
-                    self.term("[VOICE: ready]")
-                logger.info("Voice typing initialized")
-            else:
-                if hasattr(self, 'terminal'):
-                    self.term("[VOICE: model failed to load]")
-                if hasattr(self, 'voice_btn'):
-                    self.voice_btn.setEnabled(False)
+            voice_cfg = VoiceConfig(
+                stt_model_size=self.config.get("whisper_size", "base"),
+                tts_voice=self.config.get("tts_voice", "default"),
+                tts_rate=self.config.get("tts_rate", 175),
+            )
+            self.voice = UnifiedVoiceEngine(voice_cfg)
+            self.voice.initialize(load_stt=True, load_tts=True)
+
+            # Register command handlers that map to GUI actions
+            self._register_voice_command_handlers()
+
+            status = self.voice.status
+            backend = status.get("tts_backend", "fallback")
+            if hasattr(self, 'terminal'):
+                self.term(f"[VOICE: ready | TTS={backend}]")
+            logger.info(f"Voice engine initialized: {status}")
         except Exception as e:
             logger.error(f"Voice init failed: {e}")
             if hasattr(self, 'terminal'):
                 self.term(f"[VOICE ERROR: {e}]")
             if hasattr(self, 'voice_btn'):
                 self.voice_btn.setEnabled(False)
+
+    def _register_voice_command_handlers(self):
+        """Register voice command handlers that execute real GUI operations."""
+        if not self.voice:
+            return
+        handlers = {
+            CommandType.STOP: lambda cmd: self.stop_current_operation(),
+            CommandType.EXECUTE: lambda cmd: self.exec_code(),
+            CommandType.SAVE: lambda cmd: self.save_current_file(),
+            CommandType.COPY: lambda cmd: self.copy_output(),
+            CommandType.CLEAR: lambda cmd: self.clear_terminal(),
+            CommandType.VOICE: lambda cmd: self.toggle_voice(),
+            CommandType.PLAN: lambda cmd: self.plan_btn.setChecked(True),
+            CommandType.BUILD: lambda cmd: self.build_btn.setChecked(True),
+            CommandType.NEW_TAB: lambda cmd: self.new_file(),
+            CommandType.CLOSE_TAB: lambda cmd: self.close_current_tab(),
+            CommandType.HELP: lambda cmd: self.show_help(),
+        }
+        for cmd_type, handler in handlers.items():
+            self.voice.register_command_handler(cmd_type, handler)
+        logger.info(f"Registered {len(handlers)} voice command handlers")
 
     def load_config(self):
         config_path = Path("config.json")
@@ -2461,7 +2491,7 @@ class CrackedCodeGUI(QMainWindow):
             QTimer.singleShot(500, lambda: self.progress_bar.setValue(0))
 
     def toggle_voice(self):
-        if not self.voice or not self.voice.is_available:
+        if not self.voice or not self.voice.is_ready:
             self.term("[VOICE: not available]")
             return
 
@@ -2470,6 +2500,7 @@ class CrackedCodeGUI(QMainWindow):
             self.voice_btn.setChecked(False)
             self.set_status("READY")
             self.term("[VOICE] Recording stopped")
+            self.voice.stop_session()
         else:
             self.voice_recording = True
             self.voice_btn.setChecked(True)
@@ -2482,12 +2513,23 @@ class CrackedCodeGUI(QMainWindow):
             return
 
         try:
-            result = self.voice.listen_and_transcribe(duration=5.0)
+            # Use the unified engine's listen method
+            result = self.voice.listen(duration=5.0, use_vad=False)
             if result.success and result.text:
                 transcribed = result.text.strip()
                 self.term(f"[VOICE] '{transcribed}'")
-                
-                if not self.process_voice_command(transcribed):
+
+                # Use unified command processor
+                command = self.voice.processor.parse(transcribed)
+                if command.command_type.value != "unknown":
+                    self.term(f"[CMD] {command.command_type.value} (conf={command.confidence:.2f})")
+                    executed = self.voice.processor.execute(command)
+                    if executed:
+                        self.voice.speak(f"Executed {command.command_type.value}")
+                    else:
+                        self.voice.speak(f"Recognized {command.command_type.value}")
+                else:
+                    # No command detected - treat as input text
                     self.term_input.setText(transcribed)
                     if self.orchestrator:
                         intent = self.engine.parse_intent(transcribed)
@@ -2496,7 +2538,7 @@ class CrackedCodeGUI(QMainWindow):
                         self.update_orchestrator_display()
             elif result.error:
                 self.term(f"[VOICE ERROR] {result.error}")
-            
+
             if self.voice_recording:
                 QTimer.singleShot(300, self._record_voice)
         except Exception as e:
@@ -2506,36 +2548,13 @@ class CrackedCodeGUI(QMainWindow):
             self.voice_btn.setChecked(False)
             self.set_status("READY")
 
-    VOICE_COMMANDS = {
-        "stop": ["stop", "cancel", "abort", "exit", "quit", "halt"],
-        "execute": ["run", "execute", "start", "go", "do it"],
-        "save": ["save", "store", "write to file"],
-        "copy": ["copy", "clipboard", "copy output"],
-        "clear": ["clear", "wipe", "reset"],
-        "voice": ["voice", "speech", "record", "listen"],
-    }
-
     def process_voice_command(self, text: str) -> bool:
-        text_lower = text.lower().strip()
-        
-        for cmd, keywords in self.VOICE_COMMANDS.items():
-            for keyword in keywords:
-                if keyword in text_lower:
-                    self.term(f"[CMD] Detected: {cmd}")
-                    if cmd == "stop":
-                        self.stop_current_operation()
-                    elif cmd == "execute":
-                        self.exec_code()
-                    elif cmd == "save":
-                        self.save_current_file()
-                    elif cmd == "copy":
-                        self.copy_output()
-                    elif cmd == "clear":
-                        self.clear_terminal()
-                    elif cmd == "voice":
-                        self.toggle_voice()
-                    return True
-        
+        """Process voice text using the unified engine's command processor."""
+        if not self.voice:
+            return False
+        command = self.voice.processor.parse(text)
+        if command.command_type.value != "unknown":
+            return self.voice.processor.execute(command)
         return False
 
     def run_term(self):
