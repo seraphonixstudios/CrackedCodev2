@@ -920,6 +920,92 @@ Output plan in a code block.
             for p in ArchitecturePattern
         ]
 
+    @property
+    def orchestrator(self):
+        """Get or create the unified orchestrator."""
+        from src.orchestrator import get_orchestrator
+        return get_orchestrator(engine=self, max_workers=self.config.get("max_concurrent_agents", 4))
+
+    def process_via_orchestrator(self, prompt: str, streaming: bool = False, callback: Callable = None) -> Any:
+        """Process a prompt through the unified orchestrator with full task tracking.
+        
+        Args:
+            prompt: User prompt
+            streaming: Enable streaming responses
+            callback: Streaming callback
+            
+        Returns:
+            Task result with full lifecycle tracking
+        """
+        orch = self.orchestrator
+        
+        # Parse intent for agent selection
+        request = self.parse_intent(prompt)
+        intent = request.intent.value
+        
+        # Create and submit task
+        task = orch.create_task(
+            prompt=prompt,
+            intent=intent,
+            priority=orch.TaskPriority.NORMAL,
+            metadata={"streaming": streaming, "callback": callback},
+        )
+        
+        orch.submit(task)
+        
+        # Wait for completion (synchronous interface)
+        while not task.is_terminal:
+            import time
+            time.sleep(0.1)
+        
+        return task
+
+    def generate_code_via_orchestrator(self, prompt: str, filepath: str = None) -> Any:
+        """Generate code through the orchestrator with task tracking."""
+        orch = self.orchestrator
+        
+        task = orch.create_task(
+            prompt=prompt,
+            intent="code",
+            priority=orch.TaskPriority.HIGH,
+            metadata={"filepath": filepath},
+        )
+        
+        orch.submit(task)
+        
+        while not task.is_terminal:
+            import time
+            time.sleep(0.1)
+        
+        return task
+
+    def create_pipeline(self, steps: List[Dict[str, Any]]) -> str:
+        """Create a multi-step task pipeline.
+        
+        Args:
+            steps: List of step dicts with keys: prompt, intent, agent, priority
+            
+        Returns:
+            First task ID
+        """
+        return self.orchestrator.create_pipeline(steps)
+
+    def get_orchestrator_status(self) -> Dict:
+        """Get orchestrator queue status."""
+        return self.orchestrator.get_queue_status()
+
+    def get_task(self, task_id: str) -> Any:
+        """Get a task by ID."""
+        return self.orchestrator.get_task(task_id)
+
+    def get_all_tasks(self) -> List[Any]:
+        """Get all tasks."""
+        return self.orchestrator.get_all_tasks()
+
+    def cancel_task(self, task_id: str) -> bool:
+        """Cancel a running or queued task."""
+        return self.orchestrator.cancel_task(task_id)
+
 
 _engine: Optional[CrackedCodeEngine] = None
 

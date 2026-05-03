@@ -220,61 +220,74 @@ class NotificationWidget(QFrame):
 
 
 class AgentOrchestrator:
-    def __init__(self, gui_ref: Any = None):
+    """GUI-facing orchestrator that wraps UnifiedOrchestrator.
+    
+    Provides visual agent status tracking while delegating actual
+    execution to the unified orchestration system.
+    """
+    
+    def __init__(self, gui_ref: Any = None, engine=None):
         self.gui = gui_ref
+        self.engine = engine
+        self._unified: Optional[Any] = None
+        
+        # Visual agent state (for display only)
         self.agents = {
             "Supervisor": {
-                "role": "coordinates", 
-                "status": "idle", 
+                "role": "coordinates",
+                "status": "idle",
                 "capabilities": ["all", "delegate", "manage"],
                 "icon": "S",
                 "color": ATLAN_PURPLE,
                 "tasks_completed": 0,
             },
             "Architect": {
-                "role": "design", 
-                "status": "idle", 
+                "role": "design",
+                "status": "idle",
                 "capabilities": ["planning", "architecture", "blueprint"],
                 "icon": "A",
                 "color": ATLAN_CYAN,
                 "tasks_completed": 0,
             },
             "Coder": {
-                "role": "implementation", 
-                "status": "idle", 
+                "role": "implementation",
+                "status": "idle",
                 "capabilities": ["code", "write", "modify", "create"],
                 "icon": "C",
                 "color": ATLAN_GREEN,
                 "tasks_completed": 0,
             },
             "Executor": {
-                "role": "execution", 
-                "status": "idle", 
+                "role": "execution",
+                "status": "idle",
                 "capabilities": ["run", "execute", "test", "deploy"],
                 "icon": "E",
                 "color": ATLAN_GOLD,
                 "tasks_completed": 0,
             },
             "Reviewer": {
-                "role": "analysis", 
-                "status": "idle", 
+                "role": "analysis",
+                "status": "idle",
                 "capabilities": ["review", "debug", "optimize", "fix"],
                 "icon": "R",
                 "color": ATLAN_RED,
                 "tasks_completed": 0,
             },
             "Searcher": {
-                "role": "discovery", 
-                "status": "idle", 
+                "role": "discovery",
+                "status": "idle",
                 "capabilities": ["search", "find", "grep", "analyze"],
                 "icon": "F",
                 "color": ATLAN_GREEN,
                 "tasks_completed": 0,
             },
         }
+        
+        # Legacy task tracking (for compatibility)
         self.tasks: List[AgentTask] = []
         self.task_queue: List[AgentTask] = []
         self.current_task: Optional[AgentTask] = None
+        
         self.delegation_rules = {
             Intent.CODE: "Coder",
             Intent.DEBUG: "Reviewer",
@@ -285,27 +298,102 @@ class AgentOrchestrator:
             Intent.HELP: "Supervisor",
             Intent.CHAT: "Coder",
         }
-
+    
+    @property
+    def unified(self):
+        """Get or create unified orchestrator."""
+        if self._unified is None:
+            from src.orchestrator import get_orchestrator
+            self._unified = get_orchestrator(
+                engine=self.engine,
+                max_workers=4
+            )
+            # Set up callbacks
+            self._unified.on_task_created = self._on_task_created
+            self._unified.on_task_started = self._on_task_started
+            self._unified.on_task_completed = self._on_task_completed
+            self._unified.on_task_failed = self._on_task_failed
+            self._unified.on_queue_changed = self._on_queue_changed
+            self._unified.start()
+        return self._unified
+    
+    def _on_task_created(self, task):
+        """Callback when unified task is created."""
+        # Update visual agent state
+        agent_name = self._role_to_agent(task.agent.value if hasattr(task.agent, 'value') else str(task.agent))
+        if agent_name in self.agents:
+            self.agents[agent_name]["status"] = "active"
+        self._update_gui()
+    
+    def _on_task_started(self, task):
+        """Callback when unified task starts."""
+        self._update_gui()
+    
+    def _on_task_completed(self, task):
+        """Callback when unified task completes."""
+        agent_name = self._role_to_agent(task.agent.value if hasattr(task.agent, 'value') else str(task.agent))
+        if agent_name in self.agents:
+            self.agents[agent_name]["status"] = "idle"
+            self.agents[agent_name]["tasks_completed"] += 1
+        self._update_gui()
+    
+    def _on_task_failed(self, task):
+        """Callback when unified task fails."""
+        agent_name = self._role_to_agent(task.agent.value if hasattr(task.agent, 'value') else str(task.agent))
+        if agent_name in self.agents:
+            self.agents[agent_name]["status"] = "idle"
+        self._update_gui()
+    
+    def _on_queue_changed(self):
+        """Callback when queue changes."""
+        self._update_gui()
+    
+    def _role_to_agent(self, role: str) -> str:
+        """Map orchestrator role to GUI agent name."""
+        mapping = {
+            "supervisor": "Supervisor",
+            "architect": "Architect",
+            "coder": "Coder",
+            "executor": "Executor",
+            "reviewer": "Reviewer",
+            "searcher": "Searcher",
+            "tester": "Reviewer",
+            "debugger": "Reviewer",
+            "documenter": "Supervisor",
+        }
+        return mapping.get(role.lower(), "Coder")
+    
     def delegate(self, intent: Intent, prompt: str) -> Tuple[str, AgentTask]:
+        """Delegate a task through the unified orchestrator.
+        
+        Also creates a legacy AgentTask for GUI display compatibility.
+        """
         agent_name = self.delegation_rules.get(intent, "Coder")
+        
+        # Create legacy task for GUI display
         task = AgentTask(intent.value, prompt, agent_name)
         self.tasks.append(task)
         self.task_queue.append(task)
         self.agents[agent_name]["status"] = "active"
-        self._process_queue()
-        return agent_name, task
-
-    def _process_queue(self):
-        if self.current_task and self.current_task.status == TaskStatus.RUNNING:
-            return
         
-        if self.task_queue:
-            task = self.task_queue.pop(0)
-            task.start()
-            self.current_task = task
-            self._update_gui()
-
+        # Submit to unified orchestrator
+        try:
+            unified_task = self.unified.create_task(
+                prompt=prompt,
+                intent=intent.value,
+                priority=self.unified.TaskPriority.NORMAL,
+            )
+            self.unified.submit(unified_task)
+            # Store mapping
+            task._unified_id = unified_task.id
+        except Exception as e:
+            logger.warning(f"Unified orchestrator delegate failed: {e}")
+        
+        self._update_gui()
+        return agent_name, task
+    
     def complete_task(self, task_id: str, result: str):
+        """Mark task as completed."""
         for task in self.tasks:
             if task.task_id == task_id:
                 task.complete(result)
@@ -313,47 +401,69 @@ class AgentOrchestrator:
                     self.agents[task.agent]["status"] = "idle"
                     self.agents[task.agent]["tasks_completed"] += 1
                 self.current_task = None
-                self._process_queue()
                 break
-
+        self._update_gui()
+    
     def fail_task(self, task_id: str, error: str):
+        """Mark task as failed."""
         for task in self.tasks:
             if task.task_id == task_id:
                 task.fail(error)
                 if task.agent in self.agents:
                     self.agents[task.agent]["status"] = "idle"
                 self.current_task = None
-                self._process_queue()
                 break
-
+        self._update_gui()
+    
     def cancel_task(self, task_id: str):
+        """Cancel a task."""
         for task in self.tasks:
             if task.task_id == task_id:
                 task.cancel()
+                # Also cancel in unified orchestrator
+                if hasattr(task, '_unified_id'):
+                    try:
+                        self.unified.cancel_task(task._unified_id)
+                    except Exception:
+                        pass
                 if task.agent in self.agents:
                     self.agents[task.agent]["status"] = "idle"
                 if self.current_task and self.current_task.task_id == task_id:
                     self.current_task = None
-                    self._process_queue()
                 break
-
+        self._update_gui()
+    
     def get_active_agents(self) -> List[str]:
+        """Get list of currently active agents."""
         return [name for name, data in self.agents.items() if data["status"] == "active"]
-
+    
     def get_queue_status(self) -> Dict:
+        """Get current queue status from unified orchestrator."""
+        try:
+            unified_status = self.unified.get_queue_status()
+        except Exception:
+            unified_status = {}
+        
+        # Combine with legacy status
         return {
-            "pending": len([t for t in self.tasks if t.status == TaskStatus.PENDING]),
-            "running": len([t for t in self.tasks if t.status == TaskStatus.RUNNING]),
-            "completed": len([t for t in self.tasks if t.status == TaskStatus.COMPLETED]),
-            "failed": len([t for t in self.tasks if t.status == TaskStatus.FAILED]),
+            "pending": unified_status.get("pending", 0),
+            "queued": unified_status.get("queued", 0),
+            "running": unified_status.get("running", 0),
+            "completed": unified_status.get("completed", 0),
+            "failed": unified_status.get("failed", 0),
+            "cancelled": unified_status.get("cancelled", 0),
             "active_agents": self.get_active_agents(),
             "current_task": self.current_task.to_dict() if self.current_task else None,
+            "max_workers": unified_status.get("max_workers", 4),
+            "running_tasks": unified_status.get("running_tasks", []),
         }
-
+    
     def clear_completed(self):
+        """Clear completed tasks from display."""
         self.tasks = [t for t in self.tasks if t.status in [TaskStatus.PENDING, TaskStatus.RUNNING]]
-
+    
     def _update_gui(self):
+        """Trigger GUI update."""
         if self.gui and hasattr(self.gui, 'update_orchestrator_display'):
             self.gui.update_orchestrator_display()
 

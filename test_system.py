@@ -1522,6 +1522,15 @@ def main() -> int:
         ("Autonomous Templates", test_autonomous_templates),
         ("Autonomous Tree", test_autonomous_tree_generation),
         ("Autonomous Methods", test_engine_autonomous_methods),
+        ("Orchestrator Imports", test_unified_orchestrator_imports),
+        ("Task Lifecycle", test_task_lifecycle),
+        ("Task Retry Logic", test_task_retry_logic),
+        ("Blackboard", test_blackboard),
+        ("Orchestrator Creation", test_orchestrator_creation),
+        ("Task Priority Queue", test_task_priority_queue),
+        ("Task Dependencies", test_task_dependencies),
+        ("Task Cancellation", test_task_cancellation),
+        ("Engine Orchestrator", test_engine_orchestrator_integration),
     ]
     
     results: list[tuple[str, bool]] = []
@@ -1552,6 +1561,329 @@ def main() -> int:
         print(f"\n  {total - passed} tests failed")
     
     return passed
+
+
+def test_unified_orchestrator_imports() -> bool:
+    print_header("UNIFIED ORCHESTRATOR IMPORTS")
+    try:
+        from src.orchestrator import (
+            UnifiedOrchestrator, Task, TaskStatus, TaskPriority,
+            AgentRole, AgentWorker, Blackboard, get_orchestrator
+        )
+        PASS("UnifiedOrchestrator")
+        PASS("Task")
+        PASS("TaskStatus")
+        PASS("TaskPriority")
+        PASS("AgentRole")
+        PASS("AgentWorker")
+        PASS("Blackboard")
+        PASS("get_orchestrator")
+        return True
+    except Exception as e:
+        return FAIL("Orchestrator imports", str(e)[:50])
+
+
+def test_task_lifecycle() -> bool:
+    print_header("TASK LIFECYCLE")
+    try:
+        from src.orchestrator import Task, TaskStatus, TaskPriority, AgentRole
+        import time
+        
+        task = Task(
+            intent="code",
+            prompt="write a function",
+            agent=AgentRole.CODER,
+            priority=TaskPriority.HIGH,
+        )
+        
+        if task.status == TaskStatus.PENDING:
+            PASS("Task starts as PENDING")
+        else:
+            return FAIL("Initial status", task.status.value)
+        
+        task.set_status(TaskStatus.QUEUED)
+        if task.status == TaskStatus.QUEUED and task.queued_at:
+            PASS("QUEUED status with timestamp")
+        else:
+            return FAIL("Queued", "no timestamp")
+        
+        task.set_status(TaskStatus.RUNNING)
+        if task.status == TaskStatus.RUNNING and task.started_at:
+            PASS("RUNNING status with timestamp")
+        else:
+            return FAIL("Running", "no timestamp")
+        
+        time.sleep(0.1)
+        task.set_status(TaskStatus.COMPLETED)
+        if task.status == TaskStatus.COMPLETED and task.completed_at:
+            PASS("COMPLETED status with timestamp")
+        else:
+            return FAIL("Completed", "no timestamp")
+        
+        if task.duration > 0:
+            PASS(f"Duration tracked: {task.duration:.2f}s")
+        else:
+            return FAIL("Duration", "zero")
+        
+        if task.execution_time > 0:
+            PASS(f"Execution time tracked: {task.execution_time:.2f}s")
+        else:
+            return FAIL("Execution time", "zero")
+        
+        if task.is_terminal:
+            PASS("Terminal state detected")
+        else:
+            return FAIL("Terminal", "not detected")
+        
+        return True
+    except Exception as e:
+        return FAIL("Task lifecycle", str(e)[:50])
+
+
+def test_task_retry_logic() -> bool:
+    print_header("TASK RETRY LOGIC")
+    try:
+        from src.orchestrator import Task, TaskStatus, TaskPriority, AgentRole
+        
+        task = Task(
+            intent="code",
+            prompt="test",
+            agent=AgentRole.CODER,
+            max_retries=3,
+        )
+        
+        if not task.can_retry:
+            PASS("Cannot retry before failure")
+        else:
+            return FAIL("Retry logic", "can retry before fail")
+        
+        task.set_status(TaskStatus.FAILED, "test error")
+        if task.can_retry:
+            PASS("Can retry after failure")
+        else:
+            return FAIL("Retry", "cannot retry")
+        
+        task.retries = 3
+        if not task.can_retry:
+            PASS("Cannot retry after max retries")
+        else:
+            return FAIL("Max retries", "still can retry")
+        
+        return True
+    except Exception as e:
+        return FAIL("Retry logic", str(e)[:50])
+
+
+def test_blackboard() -> bool:
+    print_header("BLACKBOARD")
+    try:
+        from src.orchestrator import Blackboard
+        
+        bb = Blackboard()
+        bb.project_context = "Test project"
+        bb.files["main.py"] = "print('hello')"
+        bb.add_memory("coder", "wrote hello function")
+        
+        if "coder" in bb.agent_memory:
+            PASS("Memory added")
+        else:
+            return FAIL("Memory", "not stored")
+        
+        ctx = bb.get_context()
+        if "Test project" in ctx:
+            PASS("Context contains project")
+        else:
+            return FAIL("Context", "missing project")
+        
+        if "Files: 1" in ctx:
+            PASS("Context contains file count")
+        else:
+            return FAIL("Context", "missing files")
+        
+        return True
+    except Exception as e:
+        return FAIL("Blackboard", str(e)[:50])
+
+
+def test_orchestrator_creation() -> bool:
+    print_header("ORCHESTRATOR CREATION")
+    try:
+        from src.orchestrator import UnifiedOrchestrator
+        
+        orch = UnifiedOrchestrator(engine=None, max_workers=2)
+        
+        if len(orch._agents) >= 9:
+            PASS(f"Agents initialized: {len(orch._agents)}")
+        else:
+            return FAIL("Agents", f"only {len(orch._agents)}")
+        
+        status = orch.get_queue_status()
+        if status["total"] == 0:
+            PASS("Empty queue status correct")
+        else:
+            return FAIL("Queue status", f"total={status['total']}")
+        
+        if status["max_workers"] == 2:
+            PASS("Max workers correct")
+        else:
+            return FAIL("Max workers", str(status["max_workers"]))
+        
+        orch.stop()
+        PASS("Orchestrator stopped cleanly")
+        
+        return True
+    except Exception as e:
+        return FAIL("Orchestrator creation", str(e)[:50])
+
+
+def test_task_priority_queue() -> bool:
+    print_header("TASK PRIORITY QUEUE")
+    try:
+        from src.orchestrator import UnifiedOrchestrator, TaskPriority, AgentRole
+        
+        orch = UnifiedOrchestrator(engine=None, max_workers=1)
+        
+        tasks = []
+        for i, prio in enumerate([TaskPriority.LOW, TaskPriority.NORMAL, TaskPriority.HIGH, TaskPriority.CRITICAL]):
+            task = orch.create_task(
+                prompt=f"task {i}",
+                intent="code",
+                priority=prio,
+            )
+            tasks.append(task)
+        
+        for task in reversed(tasks):
+            orch.submit(task)
+        
+        status = orch.get_queue_status()
+        total_tasks = status.get("queued", 0) + status.get("running", 0) + status.get("failed", 0)
+        if total_tasks >= 4:
+            PASS(f"All 4 tasks submitted (queued/running/failed: {total_tasks})")
+        else:
+            orch.stop()
+            return FAIL("Queue", f"only {total_tasks} total")
+        
+        for task in tasks:
+            if task.priority in [TaskPriority.LOW, TaskPriority.NORMAL, TaskPriority.HIGH, TaskPriority.CRITICAL]:
+                PASS(f"Priority {task.priority.name} stored")
+            else:
+                orch.stop()
+                return FAIL("Priority", str(task.priority))
+        
+        orch.stop()
+        return True
+    except Exception as e:
+        return FAIL("Priority queue", str(e)[:50])
+
+
+def test_task_dependencies() -> bool:
+    print_header("TASK DEPENDENCIES")
+    try:
+        from src.orchestrator import UnifiedOrchestrator, TaskStatus
+        
+        orch = UnifiedOrchestrator(engine=None, max_workers=1)
+        
+        parent = orch.create_task(prompt="parent", intent="code")
+        orch.submit(parent)
+        
+        child = orch.create_task(
+            prompt="child",
+            intent="code",
+            depends_on=[parent.id],
+        )
+        orch.submit(child)
+        
+        if child.status in [TaskStatus.PENDING, TaskStatus.QUEUED]:
+            PASS("Child queued while parent pending")
+        else:
+            orch.stop()
+            return FAIL("Child status", child.status.value)
+        
+        parent.set_status(TaskStatus.COMPLETED)
+        
+        if orch._check_dependencies(child):
+            PASS("Dependencies satisfied after parent complete")
+        else:
+            orch.stop()
+            return FAIL("Dependencies", "still blocked")
+        
+        orch.stop()
+        return True
+    except Exception as e:
+        return FAIL("Dependencies", str(e)[:50])
+
+
+def test_task_cancellation() -> bool:
+    print_header("TASK CANCELLATION")
+    try:
+        from src.orchestrator import UnifiedOrchestrator, TaskStatus
+        
+        orch = UnifiedOrchestrator(engine=None, max_workers=1)
+        
+        task = orch.create_task(prompt="cancel me", intent="code")
+        orch.submit(task)
+        
+        result = orch.cancel_task(task.id)
+        if result:
+            PASS("Cancel returned True")
+        else:
+            orch.stop()
+            return FAIL("Cancel", "returned False")
+        
+        if task.status == TaskStatus.CANCELLED:
+            PASS("Task status is CANCELLED")
+        else:
+            orch.stop()
+            return FAIL("Status", task.status.value)
+        
+        result = orch.cancel_task("nonexistent")
+        if not result:
+            PASS("Cancel unknown task returns False")
+        else:
+            orch.stop()
+            return FAIL("Cancel unknown", "returned True")
+        
+        orch.stop()
+        return True
+    except Exception as e:
+        return FAIL("Cancellation", str(e)[:50])
+
+
+def test_engine_orchestrator_integration() -> bool:
+    print_header("ENGINE ORCHESTRATOR INTEGRATION")
+    try:
+        from src.engine import CrackedCodeEngine
+        engine = CrackedCodeEngine({"autonomous_enabled": False})
+        
+        if hasattr(engine, 'orchestrator'):
+            PASS("Engine has orchestrator property")
+        else:
+            return FAIL("Engine", "missing orchestrator")
+        
+        if hasattr(engine, 'process_via_orchestrator'):
+            PASS("Engine has process_via_orchestrator")
+        else:
+            return FAIL("Engine", "missing process_via_orchestrator")
+        
+        if hasattr(engine, 'get_orchestrator_status'):
+            PASS("Engine has get_orchestrator_status")
+        else:
+            return FAIL("Engine", "missing get_orchestrator_status")
+        
+        status = engine.get_orchestrator_status()
+        if "max_workers" in status:
+            PASS(f"Orchestrator status: {status['max_workers']} workers")
+        else:
+            return FAIL("Status", "missing max_workers")
+        
+        if hasattr(engine, 'create_pipeline'):
+            PASS("Engine has create_pipeline")
+        else:
+            return FAIL("Engine", "missing create_pipeline")
+        
+        return True
+    except Exception as e:
+        return FAIL("Engine integration", str(e)[:50])
 
 
 if __name__ == "__main__":
