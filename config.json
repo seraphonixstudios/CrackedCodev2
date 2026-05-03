@@ -48,7 +48,15 @@
     "echo"
   ],
   "project_root": ".",
-  "log_level": "INFO",
+  "logging": {
+    "log_level": "INFO",
+    "log_dir": "logs",
+    "max_log_bytes": 5000000,
+    "log_backup_count": 5,
+    "use_colored_logs": true,
+    "use_json_logs": false,
+    "console_logging": true
+  },
   "voice_enabled": true,
   "auto_save_blackboard": true,
   "debate_rounds": 3,

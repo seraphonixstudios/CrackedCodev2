@@ -57,22 +57,18 @@ except ImportError:
 DEBUG_MODE = os.environ.get("CRACKEDCODE_DEBUG", "false").lower() in ("true", "1", "yes")
 VERBOSE_MODE = os.environ.get("CRACKEDCODE_VERBOSE", "false").lower() in ("true", "1", "yes")
 
-LOG_DIR = Path("logs")
-LOG_DIR.mkdir(exist_ok=True)
+from src.logger_config import setup_logging, get_logger
 
-LOG_FILE = LOG_DIR / f"crackedcode_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+# Initialize centralized logging
+_log_config = {
+    "log_level": "DEBUG" if DEBUG_MODE else "INFO",
+    "log_dir": "logs",
+    "use_colored_logs": True,
+    "console_logging": True,
+}
+setup_logging(_log_config)
 
-logging.basicConfig(
-    level=logging.DEBUG if DEBUG_MODE else logging.INFO,
-    format='%(asctime)s | %(levelname)-8s | %(name)s | %(message)s',
-    handlers=[
-        logging.FileHandler(LOG_FILE, mode='a', encoding='utf-8'),
-        logging.StreamHandler(sys.stdout)
-    ]
-)
-
-logger = logging.getLogger('CrackedCode')
-logger.setLevel(logging.DEBUG if DEBUG_MODE else logging.INFO)
+logger = get_logger('CrackedCode')
 
 def log_debug(message: str, exc_info: bool = False):
     if DEBUG_MODE:

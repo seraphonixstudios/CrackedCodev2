@@ -983,12 +983,11 @@ def test_exec_code_in_gui() -> bool:
         from src.gui import CrackedCodeGUI
         import inspect
         
-        gui = CrackedCodeGUI()
-        
-        if hasattr(gui, 'exec_code'):
+        # Check class-level without instantiation (avoids Qt headless crash)
+        if hasattr(CrackedCodeGUI, 'exec_code'):
             PASS("GUI has exec_code method")
             
-            source = inspect.getsource(gui.exec_code)
+            source = inspect.getsource(CrackedCodeGUI.exec_code)
             if 'subprocess.run' in source or 'self.engine' in source:
                 PASS("exec_code actually executes code")
             else:

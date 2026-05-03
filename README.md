@@ -481,6 +481,61 @@ Combine all 3 Ollama models into a single brain:
 
 ---
 
+## Logging
+
+Structured logging with colored console output, rotating file handlers, and optional JSON format.
+
+```python
+from src.logger_config import get_logger, setup_logging
+
+# Get a logger with centralized configuration
+logger = get_logger("MyModule")
+logger.info("Application started")
+logger.debug("Debug info: %s", data)
+
+# Custom configuration
+setup_logging({
+    "log_level": "DEBUG",
+    "log_dir": "logs",
+    "use_colored_logs": True,
+    "use_json_logs": False,
+    "console_logging": True,
+})
+```
+
+### Log Files
+
+| File | Description |
+|------|-------------|
+| `logs/crackedcode.log` | All log levels with rotation (5MB × 5 files) |
+| `logs/crackedcode_errors.log` | Errors only with rotation |
+
+### Features
+
+- **Colored console output**: ANSI color codes per log level
+- **Rotating file handlers**: Automatic rotation at 5MB, keeps 5 backups
+- **Structured JSON**: Optional JSON format for log aggregation
+- **Runtime level changes**: Adjust log level without restart
+- **Separate error log**: Errors automatically written to dedicated file
+
+### Configuration
+
+```json
+{
+  "logging": {
+    "log_level": "INFO",
+    "log_dir": "logs",
+    "max_log_bytes": 5000000,
+    "log_backup_count": 5,
+    "use_colored_logs": true,
+    "use_json_logs": false,
+    "console_logging": true
+  }
+}
+```
+
+---
+
 ## Configuration
 
 ```json

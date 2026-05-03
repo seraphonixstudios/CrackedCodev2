@@ -2,7 +2,6 @@ import sys
 import os
 import json
 import re
-import logging
 import subprocess
 import threading
 import time
@@ -13,8 +12,9 @@ from datetime import datetime
 from enum import Enum
 import asyncio
 
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s | %(levelname)s | %(name)s | %(message)s')
-logger = logging.getLogger("CrackedCodeEngine")
+from src.logger_config import get_logger
+
+logger = get_logger("CrackedCodeEngine")
 
 
 class Intent(Enum):

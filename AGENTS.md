@@ -49,6 +49,14 @@ crackedcode/
 - Toast notifications, pulse indicators, command history
 - Autonomous production dialog (Ctrl+A)
 
+### Logger (src/logger_config.py)
+- Centralized logging with `get_logger(name)`
+- Colored console output (ANSI codes per level)
+- RotatingFileHandler (5MB × 5 backups)
+- Separate error log file
+- Optional JSON structured logging
+- Runtime log level changes
+
 ## Development Workflow
 
 1. Make changes to source files

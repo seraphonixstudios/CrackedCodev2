@@ -40,11 +40,9 @@ try:
 except ImportError:
     VOICE_AVAILABLE = False
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s | %(levelname)s | %(name)s | %(message)s'
-)
-logger = logging.getLogger("CrackedCodeGUI")
+from src.logger_config import get_logger
+
+logger = get_logger("CrackedCodeGUI")
 
 ATLAN_GREEN = "#00FF41"
 ATLAN_CYAN = "#00FFFF"
