@@ -44,6 +44,16 @@ except ImportError:
 
 from src.logger_config import get_logger
 
+try:
+    from src.gui_enhancements import (
+        ToastNotification, ToastType, QuickActionsDialog,
+        QuickActionItem, WelcomeWidget, EnhancedStatusBar,
+        KeyboardShortcutHelper
+    )
+    ENHANCEMENTS_AVAILABLE = True
+except ImportError as e:
+    ENHANCEMENTS_AVAILABLE = False
+
 logger = get_logger("CrackedCodeGUI")
 
 ATLAN_GREEN = "#00FF41"
@@ -1387,6 +1397,81 @@ class CrackedCodeGUI(QMainWindow):
             self.term(f"[ENGINE v{status.get('version', '?')} loaded]")
             self.term(f"[OLLAMA: {len(status.get('ollama_models', []))} models]")
             self.term("[READY] Type your prompt below...")
+        
+        # Setup quick actions / command palette
+        if ENHANCEMENTS_AVAILABLE:
+            self._setup_quick_actions()
+            self._setup_keyboard_shortcuts()
+            
+            # Show welcome screen on first launch
+            show_welcome = self.settings.value("show_welcome", True)
+            if show_welcome:
+                self.welcome = WelcomeWidget(self)
+                self.welcome.dismissed.connect(lambda: self.settings.setValue("show_welcome", False))
+                self.welcome.show()
+        
+        # Update status bar
+        if ENHANCEMENTS_AVAILABLE and hasattr(self, 'statusBar') and isinstance(self.statusBar(), EnhancedStatusBar):
+            sb = self.statusBar()
+            sb.set_model(self.config.get("model", "unknown"))
+            sb.set_files_count(0)
+    
+    def _setup_quick_actions(self):
+        """Setup command palette with all available actions."""
+        self.quick_actions = QuickActionsDialog(self)
+        actions = [
+            QuickActionItem("New File", "Ctrl+N", self.new_file, "File"),
+            QuickActionItem("Open Project", "Ctrl+O", self.open_proj, "File"),
+            QuickActionItem("Save File", "Ctrl+S", self.save_current_file, "File"),
+            QuickActionItem("Execute Code", "Ctrl+Enter", self.exec_code, "Run"),
+            QuickActionItem("Toggle Plan Mode", "Ctrl+P", lambda: self.plan_btn.setChecked(not self.plan_btn.isChecked()), "Mode"),
+            QuickActionItem("Toggle Build Mode", "Ctrl+B", lambda: self.build_btn.setChecked(not self.build_btn.isChecked()), "Mode"),
+            QuickActionItem("Toggle Voice", "Ctrl+Shift+V", self.toggle_voice, "Voice"),
+            QuickActionItem("Autonomous Produce", "Ctrl+A", self.show_autonomous_dialog, "AI"),
+            QuickActionItem("Clear Terminal", "", self.clear_terminal, "Terminal"),
+            QuickActionItem("Copy Output", "", self.copy_output, "Terminal"),
+            QuickActionItem("Show Help", "F1", self.show_help, "Help"),
+            QuickActionItem("Toggle Fullscreen", "F11", self.toggle_full, "View"),
+            QuickActionItem("New Project", "", self.new_proj, "Project"),
+        ]
+        self.quick_actions.register_actions(actions)
+    
+    def _setup_keyboard_shortcuts(self):
+        """Register global keyboard shortcuts."""
+        from PyQt6.QtGui import QShortcut
+        
+        # Command palette
+        palette_shortcut = QShortcut(QKeySequence("Ctrl+Shift+P"), self)
+        palette_shortcut.activated.connect(self.show_quick_actions)
+        
+        # Toggle fullscreen
+        full_shortcut = QShortcut(QKeySequence("F11"), self)
+        full_shortcut.activated.connect(self.toggle_full)
+        
+        # Help
+        help_shortcut = QShortcut(QKeySequence("F1"), self)
+        help_shortcut.activated.connect(self.show_help)
+        
+        # Close tab
+        close_tab_shortcut = QShortcut(QKeySequence("Ctrl+W"), self)
+        close_tab_shortcut.activated.connect(self.close_current_tab)
+    
+    def show_quick_actions(self):
+        """Show the command palette."""
+        if ENHANCEMENTS_AVAILABLE and hasattr(self, 'quick_actions'):
+            self.quick_actions.show()
+            self.quick_actions.raise_()
+            self.quick_actions.activateWindow()
+    
+    def show_toast(self, text: str, toast_type=None, duration: int = 3000):
+        """Show a toast notification."""
+        if ENHANCEMENTS_AVAILABLE and self.toast:
+            if toast_type is None:
+                toast_type = ToastType.INFO
+            self.toast.show_message(text, toast_type, duration)
+        else:
+            # Fallback to terminal
+            self.term(f"[NOTIFY] {text}")
 
     def create_menu_bar(self):
         menubar = self.menuBar()
@@ -1456,6 +1541,14 @@ class CrackedCodeGUI(QMainWindow):
         edit_menu.addAction(find_action)
         
         view_menu = menubar.addMenu("VIEW")
+        
+        palette_action = QAction("COMMAND PALETTE", self)
+        palette_action.setShortcut(QKeySequence("Ctrl+Shift+P"))
+        palette_action.setToolTip("Open command palette (Ctrl+Shift+P)")
+        palette_action.triggered.connect(self.show_quick_actions)
+        view_menu.addAction(palette_action)
+        
+        view_menu.addSeparator()
         
         matrix_action = QAction("TOGGLE MATRIX", self)
         matrix_action.setShortcut(QKeySequence("Ctrl+M"))
@@ -1561,27 +1654,27 @@ class CrackedCodeGUI(QMainWindow):
         self.plan_btn = QPushButton("PLAN")
         self.plan_btn.setCheckable(True)
         self.plan_btn.setChecked(True)
-        self.plan_btn.setToolTip("Toggle PLAN mode")
+        self.plan_btn.setToolTip("Toggle PLAN mode (Ctrl+P)")
         self.plan_btn.clicked.connect(lambda: self.set_mode("plan"))
         tb.addWidget(self.plan_btn)
         
         self.build_btn = QPushButton("BUILD")
         self.build_btn.setCheckable(True)
         self.build_btn.setChecked(True)
-        self.build_btn.setToolTip("Toggle BUILD mode")
+        self.build_btn.setToolTip("Toggle BUILD mode (Ctrl+B)")
         self.build_btn.clicked.connect(lambda: self.set_mode("build"))
         tb.addWidget(self.build_btn)
         
         tb.addSeparator()
         
         exec_btn = QPushButton("EXECUTE")
-        exec_btn.setToolTip("Execute code in editor")
+        exec_btn.setToolTip("Execute code in editor (Ctrl+Enter)")
         exec_btn.clicked.connect(self.exec_code)
         tb.addWidget(exec_btn)
         
         self.voice_btn = QPushButton("VOICE")
         self.voice_btn.setCheckable(True)
-        self.voice_btn.setToolTip("Toggle voice input")
+        self.voice_btn.setToolTip("Toggle voice input (Ctrl+Shift+V)")
         self.voice_btn.clicked.connect(self.toggle_voice)
         tb.addWidget(self.voice_btn)
         
@@ -1651,35 +1744,45 @@ class CrackedCodeGUI(QMainWindow):
         tb.addWidget(self.matrix_btn)
 
     def create_status(self):
-        sb = QStatusBar()
-        self.setStatusBar(sb)
-        
-        self.status_lbl = QLabel("READY")
-        self.status_lbl.setToolTip("Current status")
-        sb.addWidget(self.status_lbl)
+        if ENHANCEMENTS_AVAILABLE:
+            sb = EnhancedStatusBar(self)
+            self.setStatusBar(sb)
+            self.status_lbl = sb.status_label  # Compatibility
+            # Will be updated via sb methods
+        else:
+            sb = QStatusBar()
+            self.setStatusBar(sb)
+            self.status_lbl = QLabel("READY")
+            sb.addWidget(self.status_lbl)
         
         self.cache_lbl = QLabel("Cache: 0")
         self.cache_lbl.setToolTip("Response cache size")
-        sb.addPermanentWidget(self.cache_lbl)
+        self.statusBar().addPermanentWidget(self.cache_lbl)
         
         self.ollama_lbl = QLabel("OLLAMA: ...")
         self.ollama_lbl.setToolTip("Ollama connection status")
-        sb.addPermanentWidget(self.ollama_lbl)
+        self.statusBar().addPermanentWidget(self.ollama_lbl)
         
         self.model_lbl = QLabel("MODEL: none")
         self.model_lbl.setToolTip("Current AI model")
-        sb.addPermanentWidget(self.model_lbl)
+        self.statusBar().addPermanentWidget(self.model_lbl)
         
         self.task_status_lbl = QLabel("Tasks: 0")
         self.task_status_lbl.setToolTip("Task count")
-        sb.addPermanentWidget(self.task_status_lbl)
+        self.statusBar().addPermanentWidget(self.task_status_lbl)
         
         self.time_lbl = QLabel("")
-        sb.addPermanentWidget(self.time_lbl)
+        self.statusBar().addPermanentWidget(self.time_lbl)
         
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_time)
         self.timer.start(1000)
+        
+        # Toast notification
+        if ENHANCEMENTS_AVAILABLE:
+            self.toast = ToastNotification(self)
+        else:
+            self.toast = None
         self.update_time()
         
         self.stats_timer = QTimer()
@@ -2153,12 +2256,16 @@ class CrackedCodeGUI(QMainWindow):
         text = self.terminal.toPlainText()
         if text:
             self.clipboard.setText(text)
-            self.term("[COPIED: terminal content to clipboard]")
+            self.term("Terminal content copied to clipboard", level="success")
+            self.show_toast("Copied to clipboard", ToastType.SUCCESS)
+        else:
+            self.show_toast("Nothing to copy", ToastType.WARNING)
 
     def clear_terminal(self):
         self.terminal.clear()
         self.terminal.clear_highlights()
-        self.term("[TERMINAL CLEARED]")
+        self.term("Terminal cleared", level="info")
+        self.show_toast("Terminal cleared", ToastType.INFO)
 
     def stop_current_operation(self):
         self.voice_recording = False
@@ -2166,8 +2273,9 @@ class CrackedCodeGUI(QMainWindow):
             self.voice_btn.setChecked(False)
         self.set_status("STOPPED")
         self.progress_bar.setValue(0)
-        self.term("[OPERATION STOPPED]")
+        self.term("Operation stopped", level="warning")
         self.show_notification("Operation stopped", NotificationType.WARNING)
+        self.show_toast("Operation stopped", ToastType.WARNING)
 
     def set_status(self, text: str):
         if hasattr(self, 'status_lbl'):
@@ -2290,8 +2398,9 @@ class CrackedCodeGUI(QMainWindow):
             try:
                 content = self.editor.toPlainText()
                 self.current_file.write_text(content)
-                self.term(f"[SAVED: {self.current_file.name}]")
+                self.term(f"Saved {self.current_file.name}", level="success")
                 self.show_notification(f"Saved {self.current_file.name}", NotificationType.SUCCESS)
+                self.show_toast(f"Saved {self.current_file.name}", ToastType.SUCCESS)
                 
                 current = self.tab_widget.currentIndex()
                 tab_name = self.tab_widget.tabText(current)
@@ -2300,7 +2409,8 @@ class CrackedCodeGUI(QMainWindow):
                     if tab_name.startswith("*"):
                         self.tab_widget.setTabText(current, tab_name[1:])
             except Exception as e:
-                self.term(f"[ERROR: Cannot save - {e}]")
+                self.term(f"Cannot save - {e}", level="error")
+                self.show_toast(f"Save failed: {e}", ToastType.ERROR)
         else:
             filename, _ = QFileDialog.getSaveFileName(self, "SAVE FILE", "", "Python Files (*.py);;All Files (*)")
             if filename:
@@ -2308,10 +2418,12 @@ class CrackedCodeGUI(QMainWindow):
                     content = self.editor.toPlainText()
                     Path(filename).write_text(content)
                     self.current_file = Path(filename)
-                    self.term(f"[SAVED: {filename}]")
+                    self.term(f"Saved {filename}", level="success")
                     self.show_notification(f"Saved {filename}", NotificationType.SUCCESS)
+                    self.show_toast(f"Saved {filename}", ToastType.SUCCESS)
                 except Exception as e:
-                    self.term(f"[ERROR: Cannot save - {e}]")
+                    self.term(f"Cannot save - {e}", level="error")
+                    self.show_toast(f"Save failed: {e}", ToastType.ERROR)
 
     def save_file_as(self):
         """Save current editor content to a new file (always prompts)."""
@@ -2433,12 +2545,17 @@ class CrackedCodeGUI(QMainWindow):
     def exec_code(self):
         code = self.editor.toPlainText()
         if not code.strip():
-            self.term("[EXECUTE: No code to run]")
+            self.term("No code to run", level="warning")
+            self.show_toast("No code to execute", ToastType.WARNING)
             return
         
-        self.term(f">[EXECUTING] {len(code)} chars...")
+        self.term(f"Executing {len(code)} chars...", level="info")
         self.set_status("EXECUTING...")
         self.progress_bar.setValue(10)
+        
+        # Activity indicator
+        if ENHANCEMENTS_AVAILABLE and isinstance(self.statusBar(), EnhancedStatusBar):
+            self.statusBar().start_activity()
         
         try:
             import tempfile
@@ -2467,28 +2584,32 @@ class CrackedCodeGUI(QMainWindow):
                 logger.warning(f"Could not remove temp file {tmp_path}: {e}")
             
             if result.stdout:
-                self.term(f"[OUTPUT]:\n{result.stdout}")
+                self.term(f"Output:\n{result.stdout}", level="success")
             if result.stderr:
-                self.term(f"[ERROR]:\n{result.stderr}")
+                self.term(f"Error:\n{result.stderr}", level="error")
             
             if result.returncode == 0:
-                self.term("[DONE] Execution successful")
+                self.term("Execution successful", level="success")
                 self.set_status("READY")
                 self.show_notification("Execution successful", NotificationType.SUCCESS)
             else:
-                self.term(f"[FAILED] Exit code: {result.returncode}")
+                self.term(f"Exit code: {result.returncode}", level="error")
                 self.set_status("ERROR")
                 self.show_notification("Execution failed", NotificationType.ERROR)
                 
         except subprocess.TimeoutExpired:
-            self.term("[ERROR] Execution timed out (60s)")
+            self.term("Execution timed out (60s)", level="error")
+            self.show_toast("Execution timed out", ToastType.ERROR)
             self.set_status("TIMEOUT")
         except Exception as e:
-            self.term(f"[ERROR] {type(e).__name__}: {e}")
+            self.term(f"{type(e).__name__}: {e}", level="error")
+            self.show_toast(f"Execution error: {e}", ToastType.ERROR)
             self.set_status("ERROR")
         finally:
             self.progress_bar.setValue(100)
             QTimer.singleShot(500, lambda: self.progress_bar.setValue(0))
+            if ENHANCEMENTS_AVAILABLE and isinstance(self.statusBar(), EnhancedStatusBar):
+                self.statusBar().stop_activity()
 
     def toggle_voice(self):
         if not self.voice or not self.voice.is_ready:
@@ -2651,9 +2772,24 @@ class CrackedCodeGUI(QMainWindow):
         QTimer.singleShot(500, lambda: self.progress_bar.setValue(0))
         self.update_task_status()
 
-    def term(self, text: str, end: str = "\n"):
+    def term(self, text: str, end: str = "\n", level: str = "info"):
+        """Enhanced terminal output with timestamps and color coding."""
         if hasattr(self, 'terminal'):
-            self.terminal.append(text)
+            import time
+            timestamp = time.strftime("%H:%M:%S")
+            
+            # Color-code based on level
+            prefixes = {
+                "info":    f"[{timestamp}]",
+                "success": f"[{timestamp}] ✓",
+                "warning": f"[{timestamp}] ⚠",
+                "error":   f"[{timestamp}] ✗",
+                "voice":   f"[{timestamp}] 🎤",
+                "ai":      f"[{timestamp}] 🤖",
+            }
+            prefix = prefixes.get(level, f"[{timestamp}]")
+            
+            self.terminal.append(f"{prefix} {text}")
             self.terminal.moveCursor(QTextCursor.MoveOperation.End)
 
     def toggle_full(self):
