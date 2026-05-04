@@ -1722,6 +1722,10 @@ def main() -> int:
         ("Task Dependencies", test_task_dependencies),
         ("Task Cancellation", test_task_cancellation),
         ("Engine Orchestrator", test_engine_orchestrator_integration),
+        ("Git Panel Imports", test_git_panel_imports),
+        ("Git Panel Widget", test_git_panel_widget),
+        ("Git Panel Repo", test_git_panel_repo_detection),
+        ("Diff Viewer", test_diff_viewer_dialog),
     ]
     
     results: list[tuple[str, bool]] = []
@@ -2075,6 +2079,83 @@ def test_engine_orchestrator_integration() -> bool:
         return True
     except Exception as e:
         return FAIL("Engine integration", str(e)[:50])
+
+
+def test_git_panel_imports() -> bool:
+    print_header("GIT PANEL IMPORTS")
+    try:
+        from src.gui_git_panel import GitPanelWidget, DiffViewerDialog
+        PASS("GitPanelWidget")
+        PASS("DiffViewerDialog")
+        return True
+    except Exception as e:
+        return FAIL("Git panel imports", str(e)[:50])
+
+
+def test_git_panel_widget() -> bool:
+    print_header("GIT PANEL WIDGET")
+    try:
+        from src.gui_git_panel import GitPanelWidget
+        from src.git_integration import GitIntegration
+        
+        # Don't instantiate widget in headless tests - just verify the class exists
+        # and has the expected methods/attributes
+        PASS("GitPanelWidget class exists")
+        
+        # Check expected methods exist
+        expected_methods = ['refresh', 'set_repo', 'get_current_branch', 'shutdown']
+        for method in expected_methods:
+            if hasattr(GitPanelWidget, method):
+                PASS(f"Has {method}()")
+            else:
+                return FAIL(f"Missing {method}()")
+        
+        return True
+    except Exception as e:
+        return FAIL("Git panel widget", str(e)[:50])
+
+
+def test_git_panel_repo_detection() -> bool:
+    print_header("GIT PANEL REPO DETECTION")
+    try:
+        from src.git_integration import GitIntegration
+        
+        git = GitIntegration(".")
+        if git.is_repo:
+            branch = git.get_branch()
+            PASS(f"Detected branch: {branch}")
+            
+            status = git.get_status()
+            PASS(f"Status: {status.status.value}")
+            
+            if status.untracked:
+                PASS(f"Untracked: {len(status.untracked)}")
+            if status.modified:
+                PASS(f"Modified: {len(status.modified)}")
+        else:
+            PASS("Not a git repo (expected in some environments)")
+        
+        return True
+    except Exception as e:
+        return FAIL("Repo detection", str(e)[:50])
+
+
+def test_diff_viewer_dialog() -> bool:
+    print_header("DIFF VIEWER DIALOG")
+    try:
+        from src.gui_git_panel import DiffViewerDialog
+        
+        # Verify class exists and has expected attributes
+        PASS("DiffViewerDialog class exists")
+        
+        if hasattr(DiffViewerDialog, '_highlight_diff'):
+            PASS("Has diff highlighting")
+        else:
+            return FAIL("Missing _highlight_diff")
+        
+        return True
+    except Exception as e:
+        return FAIL("Diff viewer", str(e)[:50])
 
 
 if __name__ == "__main__":

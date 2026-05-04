@@ -54,6 +54,12 @@ try:
 except ImportError as e:
     ENHANCEMENTS_AVAILABLE = False
 
+try:
+    from src.gui_git_panel import GitPanelWidget
+    GIT_PANEL_AVAILABLE = True
+except ImportError:
+    GIT_PANEL_AVAILABLE = False
+
 logger = get_logger("CrackedCodeGUI")
 
 ATLAN_GREEN = "#00FF41"
@@ -1623,6 +1629,14 @@ class CrackedCodeGUI(QMainWindow):
         
         layout.addWidget(project_group)
         
+        # Git panel
+        if GIT_PANEL_AVAILABLE:
+            self.git_panel = GitPanelWidget(parent=self)
+            self.git_panel.file_clicked.connect(self.open_file_from_git)
+            layout.addWidget(self.git_panel, 1)
+        else:
+            self.git_panel = None
+        
         self.agent_panel = AgentPanelWidget(self.orchestrator)
         layout.addWidget(self.agent_panel)
         
@@ -2087,10 +2101,19 @@ class CrackedCodeGUI(QMainWindow):
             self.tab_widget.setCurrentWidget(editor)
             self.editor = editor
             self.current_file = filepath
-            self.term(f"[OPENED] {filepath.name}")
+            self.term(f"Opened {filepath.name}", level="success")
             self.show_notification(f"Opened {filepath.name}", NotificationType.SUCCESS)
         except Exception as e:
-            self.term(f"[ERROR] Cannot open {filepath.name}: {e}")
+            self.term(f"Cannot open {filepath.name}: {e}", level="error")
+
+    def open_file_from_git(self, filepath: str):
+        """Open a file clicked in the git panel."""
+        if self.project_path:
+            full_path = self.project_path / filepath
+            if full_path.exists():
+                self.open_file_in_tab(full_path)
+            else:
+                self.term(f"File not found: {filepath}", level="warning")
 
     def toggle_dev_console(self):
         status = self.engine.get_status() if self.engine else {}
@@ -2309,9 +2332,13 @@ class CrackedCodeGUI(QMainWindow):
         f = QFileDialog.getExistingDirectory(self, "OPEN PROJECT")
         if f:
             self.config["project_root"] = f
-            self.term(f"[OPENED: {f}]")
+            self.term(f"Opened project: {f}", level="success")
             self.scan_project_files(f)
+            # Update git panel
+            if self.git_panel:
+                self.git_panel.set_repo(f)
             self.show_notification(f"Opened project: {Path(f).name}", NotificationType.SUCCESS)
+            self.show_toast(f"Opened {Path(f).name}", ToastType.SUCCESS)
 
     def scan_project_files(self, root):
         self.files_tree.clear()
