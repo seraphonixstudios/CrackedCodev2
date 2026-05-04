@@ -78,6 +78,12 @@ try:
 except ImportError:
     SYNTAX_AVAILABLE = False
 
+try:
+    from src.reasoning import get_reasoning_engine, ReasoningType
+    REASONING_AVAILABLE = True
+except ImportError:
+    REASONING_AVAILABLE = False
+
 logger = get_logger("CrackedCodeGUI")
 
 ATLAN_GREEN = "#00FF41"
@@ -786,6 +792,255 @@ class TaskQueueWidget(QWidget):
         self.pending_label.setText(f"Pending: {status['pending']}")
         self.running_label.setText(f"Running: {status['running']}")
         self.completed_label.setText(f"Done: {status['completed']}")
+
+
+class ReasoningPanelWidget(QWidget):
+    """Panel displaying real-time agent reasoning chains and coherence metrics."""
+    
+    REASONING_COLORS = {
+        "observation": ATLAN_CYAN,
+        "analysis": ATLAN_GOLD,
+        "hypothesis": ATLAN_PURPLE,
+        "decision": ATLAN_GREEN,
+        "action": ATLAN_BLUE,
+        "reflection": ATLAN_ORANGE,
+        "correction": ATLAN_RED,
+        "inference": "#FF69B4",
+    }
+    
+    def __init__(self, gui_ref: Any = None):
+        super().__init__()
+        self.gui = gui_ref
+        self.reasoning_engine = get_reasoning_engine() if REASONING_AVAILABLE else None
+        self.agent_items: Dict[str, QTreeWidgetItem] = {}
+        self.max_events = 50
+        self.init_ui()
+        self._register_callback()
+        
+        self.update_timer = QTimer()
+        self.update_timer.timeout.connect(self.refresh_coherence)
+        self.update_timer.start(2000)
+    
+    def init_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(4)
+        
+        # Header
+        header = QWidget()
+        header_layout = QHBoxLayout(header)
+        header_layout.setContentsMargins(0, 0, 0, 0)
+        
+        header_lbl = QLabel("REASONING")
+        header_lbl.setStyleSheet(f"font-weight: bold; color: {ATLAN_PURPLE}; padding: 2px;")
+        header_layout.addWidget(header_lbl)
+        
+        self.coherence_lbl = QLabel("C: 1.00")
+        self.coherence_lbl.setStyleSheet(f"color: {ATLAN_GREEN}; font-size: 10px; font-weight: bold;")
+        self.coherence_lbl.setToolTip("Cross-agent coherence score")
+        header_layout.addWidget(self.coherence_lbl)
+        
+        layout.addWidget(header)
+        
+        # Coherence bar
+        self.coherence_bar = QProgressBar()
+        self.coherence_bar.setRange(0, 100)
+        self.coherence_bar.setValue(100)
+        self.coherence_bar.setFixedHeight(6)
+        self.coherence_bar.setTextVisible(False)
+        self.coherence_bar.setStyleSheet(f"""
+            QProgressBar {{
+                background-color: {ATLAN_DARK};
+                border: 1px solid {ATLAN_BORDER};
+                border-radius: 3px;
+            }}
+            QProgressBar::chunk {{
+                background-color: {ATLAN_GREEN};
+                border-radius: 2px;
+            }}
+        """)
+        layout.addWidget(self.coherence_bar)
+        
+        # Agent reasoning tree
+        self.reasoning_tree = QTreeWidget()
+        self.reasoning_tree.setHeaderHidden(True)
+        self.reasoning_tree.setToolTip("Agent reasoning chains - double-click to expand")
+        self.reasoning_tree.setStyleSheet(f"""
+            QTreeWidget {{
+                background-color: {ATLAN_DARK};
+                border: 1px solid {ATLAN_BORDER};
+                border-radius: 4px;
+                color: {ATLAN_GREEN};
+                font-size: 10px;
+            }}
+            QTreeWidget::item {{
+                padding: 2px;
+            }}
+            QTreeWidget::item:hover {{
+                background-color: {ATLAN_MEDIUM};
+            }}
+        """)
+        layout.addWidget(self.reasoning_tree)
+        
+        # Recent events list
+        events_header = QLabel("Recent Events")
+        events_header.setStyleSheet(f"color: {ATLAN_GOLD}; font-size: 10px; font-weight: bold;")
+        layout.addWidget(events_header)
+        
+        self.events_list = QListWidget()
+        self.events_list.setMaximumHeight(120)
+        self.events_list.setStyleSheet(f"""
+            QListWidget {{
+                background-color: {ATLAN_DARK};
+                border: 1px solid {ATLAN_BORDER};
+                border-radius: 4px;
+                color: {ATLAN_GREEN};
+                font-size: 9px;
+            }}
+        """)
+        layout.addWidget(self.events_list)
+    
+    def _register_callback(self):
+        """Register with reasoning engine for live updates."""
+        if self.reasoning_engine:
+            self.reasoning_engine.add_callback(self._on_reasoning_event)
+    
+    def _on_reasoning_event(self, event: Dict[str, Any]):
+        """Handle reasoning events from the engine."""
+        event_type = event.get("type", "unknown")
+        data = event.get("data", {})
+        agent_id = data.get("agent_id", "system")
+        
+        # Stream to terminal if GUI reference available
+        if self.gui and hasattr(self.gui, 'term'):
+            if event_type == "chain_started":
+                self.gui.term(f"[🧠 {agent_id}] Starting: {data.get('title', 'reasoning')}", level="reasoning")
+            elif event_type == "chain_completed":
+                self.gui.term(f"[🧠 {agent_id}] Decision: {data.get('decision', 'completed')[:60]}...", level="reasoning")
+        
+        # Add to recent events
+        self._add_event(event)
+    
+    def _add_event(self, event: Dict[str, Any]):
+        """Add event to the recent events list."""
+        event_type = event.get("type", "unknown")
+        data = event.get("data", {})
+        agent_id = data.get("agent_id", "system")
+        
+        color = self.REASONING_COLORS.get(event_type.replace("_", ""), ATLAN_GREEN)
+        
+        if event_type == "chain_started":
+            text = f"🧠 {agent_id}: {data.get('title', 'chain')}"
+        elif event_type == "chain_completed":
+            text = f"✓ {agent_id}: {data.get('decision', 'done')[:40]}"
+        else:
+            text = f"• {agent_id}: {event_type}"
+        
+        item = QListWidgetItem(text)
+        item.setForeground(QColor(color))
+        self.events_list.insertItem(0, item)
+        
+        while self.events_list.count() > self.max_events:
+            self.events_list.takeItem(self.events_list.count() - 1)
+    
+    def refresh_coherence(self):
+        """Refresh coherence metrics and agent reasoning display."""
+        if not self.reasoning_engine:
+            return
+        
+        try:
+            report = self.reasoning_engine.get_coherence_report()
+            coherence = report.get("cross_agent_coherence", {})
+            overall = coherence.get("overall_coherence", 1.0)
+            
+            # Update coherence display
+            self.coherence_lbl.setText(f"C: {overall:.2f}")
+            self.coherence_bar.setValue(int(overall * 100))
+            
+            # Color-code coherence
+            if overall >= 0.8:
+                color = ATLAN_GREEN
+            elif overall >= 0.6:
+                color = ATLAN_GOLD
+            elif overall >= 0.4:
+                color = ATLAN_ORANGE
+            else:
+                color = ATLAN_RED
+            
+            self.coherence_lbl.setStyleSheet(f"color: {color}; font-size: 10px; font-weight: bold;")
+            self.coherence_bar.setStyleSheet(f"""
+                QProgressBar {{
+                    background-color: {ATLAN_DARK};
+                    border: 1px solid {ATLAN_BORDER};
+                    border-radius: 3px;
+                }}
+                QProgressBar::chunk {{
+                    background-color: {color};
+                    border-radius: 2px;
+                }}
+            """)
+            
+            # Update agent tree
+            self._update_agent_tree(report.get("agents", {}))
+            
+        except Exception as e:
+            logger.warning(f"Reasoning panel refresh error: {e}")
+    
+    def _update_agent_tree(self, agents: Dict[str, Any]):
+        """Update the agent reasoning tree."""
+        current_agents = set(agents.keys())
+        existing_agents = set(self.agent_items.keys())
+        
+        # Remove old agents
+        for agent_id in existing_agents - current_agents:
+            item = self.agent_items.pop(agent_id)
+            root = self.reasoning_tree.invisibleRootItem()
+            root.removeChild(item)
+        
+        # Add/update agents
+        for agent_id, data in agents.items():
+            if agent_id not in self.agent_items:
+                item = QTreeWidgetItem()
+                item.setText(0, f"{data.get('role', 'agent')} ({agent_id[:8]})")
+                self.reasoning_tree.addTopLevelItem(item)
+                self.agent_items[agent_id] = item
+            else:
+                item = self.agent_items[agent_id]
+            
+            # Update agent info
+            coherence = data.get("coherence", 0.0)
+            chains = data.get("chains", 0)
+            steps = data.get("steps", 0)
+            
+            item.setText(0, f"{data.get('role', 'agent')} | C:{coherence:.2f} | {chains}ch {steps}st")
+            
+            # Color based on coherence
+            if coherence >= 0.8:
+                item.setForeground(0, QColor(ATLAN_GREEN))
+            elif coherence >= 0.5:
+                item.setForeground(0, QColor(ATLAN_GOLD))
+            else:
+                item.setForeground(0, QColor(ATLAN_RED))
+            
+            # Add recent decisions as children
+            recent = data.get("recent_decisions", [])
+            # Clear old children
+            while item.childCount() > 0:
+                item.removeChild(item.child(0))
+            
+            for dec in recent[-3:]:
+                child = QTreeWidgetItem()
+                child.setText(0, f"→ {dec.get('decision', '')[:30]} ({dec.get('confidence', 0):.2f})")
+                conf = dec.get("confidence", 0)
+                if conf >= 0.7:
+                    child.setForeground(0, QColor(ATLAN_GREEN))
+                elif conf >= 0.4:
+                    child.setForeground(0, QColor(ATLAN_GOLD))
+                else:
+                    child.setForeground(0, QColor(ATLAN_RED))
+                item.addChild(child)
+        
+        self.reasoning_tree.expandAll()
 
 
 class AgentPanelWidget(QWidget):
@@ -1747,6 +2002,10 @@ class CrackedCodeGUI(QMainWindow):
         self.task_queue = TaskQueueWidget(self.orchestrator)
         layout.addWidget(self.task_queue)
         
+        # Reasoning panel
+        self.reasoning_panel = ReasoningPanelWidget(gui_ref=self)
+        layout.addWidget(self.reasoning_panel)
+        
         self.progress_bar = QProgressBar()
         self.progress_bar.setToolTip("Task progress")
         self.progress_bar.setFixedHeight(20)
@@ -1889,6 +2148,11 @@ class CrackedCodeGUI(QMainWindow):
         self.task_status_lbl.setToolTip("Task count")
         self.statusBar().addPermanentWidget(self.task_status_lbl)
         
+        self.coherence_status_lbl = QLabel("C: 1.00")
+        self.coherence_status_lbl.setToolTip("Cross-agent coherence")
+        self.coherence_status_lbl.setStyleSheet(f"color: {ATLAN_GREEN};")
+        self.statusBar().addPermanentWidget(self.coherence_status_lbl)
+        
         self.time_lbl = QLabel("")
         self.statusBar().addPermanentWidget(self.time_lbl)
         
@@ -1910,6 +2174,21 @@ class CrackedCodeGUI(QMainWindow):
     def update_time(self):
         current_time = time.strftime("%H:%M:%S")
         self.time_lbl.setText(current_time)
+        
+        # Update coherence status
+        if REASONING_AVAILABLE and hasattr(self, 'coherence_status_lbl'):
+            try:
+                report = get_reasoning_engine().get_coherence_report()
+                coherence = report.get("cross_agent_coherence", {}).get("overall_coherence", 1.0)
+                self.coherence_status_lbl.setText(f"C: {coherence:.2f}")
+                if coherence >= 0.8:
+                    self.coherence_status_lbl.setStyleSheet(f"color: {ATLAN_GREEN};")
+                elif coherence >= 0.5:
+                    self.coherence_status_lbl.setStyleSheet(f"color: {ATLAN_GOLD};")
+                else:
+                    self.coherence_status_lbl.setStyleSheet(f"color: {ATLAN_RED};")
+            except Exception:
+                pass
         
     def update_stats(self):
         if self.engine and hasattr(self.engine, 'ollama'):
@@ -2938,12 +3217,13 @@ class CrackedCodeGUI(QMainWindow):
             
             # Color-code based on level
             prefixes = {
-                "info":    f"[{timestamp}]",
-                "success": f"[{timestamp}] ✓",
-                "warning": f"[{timestamp}] ⚠",
-                "error":   f"[{timestamp}] ✗",
-                "voice":   f"[{timestamp}] 🎤",
-                "ai":      f"[{timestamp}] 🤖",
+                "info":      f"[{timestamp}]",
+                "success":   f"[{timestamp}] ✓",
+                "warning":   f"[{timestamp}] ⚠",
+                "error":     f"[{timestamp}] ✗",
+                "voice":     f"[{timestamp}] 🎤",
+                "ai":        f"[{timestamp}] 🤖",
+                "reasoning": f"[{timestamp}] 🧠",
             }
             prefix = prefixes.get(level, f"[{timestamp}]")
             

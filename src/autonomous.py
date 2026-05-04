@@ -150,6 +150,16 @@ None
 
 ## Blocked Tasks
 """,
+        "REASONING.md": """# Reasoning Log
+
+## Chain-of-Thought Archive
+
+## Coherence History
+
+## Key Decisions
+
+## Lessons from Reasoning
+""",
         "STANDING_INSTRUCTIONS.md": """# Standing Instructions
 
 ## Code Style
@@ -238,7 +248,35 @@ None
             "memory": self.read("MEMORY.md"),
             "project": self.read("PROJECT.md"),
             "instructions": self.read("STANDING_INSTRUCTIONS.md"),
+            "reasoning": self.read("REASONING.md"),
         }
+    
+    def save_reasoning(self, reasoning_data: Dict[str, Any]):
+        """Save reasoning log to REASONING.md."""
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        content = self.read("REASONING.md")
+        
+        new_section = f"\n## Session {timestamp}\n\n"
+        new_section += f"### Coherence: {reasoning_data.get('coherence', 'N/A')}\n\n"
+        
+        for agent_id, agent_data in reasoning_data.get("agents", {}).items():
+            new_section += f"**{agent_data.get('role', 'agent')}** ({agent_id}):\n"
+            new_section += f"- Chains: {agent_data.get('chains', 0)}, Steps: {agent_data.get('steps', 0)}\n"
+            new_section += f"- Coherence: {agent_data.get('coherence', 0):.2f}\n"
+            for dec in agent_data.get("recent_decisions", []):
+                new_section += f"  - {dec.get('title', 'decision')}: {dec.get('decision', '')[:50]}... (conf: {dec.get('confidence', 0):.2f})\n"
+            new_section += "\n"
+        
+        if "## Chain-of-Thought Archive" in content:
+            content = content.replace("## Chain-of-Thought Archive", f"## Chain-of-Thought Archive\n{new_section}")
+        else:
+            content += new_section
+        
+        self.write("REASONING.md", content)
+    
+    def load_reasoning(self) -> str:
+        """Load reasoning history from REASONING.md."""
+        return self.read("REASONING.md")
 
 
 @dataclass
@@ -2673,6 +2711,18 @@ python -m pytest tests/
                 f"Production {'successful' if result.success else 'failed'}: {result.summary[:100]}",
                 0.9 if result.success else 0.3,
             )
+            
+            # Persist reasoning to workspace
+            try:
+                report = self._reasoning_engine.get_coherence_report()
+                self.workspace.save_reasoning(report)
+                
+                # Also save JSON backup
+                reasoning_path = str(Path(result.project_path) / ".autonomous" / "reasoning_log.json")
+                Path(reasoning_path).parent.mkdir(parents=True, exist_ok=True)
+                self._reasoning_engine.save_reasoning_log(reasoning_path)
+            except Exception as e:
+                logger.warning(f"Failed to persist reasoning: {e}")
         
         return result
 

@@ -817,6 +817,9 @@ python test_system.py
 - Reasoning + Engine integration
 - Reasoning + Autonomous integration
 - Reasoning coherence scoring
+- GUI Reasoning Panel (live agent thought chains, coherence bar, event stream)
+- Reasoning persistence (JSON log + REASONING.md workspace archive)
+- LLM meta-reasoning (Ollama-powered coherence analysis)
 
 ---
 

@@ -78,6 +78,8 @@ crackedcode/
 - CoherenceTracker: Cross-agent coherence measurement and conflict detection
 - ReasoningEngine: Singleton coordinating all reasoning across the system
 - Integrated into orchestrator, engine, and autonomous producer
+- **Persistent memory**: `save_reasoning_log()` / `load_reasoning_log()` JSON + REASONING.md
+- **LLM meta-reasoning**: `analyze_with_llm()` feeds coherence report to Ollama for insights
 
 ### GUI (src/gui.py)
 - PyQt6-based with Atlantean theme (#00FF41 on black)
@@ -87,6 +89,7 @@ crackedcode/
 - Enhanced status bar with activity pulse and model/mode display
 - Autonomous production dialog (Ctrl+A)
 - File watcher with auto-save and external change detection
+- **Reasoning Panel** (left sidebar): per-agent thought chains, coherence bar, recent events stream, live terminal integration
 
 ### Logger (src/logger_config.py)
 - Centralized logging with `get_logger(name)`

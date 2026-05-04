@@ -13,6 +13,8 @@ Architecture:
 
 import time
 import uuid
+import json
+from pathlib import Path
 from enum import Enum, auto
 from dataclasses import dataclass, field
 from typing import Optional, Dict, List, Callable, Any, Set, Tuple
@@ -690,6 +692,140 @@ class ReasoningEngine:
         
         summary["recommendations"] = recommendations
         return summary
+    
+    def analyze_with_llm(self, ollama_bridge=None, model: str = None) -> Dict[str, Any]:
+        """Send reasoning summary to LLM for meta-analysis and insights.
+        
+        Args:
+            ollama_bridge: OllamaBridge instance for LLM communication
+            model: Specific model to use (defaults to bridge's model)
+            
+        Returns:
+            Dict with insights, recommendations, and confidence adjustments
+        """
+        if not ollama_bridge:
+            return {"error": "No Ollama bridge available", "insights": [], "recommendations": []}
+        
+        try:
+            report = self.get_coherence_report()
+            
+            # Build concise prompt
+            agents_summary = []
+            for agent_id, data in report.get("agents", {}).items():
+                agents_summary.append(
+                    f"- {data.get('role', 'agent')} ({agent_id}): "
+                    f"coherence={data.get('coherence', 0):.2f}, "
+                    f"chains={data.get('chains', 0)}, steps={data.get('steps', 0)}"
+                )
+            
+            coherence = report.get("cross_agent_coherence", {})
+            prompt = f"""Analyze this multi-agent reasoning system and provide insights.
+
+Cross-Agent Coherence: {coherence.get('overall_coherence', 0):.2f}
+Conflicts: {coherence.get('conflicts', 0)}
+Consensus Points: {coherence.get('consensus', 0)}
+
+Agents:
+{chr(10).join(agents_summary)}
+
+Recommendations from system:
+{chr(10).join(f"- {r}" for r in report.get('recommendations', []))}
+
+Please provide:
+1. Key insights about agent coordination
+2. Suggested improvements for coherence
+3. Any detected patterns or anomalies
+4. Confidence calibration advice
+
+Respond concisely in bullet points."""
+
+            response = ollama_bridge.chat(prompt, system="You are a meta-reasoning analyst. Review multi-agent decision patterns.")
+            
+            if response.success:
+                return {
+                    "insights": response.text,
+                    "coherence": coherence.get("overall_coherence", 0),
+                    "conflicts": coherence.get("conflicts", 0),
+                    "success": True,
+                }
+            else:
+                return {
+                    "error": response.error,
+                    "insights": "",
+                    "success": False,
+                }
+        except Exception as e:
+            logger.error(f"LLM meta-reasoning failed: {e}")
+            return {"error": str(e), "insights": "", "success": False}
+    
+    def save_reasoning_log(self, filepath: str) -> bool:
+        """Save all reasoning data to a JSON file.
+        
+        Args:
+            filepath: Path to save the reasoning log
+            
+        Returns:
+            True if saved successfully
+        """
+        try:
+            data = {
+                "timestamp": time.time(),
+                "global_events": self.global_reasoning_log,
+                "agents": {},
+            }
+            
+            for agent_id, reasoning in self.coherence_tracker.agent_reasonings.items():
+                data["agents"][agent_id] = {
+                    "role": reasoning.agent_role,
+                    "chains": [chain.to_dict() for chain in reasoning.thought_chains],
+                    "memory": reasoning.reasoning_memory,
+                }
+            
+            with open(filepath, 'w') as f:
+                json.dump(data, f, indent=2, default=str)
+            
+            logger.info(f"Reasoning log saved to {filepath}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to save reasoning log: {e}")
+            return False
+    
+    def load_reasoning_log(self, filepath: str) -> bool:
+        """Load reasoning data from a JSON file.
+        
+        Args:
+            filepath: Path to load the reasoning log from
+            
+        Returns:
+            True if loaded successfully
+        """
+        try:
+            path = Path(filepath)
+            if not path.exists():
+                return False
+            
+            with open(filepath) as f:
+                data = json.load(f)
+            
+            # Load global events
+            self.global_reasoning_log = data.get("global_events", [])
+            
+            # Load agent reasoning
+            for agent_id, agent_data in data.get("agents", {}).items():
+                role = agent_data.get("role", "unknown")
+                reasoning = self.coherence_tracker.get_agent_reasoning(agent_id)
+                
+                if reasoning is None:
+                    reasoning = self.coherence_tracker.register_agent(agent_id, role)
+                
+                # Restore memory
+                reasoning.reasoning_memory = agent_data.get("memory", [])
+            
+            logger.info(f"Reasoning log loaded from {filepath}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to load reasoning log: {e}")
+            return False
 
 
 # Global reasoning engine instance
