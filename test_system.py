@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CRACKEDCODE v2.6.3 - Comprehensive End-to-End Test Suite
+CRACKEDCODE v2.6.4 - Comprehensive End-to-End Test Suite
 Full coverage with real operations, no placeholders
 """
 
@@ -595,11 +595,11 @@ def test_version_info() -> bool:
         PASS(f"Engine version: {status.get('version', 'unknown')}")
         
         version_checks = 0
-        if CrackedCode.VERSION == "2.6.3":
+        if CrackedCode.VERSION == "2.6.4":
             version_checks += 1
-        if MatrixUI.VERSION == "2.6.3":
+        if MatrixUI.VERSION == "2.6.4":
             version_checks += 1
-        if status.get("version") == "2.6.3":
+        if status.get("version") == "2.6.4":
             version_checks += 1
         
         PASS(f"Version consistency: {version_checks}/3")
@@ -709,10 +709,10 @@ def test_cli_integration_e2e() -> bool:
             version = result.stdout.strip()
             PASS(f"CLI import: version {version}")
             
-            if version == "2.6.3":
+            if version == "2.6.4":
                 PASS("CLI version correct")
             else:
-                FAIL("CLI version", f"Expected 2.6.3, got {version}")
+                FAIL("CLI version", f"Expected 2.6.4, got {version}")
                 return False
         else:
             FAIL("CLI import", result.stderr[:50])
@@ -1663,7 +1663,7 @@ def test_voice_hotword_detection() -> bool:
 
 
 def main() -> int:
-    print(f"\n{'='*60}\n  CRACKEDCODE v2.6.3 - E2E TEST SUITE\n{'='*60}\n")
+    print(f"\n{'='*60}\n  CRACKEDCODE v2.6.4 - E2E TEST SUITE\n{'='*60}\n")
     
     tests = [
         ("Modules", test_modules),
@@ -1742,6 +1742,7 @@ def main() -> int:
         ("RAG + Engine", test_rag_engine_integration),
         ("Tool Framework", test_tool_framework),
         ("Tool + ReAct", test_tool_react),
+        ("Plugin System", test_plugin_system),
     ]
     
     results: list[tuple[str, bool]] = []
@@ -2746,6 +2747,84 @@ def test_tool_react() -> bool:
         import traceback
         traceback.print_exc()
         return FAIL("ReAct integration", str(e)[:50])
+
+
+def test_plugin_system() -> bool:
+    print_header("PLUGIN SYSTEM")
+    try:
+        from src.plugin_system import (
+            Plugin, PluginRegistry, HookPoint, HookManager,
+            plugin, get_plugin_registry, execute_hook
+        )
+        
+        PASS("All plugin system classes imported")
+        
+        # Reset registry
+        PluginRegistry.reset()
+        registry = PluginRegistry.get_instance()
+        
+        # Test class-based plugin
+        @plugin(name="test_plugin", version="1.0.0", description="Test plugin")
+        class TestPlugin:
+            def on_system_startup(self):
+                return "started"
+            
+            def on_engine_pre_process(self, prompt):
+                return f"processed: {prompt}"
+        
+        if "test_plugin" in [p.name for p in registry.list_plugins()]:
+            PASS("Class-based plugin registered")
+        else:
+            return FAIL("Class-based plugin not registered")
+        
+        # Test hook execution
+        results = registry.execute_hook(HookPoint.SYSTEM_STARTUP)
+        if "started" in results:
+            PASS("Hook execution returned expected result")
+        else:
+            return FAIL("Hook execution failed")
+        
+        # Test enable/disable
+        registry.set_enabled("test_plugin", False)
+        if not registry.get("test_plugin").enabled:
+            PASS("Plugin disable works")
+        else:
+            return FAIL("Plugin disable failed")
+        
+        registry.set_enabled("test_plugin", True)
+        if registry.get("test_plugin").enabled:
+            PASS("Plugin re-enable works")
+        else:
+            return FAIL("Plugin re-enable failed")
+        
+        # Test stats
+        stats = registry.get_stats()
+        if stats["total_plugins"] > 0:
+            PASS(f"Stats: {stats['total_plugins']} plugins")
+        else:
+            return FAIL("Stats empty")
+        
+        # Test hook manager
+        hm = HookManager()
+        hm.register(HookPoint.SYSTEM_SHUTDOWN, lambda: "shutdown", "test")
+        results = hm.execute(HookPoint.SYSTEM_SHUTDOWN)
+        if "shutdown" in results:
+            PASS("HookManager execute works")
+        else:
+            return FAIL("HookManager execute failed")
+        
+        # Test list_hooks
+        hooks = hm.list_hooks()
+        if "system.shutdown" in hooks:
+            PASS("list_hooks works")
+        else:
+            return FAIL("list_hooks failed")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Plugin system", str(e)[:50])
 
 
 if __name__ == "__main__":

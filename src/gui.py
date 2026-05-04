@@ -90,6 +90,18 @@ try:
 except ImportError:
     TOOLS_AVAILABLE = False
 
+try:
+    from src.plugin_system import (
+        PluginRegistry, HookPoint, get_plugin_registry, execute_hook
+    )
+    PLUGINS_AVAILABLE = True
+except ImportError:
+    PLUGINS_AVAILABLE = False
+    PluginRegistry = None
+    HookPoint = None
+    get_plugin_registry = None
+    execute_hook = None
+
 logger = get_logger("CrackedCodeGUI")
 
 ATLAN_GREEN = "#00FF41"
@@ -1459,7 +1471,7 @@ class CrackedCodeGUI(QMainWindow):
         self.restore_state()
         self.setup_paste_handler()
         
-        logger.info("CrackedCode GUI v2.6.3 started")
+        logger.info("CrackedCode GUI v2.6.4 started")
 
     def init_orchestrator(self):
         self.orchestrator = AgentOrchestrator(gui_ref=self)
@@ -1624,7 +1636,7 @@ class CrackedCodeGUI(QMainWindow):
             self.config = {"model": "qwen3:8b-gpu", "project_root": "."}
 
     def setup_atlan_theme(self):
-        self.setWindowTitle("CRACKEDCODE v2.6.3 // AUTONOMOUS NEURAL SYSTEM")
+        self.setWindowTitle("CRACKEDCODE v2.6.4 // AUTONOMOUS NEURAL SYSTEM")
         self.setMinimumSize(1400, 900)
         
         self.atlan_font = QFont("Consolas", 11)
@@ -1961,6 +1973,23 @@ class CrackedCodeGUI(QMainWindow):
             self.term(f"[OLLAMA: {len(status.get('ollama_models', []))} models]")
             self.term("[READY] Type your prompt below...")
         
+        # Load plugins
+        if PLUGINS_AVAILABLE:
+            try:
+                registry = get_plugin_registry()
+                plugins_dir = Path(__file__).parent.parent / "plugins"
+                registry.load_plugins_from_directory(str(plugins_dir))
+                stats = registry.get_stats()
+                self.term(f"[PLUGINS] Loaded {stats['enabled']}/{stats['total_plugins']} plugins")
+                
+                # Startup hook
+                results = execute_hook(HookPoint.SYSTEM_STARTUP)
+                for r in results:
+                    if r:
+                        self.term(f"[PLUGIN] {r}")
+            except Exception as e:
+                logger.warning(f"Plugin loading failed: {e}")
+        
         # Setup quick actions / command palette
         if ENHANCEMENTS_AVAILABLE:
             self._setup_quick_actions()
@@ -1999,6 +2028,17 @@ class CrackedCodeGUI(QMainWindow):
             QuickActionItem("Toggle Fullscreen", "F11", self.toggle_full, "View"),
             QuickActionItem("New Project", "", self.new_proj, "Project"),
         ]
+        
+        # Plugin command palette hook
+        if PLUGINS_AVAILABLE:
+            try:
+                plugin_actions = execute_hook(HookPoint.GUI_COMMAND_PALETTE)
+                for action_list in plugin_actions:
+                    if isinstance(action_list, list):
+                        actions.extend(action_list)
+            except Exception as e:
+                logger.warning(f"Plugin command palette hook error: {e}")
+        
         self.quick_actions.register_actions(actions)
     
     def _setup_keyboard_shortcuts(self):
@@ -2158,6 +2198,96 @@ class CrackedCodeGUI(QMainWindow):
         about_action.setToolTip("About CrackedCode")
         about_action.triggered.connect(self.show_about)
         help_menu.addAction(about_action)
+        
+        # Plugins menu
+        if PLUGINS_AVAILABLE:
+            plugins_menu = menubar.addMenu("PLUGINS")
+            
+            reload_action = QAction("RELOAD PLUGINS", self)
+            reload_action.setToolTip("Hot-reload all plugins")
+            reload_action.triggered.connect(self.reload_plugins)
+            plugins_menu.addAction(reload_action)
+            
+            plugins_menu.addSeparator()
+            
+            manage_action = QAction("MANAGE PLUGINS", self)
+            manage_action.setToolTip("Enable/disable plugins")
+            manage_action.triggered.connect(self.show_plugins_dialog)
+            plugins_menu.addAction(manage_action)
+        
+        # Plugin hook: menu ready
+        if PLUGINS_AVAILABLE:
+            execute_hook(HookPoint.GUI_MENU_READY, menubar)
+
+    def reload_plugins(self):
+        """Hot-reload all plugins from the plugins directory."""
+        if not PLUGINS_AVAILABLE:
+            self.term("[PLUGINS] Plugin system not available")
+            return
+        
+        try:
+            registry = get_plugin_registry()
+            registry.check_hot_reload()
+            stats = registry.get_stats()
+            self.term(f"[PLUGINS] Reloaded. Active: {stats['enabled']}/{stats['total_plugins']}")
+        except Exception as e:
+            self.term(f"[PLUGINS] Reload failed: {e}")
+    
+    def show_plugins_dialog(self):
+        """Show dialog to manage plugin enable/disable state."""
+        if not PLUGINS_AVAILABLE:
+            QMessageBox.information(self, "Plugins", "Plugin system not available")
+            return
+        
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Plugin Manager")
+        dialog.setMinimumSize(400, 300)
+        
+        layout = QVBoxLayout(dialog)
+        
+        info = QLabel("Toggle plugins on/off. Changes take effect immediately.")
+        info.setWordWrap(True)
+        info.setStyleSheet(f"color: {ATLAN_GOLD}; font-size: 10px;")
+        layout.addWidget(info)
+        
+        registry = get_plugin_registry()
+        
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        container = QWidget()
+        cl = QVBoxLayout(container)
+        cl.setSpacing(2)
+        
+        for p in registry.list_plugins():
+            row = QWidget()
+            rl = QHBoxLayout(row)
+            rl.setContentsMargins(2, 2, 2, 2)
+            
+            name_lbl = QLabel(f"{p.name} v{p.version}")
+            name_lbl.setStyleSheet(f"color: {ATLAN_GREEN}; font-size: 10px; min-width: 140px;")
+            rl.addWidget(name_lbl)
+            
+            desc_lbl = QLabel(p.description[:40])
+            desc_lbl.setStyleSheet(f"color: {ATLAN_CYAN}; font-size: 9px;")
+            rl.addWidget(desc_lbl)
+            rl.addStretch()
+            
+            cb = QCheckBox()
+            cb.setChecked(p.enabled)
+            cb.stateChanged.connect(lambda state, pn=p.name: registry.set_enabled(pn, bool(state)))
+            rl.addWidget(cb)
+            
+            cl.addWidget(row)
+        
+        cl.addStretch()
+        scroll.setWidget(container)
+        layout.addWidget(scroll)
+        
+        close_btn = QPushButton("CLOSE")
+        close_btn.clicked.connect(dialog.accept)
+        layout.addWidget(close_btn)
+        
+        dialog.exec()
 
     def create_left_panel(self):
         dock = QDockWidget("CONTROL CENTER", self)
@@ -3213,7 +3343,7 @@ class CrackedCodeGUI(QMainWindow):
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
 
-        subtitle = QLabel("AUTONOMOUS NEURAL SYSTEM v2.6.3")
+        subtitle = QLabel("AUTONOMOUS NEURAL SYSTEM v2.6.4")
         subtitle.setStyleSheet(f"font-size: 12px; color: {ATLAN_GOLD}; font-family: Consolas;")
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(subtitle)
@@ -3572,6 +3702,13 @@ class CrackedCodeGUI(QMainWindow):
             self.restoreState(s)
 
     def closeEvent(self, e):
+        # Plugin shutdown hook
+        if PLUGINS_AVAILABLE:
+            try:
+                execute_hook(HookPoint.SYSTEM_SHUTDOWN)
+            except Exception as ex:
+                logger.warning(f"Plugin shutdown hook error: {ex}")
+        
         self.settings.setValue("geometry", self.saveGeometry())
         self.settings.setValue("windowState", self.saveState())
         

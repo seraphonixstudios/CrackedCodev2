@@ -38,6 +38,13 @@ try:
     _reasoning_available = True
 except ImportError:
     _reasoning_available = False
+
+try:
+    from src.plugin_system import HookPoint, execute_hook
+    _plugins_available = True
+except ImportError:
+    _plugins_available = False
+    HookPoint = None
     ReasoningEngine = None
     ThoughtChain = None
     ReasoningType = None
@@ -184,11 +191,15 @@ class Task:
                 self.on_complete(self)
             except Exception:
                 pass
+            if _plugins_available:
+                execute_hook(HookPoint.ORCHESTRATOR_TASK_COMPLETED, self)
         elif status == TaskStatus.FAILED and self.on_fail:
             try:
                 self.on_fail(self)
             except Exception:
                 pass
+            if _plugins_available:
+                execute_hook(HookPoint.ORCHESTRATOR_TASK_FAILED, self)
     
     @property
     def duration(self) -> float:
@@ -568,6 +579,10 @@ class UnifiedOrchestrator:
             self._tasks[task.id] = task
         
         logger.info(f"Task {task.id} created: {intent} -> {agent.value}")
+        
+        # Plugin task created hook
+        if _plugins_available:
+            execute_hook(HookPoint.ORCHESTRATOR_TASK_CREATED, task)
         
         if self.on_task_created:
             self.on_task_created(task)

@@ -3,7 +3,7 @@
 Local AI Coding Assistant with Sci-Fi Neural Interface
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.6.3-blue?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Version-2.6.4-blue?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License">
   <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-orange?style=for-the-badge" alt="Platform">
   <img src="https://img.shields.io/badge/Python-3.10%2B-yellow?style=for-the-badge" alt="Python">
@@ -34,8 +34,8 @@ python test_system.py
 
 | Version | Features |
 |---------|----------|
-| 2.6.3 | **Codebase RAG** - Semantic search with local embeddings, context-aware code generation, autonomous existing codebase awareness |
-| 2.6.3 | **Agent Reasoning Engine**, GUI Reasoning Panel, persistent reasoning memory, LLM meta-reasoning, autonomous production, unified orchestrator, SOTA voice engine, Git sidebar, file watcher, settings dialog, syntax highlighting, command palette |
+| 2.6.4 | **Codebase RAG** - Semantic search with local embeddings, context-aware code generation, autonomous existing codebase awareness |
+| 2.6.4 | **Agent Reasoning Engine**, GUI Reasoning Panel, persistent reasoning memory, LLM meta-reasoning, autonomous production, unified orchestrator, SOTA voice engine, Git sidebar, file watcher, settings dialog, syntax highlighting, command palette |
 | 2.5.0 | UI/UX overhaul, toast notifications, searchable terminal, command history, tab management, pulse indicators |
 | 2.4.0 | Streaming responses, response caching, context management, retry logic, tabbed editor |
 | 2.3.9 | Task queue, Agent orchestration, Accessibility |
@@ -43,7 +43,7 @@ python test_system.py
 
 ---
 
-## Desktop GUI (v2.6.3)
+## Desktop GUI (v2.6.4)
 
 ```bash
 python src/gui.py
@@ -323,7 +323,7 @@ result = engine.execute_generated_code("print('Hello!')")
 
 ---
 
-## Autonomous Application Production (v2.6.3)
+## Autonomous Application Production (v2.6.4)
 
 OpenClaw-style autonomous agent that takes a high-level specification and autonomously designs, codes, tests, and delivers complete applications.
 
@@ -467,7 +467,7 @@ resolution = coordinator.resolve(task_id)
 
 ---
 
-## Unified Voice Engine (v2.6.3)
+## Unified Voice Engine (v2.6.4)
 
 SOTA Speech-to-Text and Text-to-Speech with multi-backend fallback.
 
@@ -519,7 +519,7 @@ print(cmd.params)  # {"filename": "app.py", "type": "function"}
 
 ---
 
-## Git Integration (v2.6.3)
+## Git Integration (v2.6.4)
 
 Full Git sidebar panel in the GUI:
 
@@ -533,7 +533,7 @@ Full Git sidebar panel in the GUI:
 
 ---
 
-## File Watcher + Auto-Save (v2.6.3)
+## File Watcher + Auto-Save (v2.6.4)
 
 Automatic file monitoring and saving:
 
@@ -544,7 +544,7 @@ Automatic file monitoring and saving:
 
 ---
 
-## Unified Orchestrator (v2.6.3)
+## Unified Orchestrator (v2.6.4)
 
 Production-grade task orchestration replacing 4 disconnected systems:
 
@@ -666,7 +666,7 @@ setup_logging({
 
 ---
 
-## Settings Dialog (v2.6.3)
+## Settings Dialog (v2.6.4)
 
 GUI preferences editor (`Ctrl+,`):
 
@@ -678,7 +678,7 @@ GUI preferences editor (`Ctrl+,`):
 
 ---
 
-## Code Syntax Highlighting (v2.6.3)
+## Code Syntax Highlighting (v2.6.4)
 
 Automatic syntax highlighting in the code editor:
 
@@ -713,7 +713,7 @@ HIGHLIGHTERS[".js"] = JavaScriptHighlighter
 
 ---
 
-## Agent Reasoning Engine (v2.6.3)
+## Agent Reasoning Engine (v2.6.4)
 
 Full chain-of-thought reasoning for all agent decisions:
 
@@ -839,7 +839,7 @@ python test_system.py
 
 ---
 
-## Codebase RAG (v2.6.3)
+## Codebase RAG (v2.6.4)
 
 100% local semantic search over your codebase using Ollama embeddings or TF-IDF fallback:
 
@@ -877,7 +877,7 @@ context = indexer.get_context_for_prompt("How do I add a new endpoint?")
 
 ---
 
-## Tool Calling Framework (v2.6.3)
+## Tool Calling Framework (v2.6.4)
 
 ReAct-style agent action system with 16 built-in tools across 8 categories:
 
@@ -947,6 +947,56 @@ result = react.run(
 
 ---
 
+## Plugin System (v2.6.4)
+
+Extensible hook-based plugin architecture for custom agent behavior:
+
+```python
+from src.plugin_system import plugin, HookPoint
+
+@plugin(name="my_plugin", version="1.0.0", description="Does something")
+class MyPlugin:
+    def on_system_startup(self):
+        return "Plugin loaded!"
+    
+    def on_engine_pre_process(self, prompt):
+        print(f"About to process: {prompt}")
+    
+    def on_orchestrator_task_completed(self, task):
+        print(f"Task {task.id} done!")
+```
+
+### Hook Points
+
+| Hook Point | Fires When |
+|-----------|-----------|
+| `engine.pre_process` | Before engine processes a prompt |
+| `engine.post_process` | After engine returns a response |
+| `engine.intent_parsed` | After intent is detected |
+| `orchestrator.task_created` | When a task is created |
+| `orchestrator.task_completed` | When a task completes |
+| `orchestrator.task_failed` | When a task fails |
+| `gui.menu_ready` | When GUI menu bar is built |
+| `gui.command_palette` | When command palette is populated |
+| `system.startup` | When app starts |
+| `system.shutdown` | When app closes |
+| `tool.pre_execute` | Before a tool runs |
+| `tool.post_execute` | After a tool runs |
+
+### GUI Integration
+
+- **Plugins Menu**: Reload plugins, manage enable/disable state
+- **Hot-reload**: Modify plugin files and reload without restarting
+- **Plugin Manager Dialog**: Toggle individual plugins on/off
+
+### Example Plugins
+
+- `plugins/hello_world.py` — Logs at every system event
+- `plugins/auto_commit.py` — Auto-commits after autonomous production
+- `plugins/discord_webhook.py` — Sends notifications to Discord
+
+---
+
 ## File Structure
 
 ```
@@ -961,6 +1011,7 @@ crackedcode/
 │   ├── reasoning.py         # Agent Reasoning Engine - thought chains, coherence
 │   ├── codebase_rag.py      # Semantic search with local embeddings
 │   ├── tool_framework.py    # Tool Calling Framework - ReAct, 16 built-in tools
+│   ├── plugin_system.py     # Plugin System - extensible hooks
 │   ├── engine.py            # CrackedCodeEngine - core logic
 │   ├── orchestrator.py      # UnifiedOrchestrator - task lifecycle, priorities
 │   ├── autonomous.py        # AutonomousAppProducer - OpenClaw-style agent
@@ -971,7 +1022,11 @@ crackedcode/
 │   ├── file_watcher.py      # File system monitoring with auto-save
 │   ├── git_integration.py   # Git operations
 │   └── logger_config.py     # Centralized logging
-├── test_system.py           # Comprehensive E2E test suite (74 tests)
+├── plugins/                 # Plugin directory (hot-reload)
+│   ├── hello_world.py       # Example plugin
+│   ├── auto_commit.py       # Auto-commit after production
+│   └── discord_webhook.py   # Discord notifications
+├── test_system.py           # Comprehensive E2E test suite (77 tests)
 ├── config.json              # Configuration file
 ├── README.md                # User documentation
 ├── AGENTS.md                # Developer guide
@@ -986,4 +1041,4 @@ MIT
 
 ---
 
-**CrackedCode v2.6.3** - Autonomous AI Coding Agent with Agent Reasoning Engine, Codebase RAG, Tool Calling Framework, and SOTA Architecture Production
+**CrackedCode v2.6.4** - Autonomous AI Coding Agent with Agent Reasoning Engine, Codebase RAG, Tool Calling Framework, and SOTA Architecture Production

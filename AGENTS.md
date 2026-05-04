@@ -4,7 +4,7 @@
 
 CrackedCode is a 100% local AI coding assistant featuring autonomous application production (OpenClaw-style), multi-agent orchestration, voice I/O, and a sci-fi neural interface.
 
-**Current Version:** 2.6.3
+**Current Version:** 2.6.4
 **Branch:** main
 **License:** MIT
 
@@ -20,7 +20,7 @@ crackedcode/
 │   ├── gui_settings.py      # Preferences dialog with Ollama discovery
 │   ├── gui_syntax.py        # Code syntax highlighting (Python, JSON)
 │   ├── reasoning.py         # Agent Reasoning Engine - thought chains, coherence
-│   ├── codebase_rag.py      # Semantic search with local embeddings (v2.6.3)
+│   ├── codebase_rag.py      # Semantic search with local embeddings (v2.6.4)
 │   ├── engine.py            # CrackedCodeEngine - core logic
 │   ├── orchestrator.py      # UnifiedOrchestrator - task lifecycle, priorities
 │   ├── autonomous.py        # AutonomousAppProducer - OpenClaw-style agent
@@ -83,7 +83,7 @@ crackedcode/
 - **Persistent memory**: `save_reasoning_log()` / `load_reasoning_log()` JSON + REASONING.md
 - **LLM meta-reasoning**: `analyze_with_llm()` feeds coherence report to Ollama for insights
 
-### Codebase RAG (src/codebase_rag.py) (v2.6.3)
+### Codebase RAG (src/codebase_rag.py) (v2.6.4)
 - CodeChunker: Semantic chunking by function/class/module for 15+ languages
 - EmbeddingProvider: Ollama embeddings with TF-IDF fallback, 100% local
 - VectorStore: NumPy-based cosine similarity search
@@ -93,7 +93,7 @@ crackedcode/
 - **Autonomous integration**: Existing codebase awareness before generating new code
 - **GUI integration**: Semantic search dialog (Ctrl+Shift+F) with ranked results
 
-### Tool Calling Framework (src/tool_framework.py) (v2.6.3)
+### Tool Calling Framework (src/tool_framework.py) (v2.6.4)
 - `@tool` decorator: Auto-register functions with JSON schema from type hints
 - ToolRegistry: Central registry with permission levels (READ/WRITE/EXECUTE/DANGEROUS)
 - ReActLoop: Full reasoning → action → observation cycle with max iterations
@@ -103,6 +103,17 @@ crackedcode/
 - **Engine integration**: `process_with_tools()` for debug/review/build/search intents
 - **Orchestrator integration**: AgentWorker auto-enables tools for complex tasks
 - **Autonomous integration**: Producer uses tools for file ops, testing, git
+
+### Plugin System (src/plugin_system.py) (v2.6.4)
+- `@plugin` decorator: Auto-register classes/functions as plugins
+- PluginRegistry: Central registry with enable/disable, hot-reload
+- HookManager: Named hook points across engine/orchestrator/GUI/lifecycle
+- 12 hook points: engine.pre/post_process, orchestrator.task_created/completed/failed, gui.menu_ready/command_palette, system.startup/shutdown, tool.pre/post_execute
+- Hot-reload: `check_hot_reload()` detects file changes and reloads plugins
+- **Engine integration**: pre/post process, intent parsed hooks
+- **Orchestrator integration**: task lifecycle hooks
+- **GUI integration**: Plugins menu, reload/manage dialogs, command_palette hook
+- **Tool framework integration**: pre/post execute hooks
 
 ### GUI (src/gui.py)
 - PyQt6-based with Atlantean theme (#00FF41 on black)
@@ -246,12 +257,29 @@ Key settings in `config.json`:
 6. Log tool calls to reasoning engine via `log_observation()` / `log_decision()` tools
 7. Add tests in `test_system.py`
 
+### Adding a New Plugin
+1. Create a Python file in `plugins/` directory
+2. Import `plugin` and `HookPoint` from `src.plugin_system`
+3. Use `@plugin(name="...", version="...", description="...")` decorator
+4. Define methods named `on_{hook_point_name}` (e.g., `on_system_startup`)
+5. Method signatures should accept the arguments documented for that hook point
+6. Return a string for logging, or None
+7. Add test in `test_system.py`
+8. Update README.md
+
+### Adding Hooks to a New Component
+1. Import plugin module with graceful fallback: `try: from src.plugin_system import HookPoint, execute_hook except ImportError: ...`
+2. Choose appropriate `HookPoint` enum value
+3. Call `execute_hook(HookPoint.YOUR_HOOK, *args, **kwargs)` at the right lifecycle moment
+4. Wrap in try/except so plugin failures don't break your component
+5. Add tests in `test_system.py`
+
 ## Known Issues
 
 - Git push sometimes times out (requires retries)
 - Version consistency check: ensure all files are updated together
 - Windows path separators may need special handling in tests
-- PyQt6 `QStatusBar.addSeparator()` doesn't exist (removed in v2.6.3)
+- PyQt6 `QStatusBar.addSeparator()` doesn't exist (removed in v2.6.4)
 - `QLocalSocket` stale sockets need `removeServer()` before listen
 
 ## Models

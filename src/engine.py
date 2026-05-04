@@ -49,6 +49,18 @@ except ImportError:
     ToolPermission = None
     get_tool_registry = None
 
+try:
+    from src.plugin_system import (
+        PluginRegistry, HookPoint, get_plugin_registry, execute_hook
+    )
+    _plugins_available = True
+except ImportError:
+    _plugins_available = False
+    PluginRegistry = None
+    HookPoint = None
+    get_plugin_registry = None
+    execute_hook = None
+
 logger = get_logger("CrackedCodeEngine")
 
 
@@ -517,7 +529,7 @@ Output plan in a code block.
         ollama = self.ollama.detect()
         cache_stats = self.ollama.get_cache_stats()
         return {
-            "version": "2.6.3",
+            "version": "2.6.4",
             "model": self.model,
             "unified_mode": self.unified_mode,
             "plan": self.plan_enabled,
@@ -768,7 +780,15 @@ Output plan in a code block.
         - Model selection
         - Response handling
         """
+        # Plugin pre-process hook
+        if _plugins_available:
+            execute_hook(HookPoint.ENGINE_PRE_PROCESS, prompt)
+        
         request = self.parse_intent(prompt)
+        
+        # Plugin intent parsed hook
+        if _plugins_available:
+            execute_hook(HookPoint.ENGINE_INTENT_PARSED, request)
         
         # Build execution path reasoning
         execution_reasoning = []
@@ -848,6 +868,10 @@ Output plan in a code block.
             self.session.add_turn(request, response)
         else:
             execution_reasoning.append({"type": "correction", "content": f"LLM failed: {response.error}", "confidence": 0.3})
+        
+        # Plugin post-process hook
+        if _plugins_available:
+            execute_hook(HookPoint.ENGINE_POST_PROCESS, response)
         
         return response
     

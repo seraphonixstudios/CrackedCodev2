@@ -1,6 +1,6 @@
 {
   "name": "CrackedCode",
-  "version": "2.6.3",
+  "version": "2.6.4",
   "description": "Autonomous AI Coding Agent with Multi-Agent Swarm, Voice I/O, and Production-Ready App Generation",
   "model": "qwen3:8b-gpu",
   "vision_model": "llava:13b-gpu",
