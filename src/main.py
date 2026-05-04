@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 CrackedCode - Local AI Coding Assistant
-Version: 2.6.0
+Version: 2.6.3
 """
 
 import os
@@ -1903,7 +1903,7 @@ class AgentSwarm:
 
 
 class CrackedCode:
-    VERSION = "2.6.0"
+    VERSION = "2.6.3"
     BANNER = """
 ============================================================
   CRACKEDCODE v{version} - Local AI Coding Assistant

@@ -84,6 +84,12 @@ try:
 except ImportError:
     REASONING_AVAILABLE = False
 
+try:
+    from src.tool_framework import get_tool_registry, ToolPermission, ToolCategory
+    TOOLS_AVAILABLE = True
+except ImportError:
+    TOOLS_AVAILABLE = False
+
 logger = get_logger("CrackedCodeGUI")
 
 ATLAN_GREEN = "#00FF41"
@@ -1043,6 +1049,206 @@ class ReasoningPanelWidget(QWidget):
         self.reasoning_tree.expandAll()
 
 
+class ToolLogWidget(QWidget):
+    """Panel displaying live tool execution log with expand/collapse details."""
+    
+    def __init__(self, gui_ref: Any = None):
+        super().__init__()
+        self.gui = gui_ref
+        self.tool_registry = get_tool_registry() if TOOLS_AVAILABLE else None
+        self.seen_count = 0
+        self.init_ui()
+        
+        self.update_timer = QTimer()
+        self.update_timer.timeout.connect(self.refresh_log)
+        self.update_timer.start(1500)
+    
+    def init_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(4)
+        
+        # Header
+        header = QWidget()
+        header_layout = QHBoxLayout(header)
+        header_layout.setContentsMargins(0, 0, 0, 0)
+        
+        header_lbl = QLabel("TOOL LOG")
+        header_lbl.setStyleSheet(f"font-weight: bold; color: {ATLAN_GOLD}; padding: 2px;")
+        header_layout.addWidget(header_lbl)
+        
+        self.stats_lbl = QLabel("0 calls")
+        self.stats_lbl.setStyleSheet(f"color: {ATLAN_GREEN}; font-size: 10px;")
+        header_layout.addWidget(self.stats_lbl)
+        header_layout.addStretch()
+        
+        # Permissions button
+        perm_btn = QPushButton("PERMISSIONS")
+        perm_btn.setToolTip("Toggle tool permissions")
+        perm_btn.setFixedHeight(22)
+        perm_btn.setStyleSheet(f"font-size: 9px; padding: 2px 6px;")
+        perm_btn.clicked.connect(self.show_permissions_dialog)
+        header_layout.addWidget(perm_btn)
+        
+        layout.addWidget(header)
+        
+        # Tool log tree
+        self.log_tree = QTreeWidget()
+        self.log_tree.setHeaderLabels(["Time", "Tool", "Status", "Duration"])
+        self.log_tree.setColumnWidth(0, 70)
+        self.log_tree.setColumnWidth(1, 110)
+        self.log_tree.setColumnWidth(2, 60)
+        self.log_tree.setColumnWidth(3, 55)
+        self.log_tree.setToolTip("Tool execution log - double-click to expand details")
+        self.log_tree.setStyleSheet(f"""
+            QTreeWidget {{
+                background-color: {ATLAN_DARK};
+                border: 1px solid {ATLAN_BORDER};
+                border-radius: 4px;
+                color: {ATLAN_GREEN};
+                font-size: 10px;
+            }}
+            QTreeWidget::item {{
+                padding: 2px;
+            }}
+            QTreeWidget::item:hover {{
+                background-color: {ATLAN_MEDIUM};
+            }}
+            QHeaderView::section {{
+                background-color: {ATLAN_DARK};
+                color: {ATLAN_GOLD};
+                padding: 2px;
+                font-size: 9px;
+                border: 1px solid {ATLAN_BORDER};
+            }}
+        """)
+        layout.addWidget(self.log_tree)
+    
+    def refresh_log(self):
+        """Poll registry execution log and update tree."""
+        if not self.tool_registry:
+            return
+        
+        try:
+            log = self.tool_registry.get_execution_log(limit=50)
+            if len(log) == self.seen_count:
+                return
+            
+            self.seen_count = len(log)
+            self.log_tree.clear()
+            
+            for entry in reversed(log):
+                success = entry.get("success", False)
+                tool_name = entry.get("tool_name", "unknown")
+                duration = entry.get("duration", 0.0)
+                timestamp = entry.get("timestamp", 0)
+                result = entry.get("result", {})
+                error = entry.get("error", "")
+                observation = entry.get("observation", "")
+                
+                time_str = time.strftime("%H:%M:%S", time.localtime(timestamp))
+                
+                item = QTreeWidgetItem()
+                item.setText(0, time_str)
+                item.setText(1, tool_name)
+                item.setText(2, "OK" if success else "FAIL")
+                item.setText(3, f"{duration:.2f}s")
+                
+                if success:
+                    item.setForeground(2, QColor(ATLAN_GREEN))
+                else:
+                    item.setForeground(2, QColor(ATLAN_RED))
+                
+                self.log_tree.addTopLevelItem(item)
+                
+                # Add details as child
+                if observation:
+                    child = QTreeWidgetItem()
+                    child.setText(0, f"📋 {observation[:100]}")
+                    child.setForeground(0, QColor(ATLAN_CYAN))
+                    item.addChild(child)
+                
+                if error:
+                    child = QTreeWidgetItem()
+                    child.setText(0, f"⚠ {error[:100]}")
+                    child.setForeground(0, QColor(ATLAN_RED))
+                    item.addChild(child)
+                
+                if isinstance(result, dict) and result:
+                    for key, val in list(result.items())[:4]:
+                        child = QTreeWidgetItem()
+                        preview = str(val)[:80]
+                        child.setText(0, f"  {key}: {preview}")
+                        child.setForeground(0, QColor(ATLAN_GOLD))
+                        item.addChild(child)
+            
+            # Update stats
+            stats = self.tool_registry.get_stats()
+            self.stats_lbl.setText(f"{stats.get('total_executions', 0)} calls")
+            
+        except Exception as e:
+            logger.warning(f"Tool log refresh error: {e}")
+    
+    def show_permissions_dialog(self):
+        """Show dialog to toggle tool permissions."""
+        if not self.tool_registry:
+            QMessageBox.information(self, "Tools", "Tool framework not available")
+            return
+        
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Tool Permissions")
+        dialog.setMinimumSize(350, 400)
+        
+        layout = QVBoxLayout(dialog)
+        
+        info = QLabel("Toggle permission for each tool. DANGEROUS tools are blocked by default.")
+        info.setWordWrap(True)
+        info.setStyleSheet(f"color: {ATLAN_GOLD}; font-size: 10px;")
+        layout.addWidget(info)
+        
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        container = QWidget()
+        cl = QVBoxLayout(container)
+        cl.setSpacing(2)
+        
+        for tool in self.tool_registry.list_tools():
+            row = QWidget()
+            rl = QHBoxLayout(row)
+            rl.setContentsMargins(2, 2, 2, 2)
+            
+            name_lbl = QLabel(tool.name)
+            name_lbl.setStyleSheet(f"color: {ATLAN_GREEN}; font-size: 10px; min-width: 120px;")
+            rl.addWidget(name_lbl)
+            
+            perm_lbl = QLabel(tool.permission.value.upper())
+            perm_color = {
+                "read": ATLAN_GREEN,
+                "write": ATLAN_GOLD,
+                "execute": ATLAN_ORANGE,
+                "dangerous": ATLAN_RED,
+            }.get(tool.permission.value, ATLAN_GREEN)
+            perm_lbl.setStyleSheet(f"color: {perm_color}; font-size: 9px; min-width: 70px;")
+            rl.addWidget(perm_lbl)
+            
+            cb = QCheckBox()
+            cb.setChecked(self.tool_registry.is_allowed(tool.name))
+            cb.stateChanged.connect(lambda state, tn=tool.name: self.tool_registry.set_permission(tn, bool(state)))
+            rl.addWidget(cb)
+            
+            cl.addWidget(row)
+        
+        cl.addStretch()
+        scroll.setWidget(container)
+        layout.addWidget(scroll)
+        
+        close_btn = QPushButton("CLOSE")
+        close_btn.clicked.connect(dialog.accept)
+        layout.addWidget(close_btn)
+        
+        dialog.exec()
+
+
 class AgentPanelWidget(QWidget):
     def __init__(self, orchestrator: AgentOrchestrator):
         super().__init__()
@@ -1253,7 +1459,7 @@ class CrackedCodeGUI(QMainWindow):
         self.restore_state()
         self.setup_paste_handler()
         
-        logger.info("CrackedCode GUI v2.6.0 started")
+        logger.info("CrackedCode GUI v2.6.3 started")
 
     def init_orchestrator(self):
         self.orchestrator = AgentOrchestrator(gui_ref=self)
@@ -1418,7 +1624,7 @@ class CrackedCodeGUI(QMainWindow):
             self.config = {"model": "qwen3:8b-gpu", "project_root": "."}
 
     def setup_atlan_theme(self):
-        self.setWindowTitle("CRACKEDCODE v2.6.0 // AUTONOMOUS NEURAL SYSTEM")
+        self.setWindowTitle("CRACKEDCODE v2.6.3 // AUTONOMOUS NEURAL SYSTEM")
         self.setMinimumSize(1400, 900)
         
         self.atlan_font = QFont("Consolas", 11)
@@ -2007,6 +2213,13 @@ class CrackedCodeGUI(QMainWindow):
         # Reasoning panel
         self.reasoning_panel = ReasoningPanelWidget(gui_ref=self)
         layout.addWidget(self.reasoning_panel)
+        
+        # Tool execution log
+        if TOOLS_AVAILABLE:
+            self.tool_log = ToolLogWidget(gui_ref=self)
+            layout.addWidget(self.tool_log)
+        else:
+            self.tool_log = None
         
         self.progress_bar = QProgressBar()
         self.progress_bar.setToolTip("Task progress")
@@ -3000,7 +3213,7 @@ class CrackedCodeGUI(QMainWindow):
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
 
-        subtitle = QLabel("AUTONOMOUS NEURAL SYSTEM v2.6.0")
+        subtitle = QLabel("AUTONOMOUS NEURAL SYSTEM v2.6.3")
         subtitle.setStyleSheet(f"font-size: 12px; color: {ATLAN_GOLD}; font-family: Consolas;")
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(subtitle)

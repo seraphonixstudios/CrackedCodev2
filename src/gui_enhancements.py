@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CrackedCode GUI Enhancements v2.6.0
+CrackedCode GUI Enhancements v2.6.3
 UX Improvements: Toast notifications, Command Palette, Welcome Screen,
 Enhanced Status Bar, Animated transitions, Quick Actions
 """
@@ -345,7 +345,7 @@ class WelcomeWidget(QWidget):
         layout.setSpacing(20)
         
         # Title
-        title = QLabel("⚡ CRACKEDCODE v2.6.0", self)
+        title = QLabel("⚡ CRACKEDCODE v2.6.3", self)
         title.setFont(QFont("Consolas", 24, QFont.Weight.Bold))
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setStyleSheet(f"color: {ATLAN_GREEN};")

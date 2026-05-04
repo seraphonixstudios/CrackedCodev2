@@ -3,7 +3,7 @@
 Local AI Coding Assistant with Sci-Fi Neural Interface
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.6.0-blue?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Version-2.6.3-blue?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License">
   <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-orange?style=for-the-badge" alt="Platform">
   <img src="https://img.shields.io/badge/Python-3.10%2B-yellow?style=for-the-badge" alt="Python">
@@ -34,8 +34,8 @@ python test_system.py
 
 | Version | Features |
 |---------|----------|
-| 2.6.1 | **Codebase RAG** - Semantic search with local embeddings, context-aware code generation, autonomous existing codebase awareness |
-| 2.6.0 | **Agent Reasoning Engine**, GUI Reasoning Panel, persistent reasoning memory, LLM meta-reasoning, autonomous production, unified orchestrator, SOTA voice engine, Git sidebar, file watcher, settings dialog, syntax highlighting, command palette |
+| 2.6.3 | **Codebase RAG** - Semantic search with local embeddings, context-aware code generation, autonomous existing codebase awareness |
+| 2.6.3 | **Agent Reasoning Engine**, GUI Reasoning Panel, persistent reasoning memory, LLM meta-reasoning, autonomous production, unified orchestrator, SOTA voice engine, Git sidebar, file watcher, settings dialog, syntax highlighting, command palette |
 | 2.5.0 | UI/UX overhaul, toast notifications, searchable terminal, command history, tab management, pulse indicators |
 | 2.4.0 | Streaming responses, response caching, context management, retry logic, tabbed editor |
 | 2.3.9 | Task queue, Agent orchestration, Accessibility |
@@ -43,7 +43,7 @@ python test_system.py
 
 ---
 
-## Desktop GUI (v2.6.0)
+## Desktop GUI (v2.6.3)
 
 ```bash
 python src/gui.py
@@ -323,7 +323,7 @@ result = engine.execute_generated_code("print('Hello!')")
 
 ---
 
-## Autonomous Application Production (v2.6.0)
+## Autonomous Application Production (v2.6.3)
 
 OpenClaw-style autonomous agent that takes a high-level specification and autonomously designs, codes, tests, and delivers complete applications.
 
@@ -467,7 +467,7 @@ resolution = coordinator.resolve(task_id)
 
 ---
 
-## Unified Voice Engine (v2.6.0)
+## Unified Voice Engine (v2.6.3)
 
 SOTA Speech-to-Text and Text-to-Speech with multi-backend fallback.
 
@@ -519,7 +519,7 @@ print(cmd.params)  # {"filename": "app.py", "type": "function"}
 
 ---
 
-## Git Integration (v2.6.0)
+## Git Integration (v2.6.3)
 
 Full Git sidebar panel in the GUI:
 
@@ -533,7 +533,7 @@ Full Git sidebar panel in the GUI:
 
 ---
 
-## File Watcher + Auto-Save (v2.6.0)
+## File Watcher + Auto-Save (v2.6.3)
 
 Automatic file monitoring and saving:
 
@@ -544,7 +544,7 @@ Automatic file monitoring and saving:
 
 ---
 
-## Unified Orchestrator (v2.6.0)
+## Unified Orchestrator (v2.6.3)
 
 Production-grade task orchestration replacing 4 disconnected systems:
 
@@ -666,7 +666,7 @@ setup_logging({
 
 ---
 
-## Settings Dialog (v2.6.0)
+## Settings Dialog (v2.6.3)
 
 GUI preferences editor (`Ctrl+,`):
 
@@ -678,7 +678,7 @@ GUI preferences editor (`Ctrl+,`):
 
 ---
 
-## Code Syntax Highlighting (v2.6.0)
+## Code Syntax Highlighting (v2.6.3)
 
 Automatic syntax highlighting in the code editor:
 
@@ -713,7 +713,7 @@ HIGHLIGHTERS[".js"] = JavaScriptHighlighter
 
 ---
 
-## Agent Reasoning Engine (v2.6.0)
+## Agent Reasoning Engine (v2.6.3)
 
 Full chain-of-thought reasoning for all agent decisions:
 
@@ -839,7 +839,7 @@ python test_system.py
 
 ---
 
-## Codebase RAG (v2.6.1)
+## Codebase RAG (v2.6.3)
 
 100% local semantic search over your codebase using Ollama embeddings or TF-IDF fallback:
 
@@ -877,7 +877,7 @@ context = indexer.get_context_for_prompt("How do I add a new endpoint?")
 
 ---
 
-## Tool Calling Framework (v2.6.2)
+## Tool Calling Framework (v2.6.3)
 
 ReAct-style agent action system with 16 built-in tools across 8 categories:
 
@@ -986,4 +986,4 @@ MIT
 
 ---
 
-**CrackedCode v2.6.2** - Autonomous AI Coding Agent with Agent Reasoning Engine, Codebase RAG, Tool Calling Framework, and SOTA Architecture Production
+**CrackedCode v2.6.3** - Autonomous AI Coding Agent with Agent Reasoning Engine, Codebase RAG, Tool Calling Framework, and SOTA Architecture Production

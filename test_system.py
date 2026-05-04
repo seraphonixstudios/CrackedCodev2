@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CRACKEDCODE v2.6.2 - Comprehensive End-to-End Test Suite
+CRACKEDCODE v2.6.3 - Comprehensive End-to-End Test Suite
 Full coverage with real operations, no placeholders
 """
 
@@ -595,11 +595,11 @@ def test_version_info() -> bool:
         PASS(f"Engine version: {status.get('version', 'unknown')}")
         
         version_checks = 0
-        if CrackedCode.VERSION == "2.6.0":
+        if CrackedCode.VERSION == "2.6.3":
             version_checks += 1
-        if MatrixUI.VERSION == "2.6.0":
+        if MatrixUI.VERSION == "2.6.3":
             version_checks += 1
-        if status.get("version") == "2.6.0":
+        if status.get("version") == "2.6.3":
             version_checks += 1
         
         PASS(f"Version consistency: {version_checks}/3")
@@ -709,10 +709,10 @@ def test_cli_integration_e2e() -> bool:
             version = result.stdout.strip()
             PASS(f"CLI import: version {version}")
             
-            if version == "2.6.0":
+            if version == "2.6.3":
                 PASS("CLI version correct")
             else:
-                FAIL("CLI version", f"Expected 2.6.0, got {version}")
+                FAIL("CLI version", f"Expected 2.6.3, got {version}")
                 return False
         else:
             FAIL("CLI import", result.stderr[:50])
@@ -726,7 +726,9 @@ def test_cli_integration_e2e() -> bool:
         )
         
         if result2.returncode == 0:
-            intent_count = int(result2.stdout.strip())
+            # Logger may output to stdout during import; take last non-empty line
+            lines = [l.strip() for l in result2.stdout.strip().split('\n') if l.strip()]
+            intent_count = int(lines[-1])
             PASS(f"Intent count: {intent_count}")
             
             if intent_count >= 8:
@@ -1661,7 +1663,7 @@ def test_voice_hotword_detection() -> bool:
 
 
 def main() -> int:
-    print(f"\n{'='*60}\n  CRACKEDCODE v2.6.0 - E2E TEST SUITE\n{'='*60}\n")
+    print(f"\n{'='*60}\n  CRACKEDCODE v2.6.3 - E2E TEST SUITE\n{'='*60}\n")
     
     tests = [
         ("Modules", test_modules),

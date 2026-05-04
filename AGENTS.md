@@ -4,7 +4,7 @@
 
 CrackedCode is a 100% local AI coding assistant featuring autonomous application production (OpenClaw-style), multi-agent orchestration, voice I/O, and a sci-fi neural interface.
 
-**Current Version:** 2.6.2
+**Current Version:** 2.6.3
 **Branch:** main
 **License:** MIT
 
@@ -20,7 +20,7 @@ crackedcode/
 │   ├── gui_settings.py      # Preferences dialog with Ollama discovery
 │   ├── gui_syntax.py        # Code syntax highlighting (Python, JSON)
 │   ├── reasoning.py         # Agent Reasoning Engine - thought chains, coherence
-│   ├── codebase_rag.py      # Semantic search with local embeddings (v2.6.1)
+│   ├── codebase_rag.py      # Semantic search with local embeddings (v2.6.3)
 │   ├── engine.py            # CrackedCodeEngine - core logic
 │   ├── orchestrator.py      # UnifiedOrchestrator - task lifecycle, priorities
 │   ├── autonomous.py        # AutonomousAppProducer - OpenClaw-style agent
@@ -83,7 +83,7 @@ crackedcode/
 - **Persistent memory**: `save_reasoning_log()` / `load_reasoning_log()` JSON + REASONING.md
 - **LLM meta-reasoning**: `analyze_with_llm()` feeds coherence report to Ollama for insights
 
-### Codebase RAG (src/codebase_rag.py) (v2.6.1)
+### Codebase RAG (src/codebase_rag.py) (v2.6.3)
 - CodeChunker: Semantic chunking by function/class/module for 15+ languages
 - EmbeddingProvider: Ollama embeddings with TF-IDF fallback, 100% local
 - VectorStore: NumPy-based cosine similarity search
@@ -93,7 +93,7 @@ crackedcode/
 - **Autonomous integration**: Existing codebase awareness before generating new code
 - **GUI integration**: Semantic search dialog (Ctrl+Shift+F) with ranked results
 
-### Tool Calling Framework (src/tool_framework.py) (v2.6.2)
+### Tool Calling Framework (src/tool_framework.py) (v2.6.3)
 - `@tool` decorator: Auto-register functions with JSON schema from type hints
 - ToolRegistry: Central registry with permission levels (READ/WRITE/EXECUTE/DANGEROUS)
 - ReActLoop: Full reasoning → action → observation cycle with max iterations
@@ -251,7 +251,7 @@ Key settings in `config.json`:
 - Git push sometimes times out (requires retries)
 - Version consistency check: ensure all files are updated together
 - Windows path separators may need special handling in tests
-- PyQt6 `QStatusBar.addSeparator()` doesn't exist (removed in v2.6.0)
+- PyQt6 `QStatusBar.addSeparator()` doesn't exist (removed in v2.6.3)
 - `QLocalSocket` stale sockets need `removeServer()` before listen
 
 ## Models
