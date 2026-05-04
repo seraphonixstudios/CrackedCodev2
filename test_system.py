@@ -1726,6 +1726,9 @@ def main() -> int:
         ("Git Panel Widget", test_git_panel_widget),
         ("Git Panel Repo", test_git_panel_repo_detection),
         ("Diff Viewer", test_diff_viewer_dialog),
+        ("Settings Dialog", test_settings_dialog_imports),
+        ("File Watcher", test_file_watcher_integration),
+        ("GUI File Watcher", test_gui_has_file_watcher_methods),
     ]
     
     results: list[tuple[str, bool]] = []
@@ -2156,6 +2159,57 @@ def test_diff_viewer_dialog() -> bool:
         return True
     except Exception as e:
         return FAIL("Diff viewer", str(e)[:50])
+
+
+def test_settings_dialog_imports() -> bool:
+    print_header("SETTINGS DIALOG IMPORTS")
+    try:
+        from src.gui_settings import SettingsDialog
+        PASS("SettingsDialog")
+        return True
+    except Exception as e:
+        return FAIL("Settings dialog imports", str(e)[:50])
+
+
+def test_file_watcher_integration() -> bool:
+    print_header("FILE WATCHER INTEGRATION")
+    try:
+        from src.file_watcher import FileWatcher, FileChange, ChangeType
+        PASS("FileWatcher imports")
+        
+        # Verify FileWatcher has expected methods
+        if hasattr(FileWatcher, 'start') and hasattr(FileWatcher, 'stop'):
+            PASS("Has start/stop methods")
+        else:
+            return FAIL("Missing start/stop")
+        
+        if hasattr(FileWatcher, 'get_stats'):
+            PASS("Has get_stats")
+        else:
+            return FAIL("Missing get_stats")
+        
+        return True
+    except Exception as e:
+        return FAIL("File watcher integration", str(e)[:50])
+
+
+def test_gui_has_file_watcher_methods() -> bool:
+    print_header("GUI FILE WATCHER METHODS")
+    try:
+        from src.gui import CrackedCodeGUI
+        
+        # Check that GUI has file watcher related methods
+        methods = ['init_file_watcher', '_start_watching_project', 
+                   '_on_external_file_change', '_trigger_auto_save']
+        for method in methods:
+            if hasattr(CrackedCodeGUI, method):
+                PASS(f"Has {method}()")
+            else:
+                return FAIL(f"Missing {method}()")
+        
+        return True
+    except Exception as e:
+        return FAIL("GUI file watcher", str(e)[:50])
 
 
 if __name__ == "__main__":

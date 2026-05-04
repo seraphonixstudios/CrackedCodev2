@@ -60,6 +60,18 @@ try:
 except ImportError:
     GIT_PANEL_AVAILABLE = False
 
+try:
+    from src.file_watcher import FileWatcher, FileChange, ChangeType
+    FILEWATCHER_AVAILABLE = True
+except ImportError:
+    FILEWATCHER_AVAILABLE = False
+
+try:
+    from src.gui_settings import SettingsDialog
+    SETTINGS_AVAILABLE = True
+except ImportError:
+    SETTINGS_AVAILABLE = False
+
 logger = get_logger("CrackedCodeGUI")
 
 ATLAN_GREEN = "#00FF41"
@@ -962,6 +974,11 @@ class CrackedCodeGUI(QMainWindow):
         self.streaming_active = False
         self.notification_queue = []
         self.matrix_visible = False
+        self.file_watcher: Optional[Any] = None
+        self._auto_save_timer = QTimer(self)
+        self._auto_save_timer.setSingleShot(True)
+        self._auto_save_timer.timeout.connect(self._auto_save_current_file)
+        self._externally_modified_files: Set[str] = set()
         
         self.load_config()
         self.setup_atlan_theme()
@@ -971,6 +988,7 @@ class CrackedCodeGUI(QMainWindow):
         self.init_voice()
         self.init_matrix()
         self.init_clipboard()
+        self.init_file_watcher()
         self.restore_state()
         self.setup_paste_handler()
         
@@ -991,6 +1009,77 @@ class CrackedCodeGUI(QMainWindow):
         self.clipboard = QGuiApplication.clipboard()
         self.pending_image: Optional[QImage] = None
         self.last_paste_hash = ""
+
+    def init_file_watcher(self):
+        """Initialize file watcher for project directory monitoring."""
+        if not FILEWATCHER_AVAILABLE:
+            logger.info("FileWatcher not available")
+            return
+        self.file_watcher = None
+        logger.info("FileWatcher ready (will activate when project opens)")
+
+    def _start_watching_project(self, path: str):
+        """Start watching a project directory for external changes."""
+        if not FILEWATCHER_AVAILABLE:
+            return
+        if self.file_watcher:
+            self.file_watcher.stop()
+        self.file_watcher = FileWatcher(
+            root=path,
+            debounce=2.0,
+            on_change=self._on_external_file_change
+        )
+        self.file_watcher.start()
+        logger.info(f"FileWatcher started: {path}")
+
+    def _on_external_file_change(self, change: FileChange):
+        """Handle external file changes detected by watcher."""
+        filepath = str(change.path)
+        filename = change.path.name
+        
+        if change.change_type == ChangeType.MODIFIED:
+            # Check if file is open in editor
+            if filename in self.open_files:
+                editor = self.open_files[filename]
+                # Mark as externally modified
+                self._externally_modified_files.add(filename)
+                self.term(f"External change detected: {filename}", level="warning")
+                self.show_toast(f"Externally modified: {filename}", ToastType.WARNING)
+            else:
+                # Just refresh file tree
+                self.refresh_file_tree()
+        elif change.change_type == ChangeType.CREATED:
+            self.refresh_file_tree()
+            self.term(f"New file: {filename}", level="info")
+        elif change.change_type == ChangeType.DELETED:
+            self.refresh_file_tree()
+            self.term(f"File deleted: {filename}", level="warning")
+
+    def _trigger_auto_save(self):
+        """Trigger auto-save after idle period."""
+        auto_save_enabled = self.config.get("auto_save", True)
+        auto_save_delay = self.config.get("auto_save_delay_ms", 3000)
+        if auto_save_enabled and self.current_file:
+            self._auto_save_timer.stop()
+            self._auto_save_timer.setInterval(auto_save_delay)
+            self._auto_save_timer.start()
+
+    def _auto_save_current_file(self):
+        """Perform auto-save of current file."""
+        if self.current_file and self.current_file.exists():
+            try:
+                content = self.editor.toPlainText()
+                self.current_file.write_text(content)
+                self.term(f"Auto-saved {self.current_file.name}", level="success")
+                # Remove modified indicator
+                current = self.tab_widget.currentIndex()
+                tab_name = self.tab_widget.tabText(current)
+                if tab_name.startswith("*"):
+                    self.tab_widget.setTabText(current, tab_name[1:])
+                if tab_name in self.modified_tabs:
+                    self.modified_tabs.remove(tab_name)
+            except Exception as e:
+                logger.error(f"Auto-save failed: {e}")
 
     def setup_paste_handler(self):
         if hasattr(self, 'editor'):
@@ -1582,6 +1671,14 @@ class CrackedCodeGUI(QMainWindow):
         
         help_menu = menubar.addMenu("HELP")
         
+        settings_action = QAction("SETTINGS", self)
+        settings_action.setShortcut(QKeySequence("Ctrl+,"))
+        settings_action.setToolTip("Open settings (Ctrl+,)")
+        settings_action.triggered.connect(self.show_settings)
+        help_menu.addAction(settings_action)
+        
+        help_menu.addSeparator()
+        
         docs_action = QAction("DOCUMENTATION", self)
         docs_action.setToolTip("Open documentation")
         docs_action.triggered.connect(self.show_docs)
@@ -2067,6 +2164,8 @@ class CrackedCodeGUI(QMainWindow):
             if tab_name not in self.modified_tabs:
                 self.modified_tabs.add(tab_name)
                 self.tab_widget.setTabText(current, f"*{tab_name}")
+            # Trigger auto-save on modification
+            self._trigger_auto_save()
         else:
             if tab_name in self.modified_tabs:
                 self.modified_tabs.remove(tab_name)
@@ -2324,8 +2423,9 @@ class CrackedCodeGUI(QMainWindow):
         f = QFileDialog.getExistingDirectory(self, "NEW PROJECT")
         if f:
             self.config["project_root"] = f
-            self.term(f"[NEW PROJECT: {f}]")
+            self.term(f"New project: {f}", level="success")
             self.scan_project_files(f)
+            self._start_watching_project(f)
             self.show_notification(f"New project: {Path(f).name}", NotificationType.SUCCESS)
 
     def open_proj(self):
@@ -2334,6 +2434,7 @@ class CrackedCodeGUI(QMainWindow):
             self.config["project_root"] = f
             self.term(f"Opened project: {f}", level="success")
             self.scan_project_files(f)
+            self._start_watching_project(f)
             # Update git panel
             if self.git_panel:
                 self.git_panel.set_repo(f)
@@ -2554,6 +2655,21 @@ class CrackedCodeGUI(QMainWindow):
         layout.addWidget(close_btn)
 
         dialog.exec()
+
+    def show_settings(self):
+        """Open the settings/preferences dialog."""
+        if not SETTINGS_AVAILABLE:
+            QMessageBox.warning(self, "Settings", "Settings dialog not available")
+            return
+        dlg = SettingsDialog(self.config, self)
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            # Reload config
+            self.load_config()
+            # Re-initialize affected subsystems
+            if self.engine:
+                self.engine.config = self.config
+            self.term("Settings updated", level="success")
+            self.show_toast("Settings saved", ToastType.SUCCESS)
 
     def set_mode(self, mode):
         if mode == "plan":
@@ -2836,6 +2952,20 @@ class CrackedCodeGUI(QMainWindow):
     def closeEvent(self, e):
         self.settings.setValue("geometry", self.saveGeometry())
         self.settings.setValue("windowState", self.saveState())
+        
+        # Stop file watcher
+        if self.file_watcher:
+            self.file_watcher.stop()
+            logger.info("FileWatcher stopped")
+        
+        # Stop git panel refresh
+        if self.git_panel:
+            self.git_panel.shutdown()
+        
+        # Stop voice engine
+        if self.voice:
+            self.voice.shutdown()
+        
         logger.info("CrackedCode GUI closing")
         e.accept()
 

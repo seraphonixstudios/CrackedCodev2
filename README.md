@@ -34,42 +34,46 @@ python test_system.py
 
 | Version | Features |
 |---------|----------|
-| 2.6.0 | Autonomous application production, SOTA architecture templates, persistent workspace, skill system, heartbeat scheduler |
-| 2.5.0 | Complete UI/UX overhaul, toast notifications, searchable terminal, command history, tab management, pulse indicators, task filtering |
+| 2.6.0 | **Autonomous production**, unified orchestrator, SOTA voice engine, Git sidebar, file watcher, settings dialog, command palette |
+| 2.5.0 | UI/UX overhaul, toast notifications, searchable terminal, command history, tab management, pulse indicators |
 | 2.4.0 | Streaming responses, response caching, context management, retry logic, tabbed editor |
-| 2.3.9 | Complete UI overhaul, Task queue, Agent orchestration, Accessibility |
+| 2.3.9 | Task queue, Agent orchestration, Accessibility |
 | 2.3.8 | Code generation pipeline, CLI CODE subcommand, Swarm integration |
 
 ---
 
-## Desktop GUI (v2.5.0)
+## Desktop GUI (v2.6.0)
 
 ```bash
 python src/gui.py
 ```
 
-### New UI Features
+### UI Features
 
-- **Toast Notifications**: Animated notifications with auto-dismiss and color-coded types
-- **Searchable Terminal**: Ctrl+F to search and highlight terminal output
+- **Toast Notifications**: Non-intrusive auto-dismissing notifications with fade animation
+- **Command Palette**: `Ctrl+Shift+P` fuzzy-search all actions with keyboard navigation
+- **Welcome Screen**: First-launch feature cards with shortcuts reference
+- **Enhanced Status Bar**: Multi-panel with model, mode, file count, voice status, activity pulse
+- **Searchable Terminal**: `Ctrl+F` to search and highlight terminal output, timestamped entries
 - **Command History**: Up/Down arrow keys to navigate previous commands
-- **Pulse Indicators**: Animated status dots for real-time agent activity
-- **Task Filtering**: Filter tasks by status (ALL/PEND/RUN/DONE/FAIL)
 - **Tab Management**: Rename tabs on double-click, modified indicators (*)
 - **File Tree Icons**: Extension-based colored icons for files
-- **Matrix Rain Toggle**: Ctrl+M or MATRIX button for sci-fi effect
+- **Matrix Rain Toggle**: `Ctrl+M` for sci-fi effect
+- **Auto-Save**: Automatic save after idle period (configurable)
 - **Refresh File Tree**: One-click refresh of project files
 - **Cache Size Display**: Real-time cache monitoring in status bar
 - **Enhanced Progress Bar**: Gradient animation with smooth transitions
 - **Improved Styling**: Rounded corners, hover states, better contrast
 
-### Dockable Panels**: Left control center with project files, agents, and task queue
-- **Task Queue Widget**: Real-time status updates with pending/running/completed tracking
+### Dockable Panels
+
+- **Project Files**: Hierarchical project navigation with auto-refresh
+- **Git Panel**: Full git integration (see Git Integration below)
 - **Agent Panel**: Visual status indicators with icons and capabilities
-- **File Tree Widget**: Hierarchical project navigation
+- **Task Queue**: Real-time task tracking with status icons
 - **Tabbed Editor**: Multiple file tabs with close functionality
 - **Menu Bar**: FILE/EDIT/VIEW/HELP with full keyboard shortcuts
-- **Status Bar**: Live clock, task counter, Ollama status
+- **Status Bar**: Live clock, task counter, Ollama status, cursor position
 - **Progress Bar**: Visual feedback during task processing
 - **Streaming Responses**: Real-time character-by-character output
 - **Matrix Overlay**: Animated rain effect
@@ -130,23 +134,30 @@ Natural language commands detected from voice input:
 
 | Shortcut | Action |
 |----------|--------|
-| `Ctrl+N` | New project |
+| `Ctrl+N` | New file |
 | `Ctrl+O` | Open project |
 | `Ctrl+T` | New tab |
 | `Ctrl+S` | Save file |
 | `Ctrl+Shift+S` | Save as |
+| `Ctrl+W` | Close tab |
 | `Ctrl+Q` | Quit |
 | `Ctrl+Shift+C` | Copy output |
 | `Ctrl+L` | Clear terminal |
 | `Ctrl+V` | Paste (image or text) |
 | `Ctrl+A` | Autonomous production |
-| `Ctrl+Enter` | Send prompt |
+| `Ctrl+Enter` | Execute code |
+| `Ctrl+Shift+V` | Toggle voice input |
+| `Ctrl+Shift+P` | Command palette |
 | `Ctrl+F` | Find in terminal |
 | `Ctrl+M` | Toggle matrix rain |
+| `Ctrl+,` | Settings |
+| `F1` | Help |
 | `F11` | Toggle fullscreen |
 | `F12` | Dev console |
 | `Escape` | Stop operation |
 | `Up/Down` | Command history |
+| `Ctrl+Tab` | Next tab |
+| `Ctrl+Shift+Tab` | Previous tab |
 
 ---
 
@@ -444,21 +455,128 @@ resolution = coordinator.resolve(task_id)
 
 ---
 
-## Voice Typing
+## Unified Voice Engine (v2.6.0)
+
+SOTA Speech-to-Text and Text-to-Speech with multi-backend fallback.
 
 ```python
-from src.voice_typing import VoiceTyping
+from src.voice_engine import UnifiedVoiceEngine, VoiceConfig
 
-voice = VoiceTyping(model_size="base")
+engine = UnifiedVoiceEngine(VoiceConfig(
+    stt_model_size="base",
+    tts_backend="pyttsx3",
+    tts_rate=175
+))
+engine.initialize()
 
-# Record and transcribe
-result = voice.listen_and_transcribe(duration=5.0)
-print(result.text, result.confidence)
+# Listen and transcribe
+result = engine.listen(duration=5.0)
+print(result.text)
 
-# Detect voice commands
-cmd = voice.detect_command("stop recording")
-print(cmd)  # "stop"
+# Speak with automatic backend fallback
+engine.speak("Hello from CrackedCode")
+
+# Voice commands with fuzzy matching
+cmd = engine.processor.parse("write a function in app.py")
+print(cmd.command_type.value)  # "write"
+print(cmd.params)  # {"filename": "app.py", "type": "function"}
 ```
+
+### Backends (Priority Order)
+
+| Backend | Type | Quality | Requires |
+|---------|------|---------|----------|
+| pyttsx3 | Local | Good | Windows SAPI5 / nsss / espeak |
+| edge-tts | Online | Excellent | Internet (free Azure Edge) |
+| fallback | Console | Basic | Nothing |
+
+### Voice Commands
+
+| Command | Example | Action |
+|---------|---------|--------|
+| write | "write a python function" | Write code |
+| execute | "run the code" | Execute |
+| debug | "fix the bug" | Debug |
+| save | "save this file" | Save |
+| search | "search for todo" | Search |
+| open | "open app.py" | Open file |
+| clear | "clear terminal" | Clear |
+| stop | "stop everything" | Stop |
+| plan | "plan the architecture" | Plan mode |
+| build | "build the project" | Build mode |
+
+---
+
+## Git Integration (v2.6.0)
+
+Full Git sidebar panel in the GUI:
+
+- **Branch Status**: Current branch with ahead/behind indicators
+- **File Tree**: Color-coded by status (staged/modified/untracked/conflicts)
+- **Diff Viewer**: Double-click any file to view syntax-highlighted diff
+- **Context Menu**: Right-click to stage/unstage/view diff
+- **AI Commit Messages**: Generate commit messages from staged changes
+- **Quick Actions**: Pull, Push, Refresh buttons
+- **Auto-Refresh**: Updates every 3 seconds
+
+---
+
+## File Watcher + Auto-Save (v2.6.0)
+
+Automatic file monitoring and saving:
+
+- **External Change Detection**: Detects when files change outside the IDE
+- **Auto-Save**: Saves editor content after configurable idle period (default 3s)
+- **Conflict Detection**: Warns when externally modified files are open
+- **Auto-Refresh**: File tree updates when files are created/deleted
+
+---
+
+## Unified Orchestrator (v2.6.0)
+
+Production-grade task orchestration replacing 4 disconnected systems:
+
+```python
+from src.orchestrator import UnifiedOrchestrator, TaskPriority
+
+orch = UnifiedOrchestrator(engine=my_engine, max_workers=4)
+
+# Create prioritized task
+task = orch.create_task(
+    prompt="write a function",
+    intent="code",
+    priority=TaskPriority.HIGH
+)
+
+# Submit for execution
+orch.submit(task)
+
+# Check status
+status = orch.get_queue_status()
+print(f"Queued: {status['queued']}, Running: {status['running']}")
+```
+
+### Task Lifecycle
+
+```
+PENDING → QUEUED → RUNNING → VERIFYING → COMPLETED
+                              ↓
+                           FAILED → RETRYING (with backoff)
+                              ↓
+                           CANCELLED
+```
+
+### Features
+
+- **Priority Queue**: LOW, NORMAL, HIGH, CRITICAL
+- **Dependency Resolution**: Tasks wait for dependencies to complete
+- **Agent Pool**: 9 roles with capability matching
+- **Retry Logic**: Configurable with exponential backoff
+- **Sub-Task Delegation**: Parent/child relationships
+- **Blackboard**: Shared state for agent collaboration
+- **Pipeline Builder**: Multi-step dependent workflows
+- **Task Cancellation**: Anytime with status tracking
+- **Timeouts**: Per-task configurable
 
 ---
 
@@ -536,6 +654,18 @@ setup_logging({
 
 ---
 
+## Settings Dialog (v2.6.0)
+
+GUI preferences editor (`Ctrl+,`):
+
+- **General**: Model selection with Ollama discovery, behavior toggles, context limits
+- **Voice**: TTS backend, voice, rate slider, STT model, hotword
+- **Appearance**: Theme selection, font size, auto-save, line numbers
+- **Autonomous**: Workspace path, max corrections, debate rounds
+- **Shortcuts**: Full keyboard shortcut reference
+
+---
+
 ## Configuration
 
 ```json
@@ -548,7 +678,12 @@ setup_logging({
   "streaming_enabled": true,
   "cache_enabled": true,
   "max_context": 20,
-  "max_retries": 2
+  "max_retries": 2,
+  "auto_save": true,
+  "auto_save_delay_ms": 3000,
+  "voice_enabled": true,
+  "tts_backend": "pyttsx3",
+  "tts_rate": 175
 }
 ```
 
@@ -568,22 +703,19 @@ setup_logging({
 python test_system.py
 ```
 
-### Test Coverage
+### Test Coverage (62 tests)
 
-- Module imports (7)
-- Configuration (4)
-- Ollama Bridge (3)
-- Intent parsing (8)
-- Code Execution
-- GUI Components
-- Voice Typing
-- Parallel Executor
-- Pipeline Processor
-- Code Generation
-- E2E Flows
-- Response Caching
-- Context Management
-- Streaming Responses
+- Module imports, Config loading, Engine initialization
+- Ollama Bridge, Intent parsing (8 types), Code Executor
+- GUI components, Voice engine, File Watcher, Git Integration
+- Parallel Executor, Pipeline Processor, Task properties
+- Code Generation, Save and Execute, CLI integration
+- Autonomous imports, Workspace, Skills, Heartbeat, Production
+- Architecture selection, Templates, Tree generation
+- Orchestrator imports, Task lifecycle, Retry logic, Blackboard
+- Priority queue, Dependencies, Cancellation
+- Engine orchestrator integration
+- Git panel imports, Widget, Repo detection, Diff viewer
 
 ---
 
@@ -594,15 +726,21 @@ crackedcode/
 ├── src/
 │   ├── main.py              # CLI application
 │   ├── gui.py               # PyQt6 Desktop GUI
+│   ├── gui_enhancements.py  # UX widgets (toast, palette, welcome)
+│   ├── gui_git_panel.py     # Git sidebar panel
+│   ├── gui_settings.py      # Settings dialog
 │   ├── atlan_ui.py          # Sci-Fi UI effects
-│   ├── voice_typing.py      # Voice typing
+│   ├── voice_typing.py      # Voice compatibility wrapper
+│   ├── voice_engine.py      # Unified voice engine (STT/TTS/VAD)
+│   ├── voice.py             # Legacy voice module
+│   ├── orchestrator.py      # Unified task orchestrator
 │   ├── parallel_processor.py # Parallel executor
 │   ├── engine.py            # CrackedCodeEngine
 │   ├── autonomous.py        # Autonomous production system
 │   ├── file_watcher.py      # File monitor
-│   └── git_integration.py  # Git integration
-├── tests/
-├── test_system.py           # E2E tests
+│   ├── git_integration.py   # Git operations
+│   └── logger_config.py     # Centralized logging
+├── test_system.py           # E2E tests (62 tests)
 ├── config.json
 └── README.md
 ```
