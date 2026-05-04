@@ -27,6 +27,15 @@ except ImportError:
     ReasoningType = None
     get_reasoning_engine = None
 
+try:
+    from src.codebase_rag import CodebaseIndexer, SearchResult, get_codebase_indexer
+    _rag_available = True
+except ImportError:
+    _rag_available = False
+    CodebaseIndexer = None
+    SearchResult = None
+    get_codebase_indexer = None
+
 logger = get_logger("CrackedCodeEngine")
 
 
@@ -462,8 +471,25 @@ Output plan in a code block.
         self.plan_enabled = True
         self.build_enabled = True
         self._autonomous_producer = None
+        self._codebase_indexer = None
         self._check()
         logger.info("CrackedCodeEngine initialized")
+
+    @property
+    def codebase_indexer(self) -> Optional[CodebaseIndexer]:
+        """Get or create the codebase indexer for semantic search."""
+        if not _rag_available:
+            return None
+        if self._codebase_indexer is None:
+            try:
+                self._codebase_indexer = get_codebase_indexer(
+                    self.project_root,
+                    ollama_host=self.config.get("ollama_host", "http://localhost:11434"),
+                    model=self.model,
+                )
+            except Exception as e:
+                logger.warning(f"Failed to create codebase indexer: {e}")
+        return self._codebase_indexer
 
     def _check(self):
         status = self.ollama.detect()
@@ -770,9 +796,19 @@ Output plan in a code block.
             response.processing_path = "file_search"
             return response
         
-        # LLM processing path
+        # LLM processing path with codebase context for relevant intents
         template = self.PROMPT_TEMPLATES.get(request.intent, "{prompt}")
+        
+        # Inject semantic context for code-related intents
+        context_block = ""
+        if request.intent in (Intent.CODE, Intent.DEBUG, Intent.REVIEW, Intent.BUILD):
+            context_block = self.get_codebase_context(request.text, top_k=3)
+            if context_block:
+                execution_reasoning.append({"type": "observation", "content": f"Retrieved {len(context_block)} chars of codebase context via semantic search", "confidence": 0.85})
+        
         formatted_prompt = template.format(prompt=request.text)
+        if context_block:
+            formatted_prompt = context_block + "\n\n" + formatted_prompt
         
         # Model selection reasoning
         if self.unified_mode:
@@ -803,9 +839,31 @@ Output plan in a code block.
         return response
     
     def _search_files(self, prompt: str) -> AgentResponse:
-        """Search for files or content in the project."""
+        """Search for files or content using semantic search (RAG) with keyword fallback."""
         search_terms = prompt.lower().replace("search ", "").replace("find ", "").replace("grep ", "").strip()
         
+        # Try semantic search first
+        if self.codebase_indexer:
+            try:
+                rag_results = self.codebase_indexer.search(search_terms, top_k=5)
+                if rag_results:
+                    lines = [f"Semantic Search Results for '{search_terms}':\n"]
+                    for r in rag_results:
+                        chunk = r.chunk
+                        name = chunk.metadata.get("name", "")
+                        type_label = f" [{chunk.chunk_type}: {name}]" if name else f" [{chunk.chunk_type}]"
+                        lines.append(f"\n=== {chunk.file_path}{type_label} (relevance: {r.score:.2f}) ===")
+                        lines.append(f"Lines {chunk.start_line}-{chunk.end_line} | {chunk.language}")
+                        lines.append("```")
+                        lines.append(chunk.content[:800])
+                        lines.append("```")
+                        if r.reasoning:
+                            lines.append(f"Why: {r.reasoning}")
+                    return AgentResponse(success=True, text="\n".join(lines))
+            except Exception as e:
+                logger.warning(f"Semantic search failed, falling back to keyword: {e}")
+        
+        # Keyword fallback
         results = []
         search_path = Path(self.project_root)
         
@@ -826,9 +884,19 @@ Output plan in a code block.
                     continue
         
         if results:
-            return AgentResponse(success=True, text=f"Search results for '{search_terms}':\n\n" + "\n".join(results))
+            return AgentResponse(success=True, text=f"Keyword Search Results for '{search_terms}':\n\n" + "\n".join(results))
         else:
             return AgentResponse(success=True, text=f"No results found for '{search_terms}'")
+
+    def get_codebase_context(self, query: str, top_k: int = 3) -> str:
+        """Get semantic context from the codebase for LLM prompting."""
+        if not self.codebase_indexer:
+            return ""
+        try:
+            return self.codebase_indexer.get_context_for_prompt(query, top_k=top_k)
+        except Exception as e:
+            logger.debug(f"Codebase context retrieval failed: {e}")
+            return ""
     
     def _should_ignore(self, path: Path) -> bool:
         """Check if a path should be ignored in searches."""

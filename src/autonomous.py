@@ -24,6 +24,14 @@ except ImportError:
     ReasoningType = None
     get_reasoning_engine = None
 
+try:
+    from src.codebase_rag import CodebaseIndexer, get_codebase_indexer
+    _rag_available = True
+except ImportError:
+    _rag_available = False
+    CodebaseIndexer = None
+    get_codebase_indexer = None
+
 logger = get_logger("AutonomousSystem")
 
 
@@ -2237,7 +2245,19 @@ class AutonomousAppProducer:
                 self._log_reasoning("correction", "Scaffold phase failed, aborting pipeline", 0.3, ["phase: scaffold", "status: failed"])
                 return self._finalize(result)
 
-            if not self._phase_code(spec, project_name, architecture, output_dir, result):
+            # Index existing codebase for context-aware generation
+            codebase_context = ""
+            if _rag_available and Path(output_dir).exists():
+                try:
+                    indexer = get_codebase_indexer(output_dir)
+                    index_result = indexer.index()
+                    if index_result.get("chunks", 0) > 0:
+                        codebase_context = indexer.get_context_for_prompt(spec, top_k=3)
+                        self._log_reasoning("observation", f"Indexed existing codebase: {index_result['chunks']} chunks from {index_result['files']} files", 0.85)
+                except Exception as e:
+                    logger.debug(f"Codebase indexing skipped: {e}")
+
+            if not self._phase_code(spec, project_name, architecture, output_dir, result, codebase_context=codebase_context):
                 self._log_reasoning("correction", "Code phase failed, aborting pipeline", 0.3, ["phase: code", "status: failed"])
                 return self._finalize(result)
 
@@ -2383,7 +2403,7 @@ Context:
             return False
 
     def _phase_code(self, spec: str, project_name: str, architecture: ArchitecturePattern,
-                    output_dir: str, result: AutonomousResult) -> bool:
+                    output_dir: str, result: AutonomousResult, codebase_context: str = "") -> bool:
         """Phase 4: Generate code for all files."""
         self._notify_phase(Phase.CODING, "Generating code...")
         self._notify_progress("Generating code...", 0.50)
@@ -2407,11 +2427,16 @@ Context:
                 progress = 0.50 + (idx / total_files) * 0.25
                 self._notify_progress(f"Generating {resolved_path}...", progress)
 
+                context_section = ""
+                if codebase_context:
+                    context_section = f"\n\nExisting codebase context:\n{codebase_context}\n\nUse these patterns and conventions in your implementation."
+                    self._log_reasoning("observation", f"Injected {len(codebase_context)} chars of codebase context for {resolved_path}", 0.8)
+
                 code_prompt = f"""Generate the complete implementation for this file in a {architecture.value} architecture project.
 
 File: {resolved_path}
 Project: {project_name}
-Specification: {spec}
+Specification: {spec}{context_section}
 
 Current template/skeleton:
 ```

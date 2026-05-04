@@ -1785,6 +1785,8 @@ class CrackedCodeGUI(QMainWindow):
             QuickActionItem("Toggle Build Mode", "Ctrl+B", lambda: self.build_btn.setChecked(not self.build_btn.isChecked()), "Mode"),
             QuickActionItem("Toggle Voice", "Ctrl+Shift+V", self.toggle_voice, "Voice"),
             QuickActionItem("Autonomous Produce", "Ctrl+A", self.show_autonomous_dialog, "AI"),
+            QuickActionItem("Search Codebase", "Ctrl+Shift+F", self.show_codebase_search, "Search"),
+            QuickActionItem("Index Codebase", "", self.index_codebase, "Search"),
             QuickActionItem("Clear Terminal", "", self.clear_terminal, "Terminal"),
             QuickActionItem("Copy Output", "", self.copy_output, "Terminal"),
             QuickActionItem("Show Help", "F1", self.show_help, "Help"),
@@ -2390,6 +2392,118 @@ class CrackedCodeGUI(QMainWindow):
         
         produce_btn.clicked.connect(on_produce)
         cancel_btn.clicked.connect(on_cancel)
+
+    def show_codebase_search(self):
+        """Show semantic codebase search dialog."""
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Semantic Codebase Search")
+        dialog.setMinimumSize(700, 500)
+        dialog.setModal(True)
+        
+        layout = QVBoxLayout(dialog)
+        
+        title = QLabel("Semantic Codebase Search")
+        title.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {ATLAN_GREEN};")
+        layout.addWidget(title)
+        
+        desc = QLabel("Search your codebase using natural language. The AI finds semantically relevant code, not just keyword matches.")
+        desc.setWordWrap(True)
+        layout.addWidget(desc)
+        
+        search_layout = QHBoxLayout()
+        search_input = QLineEdit()
+        search_input.setPlaceholderText("e.g., 'Where is user authentication handled?' or 'Find the database connection logic'")
+        search_layout.addWidget(search_input)
+        
+        search_btn = QPushButton("SEARCH")
+        search_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {ATLAN_GREEN};
+                color: {ATLAN_DARK};
+                font-weight: bold;
+                padding: 8px 16px;
+                border-radius: 4px;
+            }}
+        """)
+        search_layout.addWidget(search_btn)
+        layout.addLayout(search_layout)
+        
+        results_area = QTextEdit()
+        results_area.setReadOnly(True)
+        results_area.setPlaceholderText("Search results will appear here...")
+        layout.addWidget(results_area)
+        
+        def do_search():
+            query = search_input.text().strip()
+            if not query:
+                return
+            
+            results_area.setText(f"Searching: {query}...\n")
+            
+            if not self.engine or not self.engine.codebase_indexer:
+                results_area.setText("Codebase indexer not available. Make sure the project is indexed (Ctrl+Shift+F > Index Codebase).")
+                return
+            
+            try:
+                indexer = self.engine.codebase_indexer
+                if not indexer._indexed:
+                    indexer.index()
+                
+                results = indexer.search(query, top_k=5)
+                if not results:
+                    results_area.setText(f"No semantically relevant results for: {query}\n\nTry rephrasing or indexing the codebase first.")
+                    return
+                
+                lines = [f"Results for: '{query}'\n{'='*60}\n"]
+                for r in results:
+                    chunk = r.chunk
+                    name = chunk.metadata.get("name", "")
+                    type_label = f" [{chunk.chunk_type}: {name}]" if name else f" [{chunk.chunk_type}]"
+                    lines.append(f"\nRank {r.rank} | Score: {r.score:.3f} | {chunk.file_path}{type_label}")
+                    lines.append(f"Lines {chunk.start_line}-{chunk.end_line} | Language: {chunk.language}")
+                    if r.reasoning:
+                        lines.append(f"Why: {r.reasoning}")
+                    lines.append("-" * 40)
+                    lines.append(chunk.content[:1000])
+                    lines.append("-" * 40)
+                    lines.append("")
+                
+                stats = indexer.get_stats()
+                lines.append(f"\nIndexed: {stats['chunks']} chunks | Backend: {stats['backend']} | Duration: {stats['index_time']}s")
+                results_area.setText("\n".join(lines))
+                
+                self.term(f"[SEARCH] '{query}' → {len(results)} results", level="success")
+            except Exception as e:
+                results_area.setText(f"Search error: {e}")
+                self.term(f"[SEARCH ERROR] {e}", level="error")
+        
+        search_btn.clicked.connect(do_search)
+        search_input.returnPressed.connect(do_search)
+        dialog.show()
+
+    def index_codebase(self):
+        """Index the current project for semantic search."""
+        if not self.project_path:
+            self.term("[SEARCH] No project open. Open a project first.", level="warning")
+            return
+        
+        if not self.engine:
+            self.term("[SEARCH] Engine not initialized.", level="error")
+            return
+        
+        self.term(f"[SEARCH] Indexing codebase: {self.project_path}...", level="info")
+        
+        try:
+            indexer = self.engine.codebase_indexer
+            if indexer:
+                result = indexer.index(force=True)
+                self.term(
+                    f"[SEARCH] Indexed {result.get('files', 0)} files → {result.get('chunks', 0)} chunks "
+                    f"({result.get('duration', 0)}s) via {result.get('backend', 'unknown')}",
+                    level="success"
+                )
+        except Exception as e:
+            self.term(f"[SEARCH ERROR] {e}", level="error")
 
     def show_notification(self, message: str, ntype: NotificationType = NotificationType.INFO):
         if not hasattr(self, 'notification_area'):

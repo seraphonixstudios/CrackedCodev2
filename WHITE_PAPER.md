@@ -1,7 +1,7 @@
 # CrackedCode White Paper
 ## SOTA Local Multi-Agent Coding Swarm with Agent Reasoning Engine
 
-**Version:** 2.6.0  
+**Version:** 2.6.1  
 **Date:** May 2026  
 **Author:** CrackedCode Team  
 **License:** MIT  
@@ -10,7 +10,7 @@
 
 ## Executive Summary
 
-CrackedCode is a production-grade local AI coding assistant that operates 100% offline using Ollama for large language model inference and local speech recognition/synthesis for voice I/O. Version 2.6.0 introduces the **Agent Reasoning Engine** — a full chain-of-thought reasoning system that makes every agent decision transparent, measurable, and coherent across the swarm.
+CrackedCode is a production-grade local AI coding assistant that operates 100% offline using Ollama for large language model inference and local speech recognition/synthesis for voice I/O. Version 2.6.0 introduced the **Agent Reasoning Engine** — a full chain-of-thought reasoning system that makes every agent decision transparent, measurable, and coherent across the swarm. Version 2.6.1 adds **Codebase RAG** — semantic search with local embeddings that gives every agent full awareness of the existing codebase before acting.
 
 This white paper details the architecture, implementation, and capabilities of CrackedCode v2.6.0.
 
@@ -56,7 +56,7 @@ CrackedCode v2.6.0 addresses all这些问题 by:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                           CrackedCode v2.6.0                                │
+│                           CrackedCode v2.6.1                                │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  ┌─────────────┐     ┌─────────────┐     ┌─────────────────────────────┐  │
 │  │  Voice I/O  │────▶│  Unified    │────▶│   Agent Reasoning Engine    │  │
@@ -68,12 +68,18 @@ CrackedCode v2.6.0 addresses all这些问题 by:
 │  │    GUI      │◀────│  CrackedCode│◀────│   UnifiedOrchestrator       │  │
 │  │  (PyQt6)    │     │   Engine    │     │  Task Lifecycle + Blackboard│  │
 │  └─────────────┘     └─────────────┘     └─────────────────────────────┘  │
-│         │                                               │                  │
-│         │                                               ▼                  │
-│  ┌─────────────┐     ┌─────────────┐     ┌─────────────────────────────┐  │
-│  │ Git Panel   │     │  Autonomous │     │   Ollama Bridge             │  │
-│  │ Diff Viewer │     │  Producer   │     │  Cache + Stream + Retry     │  │
-│  └─────────────┘     └─────────────┘     └─────────────────────────────┘  │
+│         │                    │                          │                  │
+│         │                    ▼                          ▼                  │
+│  ┌─────────────┐     ┌─────────────────┐   ┌─────────────────────────────┐│
+│  │ Git Panel   │     │  Codebase RAG   │   │   Ollama Bridge             ││
+│  │ Diff Viewer │     │  Semantic Search│   │  Cache + Stream + Retry     ││
+│  └─────────────┘     └─────────────────┘   └─────────────────────────────┘│
+│                            │                                               │
+│                            ▼                                               │
+│                     ┌─────────────┐                                        │
+│                     │  Autonomous │                                        │
+│                     │  Producer   │                                        │
+│                     └─────────────┘                                        │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -197,7 +203,62 @@ This ensures code quality through adversarial collaboration with full audit trai
 
 ---
 
-## 3. Autonomous Application Production
+## 3. Codebase RAG (v2.6.1)
+
+### 3.1 Architecture
+
+```
+CodeChunker → EmbeddingProvider → VectorStore → CodebaseIndexer
+```
+
+### 3.2 Semantic Chunking
+
+The `CodeChunker` splits source files into semantic units:
+- **Functions**: Individual function/method definitions
+- **Classes**: Class definitions with their methods
+- **Modules**: File-level sections for config/docs
+- **Multi-language**: Python, JavaScript, Go, Rust, Java, C/C++, and 15+ more
+
+### 3.3 Local Embeddings
+
+**Primary**: Ollama `/api/embeddings` endpoint (100% local)
+**Fallback**: sklearn TF-IDF vectorization
+**Ultimate fallback**: Simple bag-of-words with normalization
+
+### 3.4 Vector Search
+
+Cosine similarity over NumPy arrays:
+- No external vector database required
+- Scales to thousands of chunks efficiently
+- Deduplication by file path
+- Confidence scoring per result
+
+### 3.5 Integration Points
+
+- **Engine**: `get_codebase_context()` injects relevant code into LLM prompts
+- **Orchestrator**: Searcher agent uses semantic search instead of grep
+- **Autonomous**: Producer indexes existing codebase before generating new code
+- **GUI**: `Ctrl+Shift+F` semantic search dialog with ranked results
+- **Reasoning**: Every search result includes human-readable rationale
+
+### 3.6 Usage
+
+```python
+from src.codebase_rag import get_codebase_indexer
+
+indexer = get_codebase_indexer("./my_project")
+indexer.index()
+
+# Natural language search
+results = indexer.search("Where is authentication handled?", top_k=5)
+
+# LLM context injection
+context = indexer.get_context_for_prompt("Add OAuth support")
+```
+
+---
+
+## 4. Autonomous Application Production
 
 ### 3.1 Production Pipeline
 
@@ -246,7 +307,7 @@ Specification → Analyze → Architect → Scaffold → Code → Test → Corre
 
 ---
 
-## 4. Voice I/O
+## 5. Voice I/O
 
 ### 4.1 Speech-to-Text (STT)
 
@@ -302,7 +363,7 @@ engine.speak("CrackedCode is ready")
 
 ---
 
-## 5. Implementation
+## 6. Implementation
 
 ### 5.1 Technology Stack
 
@@ -380,7 +441,7 @@ All agents output valid JSON for reliable parsing:
 
 ---
 
-## 6. Security
+## 7. Security
 
 ### 6.1 Command Whitelist
 
@@ -414,7 +475,7 @@ All operations logged to `logs/crackedcode.log`:
 
 ---
 
-## 7. Performance
+## 8. Performance
 
 ### 7.1 Benchmarks
 
@@ -455,7 +516,7 @@ All operations logged to `logs/crackedcode.log`:
 
 ---
 
-## 8. Usage Scenarios
+## 9. Usage Scenarios
 
 ### 8.1 Voice-First Development
 
@@ -505,7 +566,7 @@ CrackedCode: "Starting autonomous production..."
 
 ---
 
-## 9. Comparison
+## 10. Comparison
 
 ### 9.1 Vs Cloud AI Assistants
 
@@ -533,14 +594,15 @@ CrackedCode: "Starting autonomous production..."
 
 ---
 
-## 10. Future Work
+## 11. Future Work
 
-### 10.1 Planned Features
+### 11.1 Planned Features
 
 - [x] Agent Reasoning Engine with coherence tracking
 - [x] GUI Reasoning Panel with live event stream
 - [x] Persistent reasoning memory
 - [x] LLM meta-reasoning
+- [x] Codebase RAG with semantic search
 - [x] Git Integration Sidebar
 - [x] File Watcher + Auto-Save
 - [x] Settings Dialog
@@ -552,7 +614,7 @@ CrackedCode: "Starting autonomous production..."
 - [ ] Multi-language support
 - [ ] Video I/O for screen analysis
 
-### 10.2 Model Updates
+### 11.2 Model Updates
 
 - [x] Qwen3 8B optimization
 - [x] faster-whisper integration
@@ -563,7 +625,7 @@ CrackedCode: "Starting autonomous production..."
 
 ---
 
-## 11. Conclusion
+## 12. Conclusion
 
 CrackedCode v2.6.0 demonstrates that SOTA AI coding assistance is achievable 100% locally without cloud dependencies. By combining:
 
@@ -663,7 +725,7 @@ result = voice.listen(duration=5.0)
 
 ---
 
-**Document Version:** 2.6.0  
+**Document Version:** 2.6.1  
 **Last Updated:** May 2026  
 **Author:** CrackedCode Team  
 **License:** MIT

@@ -34,6 +34,7 @@ python test_system.py
 
 | Version | Features |
 |---------|----------|
+| 2.6.1 | **Codebase RAG** - Semantic search with local embeddings, context-aware code generation, autonomous existing codebase awareness |
 | 2.6.0 | **Agent Reasoning Engine**, GUI Reasoning Panel, persistent reasoning memory, LLM meta-reasoning, autonomous production, unified orchestrator, SOTA voice engine, Git sidebar, file watcher, settings dialog, syntax highlighting, command palette |
 | 2.5.0 | UI/UX overhaul, toast notifications, searchable terminal, command history, tab management, pulse indicators |
 | 2.4.0 | Streaming responses, response caching, context management, retry logic, tabbed editor |
@@ -830,6 +831,48 @@ python test_system.py
 - GUI Reasoning Panel (live agent thought chains, coherence bar, event stream)
 - Reasoning persistence (JSON log + REASONING.md workspace archive)
 - LLM meta-reasoning (Ollama-powered coherence analysis)
+- Codebase RAG (semantic search with local embeddings, context-aware generation)
+- RAG + Engine integration (context injection for CODE/DEBUG/REVIEW intents)
+- RAG + Autonomous integration (existing codebase awareness)
+- GUI semantic search dialog (Ctrl+Shift+F)
+
+---
+
+## Codebase RAG (v2.6.1)
+
+100% local semantic search over your codebase using Ollama embeddings or TF-IDF fallback:
+
+```python
+from src.codebase_rag import get_codebase_indexer
+
+indexer = get_codebase_indexer("./my_project")
+indexer.index()  # Index all code files
+
+# Semantic search - finds relevant code even without keyword matches
+results = indexer.search("Where is user authentication handled?", top_k=5)
+for r in results:
+    print(f"{r.chunk.file_path} (score: {r.score:.2f})")
+    print(r.reasoning)  # Why this result is relevant
+
+# Get formatted context for LLM prompting
+context = indexer.get_context_for_prompt("How do I add a new endpoint?")
+```
+
+### Features
+
+- **Semantic Chunking**: Functions, classes, and modules split intelligently by language
+- **Local Embeddings**: Uses Ollama `/api/embeddings` (no cloud)
+- **TF-IDF Fallback**: Works even without embedding endpoint
+- **Multi-language**: Python, JavaScript, Go, Rust, Java, C/C++, and more
+- **Confidence Scoring**: Every result includes relevance score and reasoning
+- **Context Injection**: Automatically injected into CODE/DEBUG/REVIEW prompts
+
+### GUI Usage
+
+1. Open a project
+2. Press `Ctrl+Shift+F` or select **Search Codebase** from command palette
+3. Enter natural language query (e.g., "Find database connection logic")
+4. View ranked results with file paths, relevance scores, and code snippets
 
 ---
 
@@ -845,6 +888,7 @@ crackedcode/
 │   ├── gui_settings.py      # Preferences dialog with Ollama discovery
 │   ├── gui_syntax.py        # Code syntax highlighting (Python, JSON)
 │   ├── reasoning.py         # Agent Reasoning Engine - thought chains, coherence
+│   ├── codebase_rag.py      # Semantic search with local embeddings
 │   ├── engine.py            # CrackedCodeEngine - core logic
 │   ├── orchestrator.py      # UnifiedOrchestrator - task lifecycle, priorities
 │   ├── autonomous.py        # AutonomousAppProducer - OpenClaw-style agent
@@ -855,7 +899,7 @@ crackedcode/
 │   ├── file_watcher.py      # File system monitoring with auto-save
 │   ├── git_integration.py   # Git operations
 │   └── logger_config.py     # Centralized logging
-├── test_system.py           # Comprehensive E2E test suite (72 tests)
+├── test_system.py           # Comprehensive E2E test suite (74 tests)
 ├── config.json              # Configuration file
 ├── README.md                # User documentation
 ├── AGENTS.md                # Developer guide
@@ -870,4 +914,4 @@ MIT
 
 ---
 
-**CrackedCode v2.6.0** - Autonomous AI Coding Agent with Agent Reasoning Engine and SOTA Architecture Production
+**CrackedCode v2.6.1** - Autonomous AI Coding Agent with Agent Reasoning Engine, Codebase RAG, and SOTA Architecture Production

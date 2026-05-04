@@ -4,7 +4,7 @@
 
 CrackedCode is a 100% local AI coding assistant featuring autonomous application production (OpenClaw-style), multi-agent orchestration, voice I/O, and a sci-fi neural interface.
 
-**Current Version:** 2.6.0
+**Current Version:** 2.6.1
 **Branch:** main
 **License:** MIT
 
@@ -20,6 +20,7 @@ crackedcode/
 │   ├── gui_settings.py      # Preferences dialog with Ollama discovery
 │   ├── gui_syntax.py        # Code syntax highlighting (Python, JSON)
 │   ├── reasoning.py         # Agent Reasoning Engine - thought chains, coherence
+│   ├── codebase_rag.py      # Semantic search with local embeddings (v2.6.1)
 │   ├── engine.py            # CrackedCodeEngine - core logic
 │   ├── orchestrator.py      # UnifiedOrchestrator - task lifecycle, priorities
 │   ├── autonomous.py        # AutonomousAppProducer - OpenClaw-style agent
@@ -30,7 +31,7 @@ crackedcode/
 │   ├── file_watcher.py      # File system monitoring with auto-save
 │   ├── git_integration.py   # Git operations
 │   └── logger_config.py     # Centralized logging
-├── test_system.py           # Comprehensive E2E test suite (72 tests)
+├── test_system.py           # Comprehensive E2E test suite (74 tests)
 ├── config.json              # Configuration file
 ├── README.md                # User documentation
 └── WHITE_PAPER.md           # Technical white paper
@@ -82,6 +83,16 @@ crackedcode/
 - **Persistent memory**: `save_reasoning_log()` / `load_reasoning_log()` JSON + REASONING.md
 - **LLM meta-reasoning**: `analyze_with_llm()` feeds coherence report to Ollama for insights
 
+### Codebase RAG (src/codebase_rag.py) (v2.6.1)
+- CodeChunker: Semantic chunking by function/class/module for 15+ languages
+- EmbeddingProvider: Ollama embeddings with TF-IDF fallback, 100% local
+- VectorStore: NumPy-based cosine similarity search
+- CodebaseIndexer: Full project indexing with incremental updates
+- SearchResult: Ranked results with relevance scores and reasoning
+- **Engine integration**: Automatic context injection for CODE/DEBUG/REVIEW intents
+- **Autonomous integration**: Existing codebase awareness before generating new code
+- **GUI integration**: Semantic search dialog (Ctrl+Shift+F) with ranked results
+
 ### GUI (src/gui.py)
 - PyQt6-based with Atlantean theme (#00FF41 on black)
 - Tabbed editor with syntax highlighting (Python, JSON), searchable terminal
@@ -106,7 +117,7 @@ crackedcode/
 2. Update version numbers in ALL relevant files if version changes
 3. Update test_system.py with new tests
 4. Update README.md and AGENTS.md
-5. Run `python test_system.py` to verify (72 tests, all must pass)
+5. Run `python test_system.py` to verify (74 tests, all must pass)
 6. Commit with descriptive message
 7. Push to origin
 
@@ -197,6 +208,14 @@ Key settings in `config.json`:
 1. Create `Skill` dataclass instance in `SkillRegistry._register_builtin_skills()`
 2. Define `name`, `description`, `system_prompt`, `tools`
 3. Add test in `test_system.py`
+
+### Adding Codebase RAG to a New Component
+1. Import RAG module with graceful fallback: `try: from src.codebase_rag import ... except ImportError: ...`
+2. Use `get_codebase_indexer(project_path)` to get or create an indexer
+3. Call `indexer.index()` before searching
+4. Use `indexer.search(query, top_k=5)` for semantic search
+5. Use `indexer.get_context_for_prompt(query)` for LLM context injection
+6. Add tests in `test_system.py`
 
 ## Known Issues
 
