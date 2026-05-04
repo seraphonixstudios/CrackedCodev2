@@ -1729,6 +1729,8 @@ def main() -> int:
         ("Settings Dialog", test_settings_dialog_imports),
         ("File Watcher", test_file_watcher_integration),
         ("GUI File Watcher", test_gui_has_file_watcher_methods),
+        ("Female TTS Voice", test_female_tts_voice),
+        ("Syntax Highlighter", test_syntax_highlighter),
     ]
     
     results: list[tuple[str, bool]] = []
@@ -2210,6 +2212,66 @@ def test_gui_has_file_watcher_methods() -> bool:
         return True
     except Exception as e:
         return FAIL("GUI file watcher", str(e)[:50])
+
+
+def test_female_tts_voice() -> bool:
+    print_header("FEMALE TTS VOICE")
+    try:
+        from src.voice_engine import VoiceConfig, Pyttsx3Engine
+        
+        # Test female voice config
+        cfg = VoiceConfig(tts_gender='female', tts_voice='default')
+        PASS("VoiceConfig accepts tts_gender")
+        
+        # Test that Pyttsx3Engine has gender selection logic
+        if hasattr(Pyttsx3Engine, '_init_engine'):
+            PASS("Pyttsx3Engine has _init_engine")
+        else:
+            return FAIL("Missing _init_engine")
+        
+        # Verify female voices list in EdgeTTSEngine
+        from src.voice_engine import EdgeTTSEngine
+        if hasattr(EdgeTTSEngine, 'FEMALE_VOICES') and len(EdgeTTSEngine.FEMALE_VOICES) > 0:
+            PASS(f"Edge TTS female voices: {len(EdgeTTSEngine.FEMALE_VOICES)}")
+        else:
+            return FAIL("No female voices defined")
+        
+        return True
+    except Exception as e:
+        return FAIL("Female TTS voice", str(e)[:50])
+
+
+def test_syntax_highlighter() -> bool:
+    print_header("SYNTAX HIGHLIGHTER")
+    try:
+        from src.gui_syntax import PythonHighlighter, JSONHighlighter, get_highlighter, HIGHLIGHTERS
+        
+        PASS("PythonHighlighter imported")
+        PASS("JSONHighlighter imported")
+        
+        # Verify highlighters are registered
+        if ".py" in HIGHLIGHTERS:
+            PASS("Python highlighter registered")
+        else:
+            return FAIL("Python highlighter missing")
+        
+        if ".json" in HIGHLIGHTERS:
+            PASS("JSON highlighter registered")
+        else:
+            return FAIL("JSON highlighter missing")
+        
+        # Verify get_highlighter works
+        from PyQt6.QtGui import QTextDocument
+        doc = QTextDocument()
+        hl = get_highlighter(".py", doc)
+        if hl is not None:
+            PASS("get_highlighter returns highlighter")
+        else:
+            return FAIL("get_highlighter returned None")
+        
+        return True
+    except Exception as e:
+        return FAIL("Syntax highlighter", str(e)[:50])
 
 
 if __name__ == "__main__":

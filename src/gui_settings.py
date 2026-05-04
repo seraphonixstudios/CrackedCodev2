@@ -306,6 +306,10 @@ class SettingsDialog(QDialog):
         self.tts_voice.setPlaceholderText("default")
         tts_layout.addRow("Voice:", self.tts_voice)
 
+        self.tts_gender_combo = QComboBox(tts_group)
+        self.tts_gender_combo.addItems(["female", "male"])
+        tts_layout.addRow("Gender:", self.tts_gender_combo)
+
         self.tts_rate_slider = QSlider(Qt.Orientation.Horizontal, tts_group)
         self.tts_rate_slider.setRange(50, 300)
         tts_layout.addRow("Rate (WPM):", self.tts_rate_slider)
@@ -487,6 +491,7 @@ NAVIGATION
         self.stt_lang.setText(self.config.get("stt_language", "en"))
         self.tts_backend_combo.setCurrentText(self.config.get("tts_backend", "pyttsx3"))
         self.tts_voice.setText(self.config.get("tts_voice", "default"))
+        self.tts_gender_combo.setCurrentText(self.config.get("tts_gender", "female"))
         self.tts_rate_slider.setValue(self.config.get("tts_rate", 175))
         self.voice_enabled_check.setChecked(self.config.get("voice_enabled", True))
         self.push_to_talk_check.setChecked(self.config.get("push_to_talk", False))
@@ -578,6 +583,7 @@ NAVIGATION
         self.config["stt_language"] = self.stt_lang.text() or "en"
         self.config["tts_backend"] = self.tts_backend_combo.currentText()
         self.config["tts_voice"] = self.tts_voice.text() or "default"
+        self.config["tts_gender"] = self.tts_gender_combo.currentText()
         self.config["tts_rate"] = self.tts_rate_slider.value()
         self.config["voice_enabled"] = self.voice_enabled_check.isChecked()
         self.config["push_to_talk"] = self.push_to_talk_check.isChecked()

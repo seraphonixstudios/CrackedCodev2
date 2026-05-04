@@ -72,6 +72,12 @@ try:
 except ImportError:
     SETTINGS_AVAILABLE = False
 
+try:
+    from src.gui_syntax import get_highlighter, HIGHLIGHTERS
+    SYNTAX_AVAILABLE = True
+except ImportError:
+    SYNTAX_AVAILABLE = False
+
 logger = get_logger("CrackedCodeGUI")
 
 ATLAN_GREEN = "#00FF41"
@@ -1106,6 +1112,7 @@ class CrackedCodeGUI(QMainWindow):
             voice_cfg = VoiceConfig(
                 stt_model_size=self.config.get("whisper_size", "base"),
                 tts_voice=self.config.get("tts_voice", "default"),
+                tts_gender=self.config.get("tts_gender", "female"),
                 tts_rate=self.config.get("tts_rate", 175),
             )
             self.voice = UnifiedVoiceEngine(voice_cfg)
@@ -2195,6 +2202,14 @@ class CrackedCodeGUI(QMainWindow):
             editor = QTextEdit()
             editor.setPlainText(content)
             editor.document().modificationChanged.connect(self.on_modification_changed)
+            
+            # Apply syntax highlighting
+            if SYNTAX_AVAILABLE:
+                ext = filepath.suffix.lower()
+                if ext in HIGHLIGHTERS:
+                    get_highlighter(ext, editor.document())
+                    logger.info(f"Applied {ext} syntax highlighting to {name}")
+            
             self.tab_widget.addTab(editor, name)
             self.open_files[name] = editor
             self.tab_widget.setCurrentWidget(editor)

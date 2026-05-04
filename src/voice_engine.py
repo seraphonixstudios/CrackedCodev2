@@ -102,6 +102,7 @@ class VoiceConfig:
     stt_beam_size: int = 5
     tts_backend: TTSBackend = TTSBackend.PYTTSX3
     tts_voice: str = "default"
+    tts_gender: str = "female"  # "female" | "male"
     tts_rate: int = 175
     tts_volume: float = 1.0
     max_command_history: int = 50
@@ -384,11 +385,31 @@ class Pyttsx3Engine(BaseTTSEngine):
                 {"id": v.id, "name": v.name, "languages": v.languages}
                 for v in self._engine.getProperty("voices")
             ]
+            # Select voice by preference: explicit > gender > first available
+            selected = False
             if self.config.tts_voice != "default" and self._voices:
                 for v in self._voices:
                     if self.config.tts_voice.lower() in v["name"].lower():
                         self._engine.setProperty("voice", v["id"])
+                        selected = True
                         break
+            
+            if not selected and self._voices:
+                gender = self.config.tts_gender.lower()
+                for v in self._voices:
+                    name_lower = v["name"].lower()
+                    # Common female voice identifiers across platforms
+                    if gender == "female" and any(x in name_lower for x in ["zira", "female", "woman", "girl", "jenny", "aria", "sonia", "clara"]):
+                        self._engine.setProperty("voice", v["id"])
+                        selected = True
+                        logger.info(f"Selected female voice: {v['name']}")
+                        break
+                    elif gender == "male" and any(x in name_lower for x in ["david", "male", "man", "guy"]):
+                        self._engine.setProperty("voice", v["id"])
+                        selected = True
+                        logger.info(f"Selected male voice: {v['name']}")
+                        break
+            
             logger.info(f"pyttsx3 initialized with {len(self._voices)} voices")
         except Exception as e:
             logger.error(f"pyttsx3 init failed: {e}")
@@ -424,13 +445,34 @@ class Pyttsx3Engine(BaseTTSEngine):
 
 class EdgeTTSEngine(BaseTTSEngine):
     """Online neural TTS using Microsoft Azure Edge (free)."""
+    
+    FEMALE_VOICES = [
+        "en-US-AriaNeural", "en-US-JennyNeural", "en-US-AnaNeural",
+        "en-US-MichelleNeural", "en-GB-SoniaNeural", "en-GB-LibbyNeural",
+        "en-AU-NatashaNeural", "en-CA-ClaraNeural", "en-IN-NeerjaNeural",
+        "en-IE-EmilyNeural", "en-NZ-MollyNeural", "en-PH-RosaNeural",
+        "en-SG-LunaNeural", "en-ZA-LeahNeural",
+    ]
+    MALE_VOICES = [
+        "en-US-GuyNeural", "en-US-ChristopherNeural", "en-US-EricNeural",
+        "en-GB-RyanNeural", "en-GB-ThomasNeural", "en-AU-WilliamNeural",
+    ]
     DEFAULT_VOICE = "en-US-AriaNeural"
 
     def __init__(self, config: Optional[VoiceConfig] = None):
         super().__init__(config)
         self._voice = self.config.tts_voice
         if self._voice == "default":
-            self._voice = self.DEFAULT_VOICE
+            self._voice = self._select_voice_by_gender()
+
+    def _select_voice_by_gender(self) -> str:
+        """Select default voice based on gender preference."""
+        gender = getattr(self.config, 'tts_gender', 'female').lower()
+        if gender == 'female' and self.FEMALE_VOICES:
+            return self.FEMALE_VOICES[0]
+        elif gender == 'male' and self.MALE_VOICES:
+            return self.MALE_VOICES[0]
+        return self.DEFAULT_VOICE
 
     @property
     def is_available(self) -> bool:
