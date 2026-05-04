@@ -34,7 +34,7 @@ python test_system.py
 
 | Version | Features |
 |---------|----------|
-| 2.6.0 | **Autonomous production**, unified orchestrator, SOTA voice engine, Git sidebar, file watcher, settings dialog, command palette |
+| 2.6.0 | **Agent Reasoning Engine**, GUI Reasoning Panel, persistent reasoning memory, LLM meta-reasoning, autonomous production, unified orchestrator, SOTA voice engine, Git sidebar, file watcher, settings dialog, syntax highlighting, command palette |
 | 2.5.0 | UI/UX overhaul, toast notifications, searchable terminal, command history, tab management, pulse indicators |
 | 2.4.0 | Streaming responses, response caching, context management, retry logic, tabbed editor |
 | 2.3.9 | Task queue, Agent orchestration, Accessibility |
@@ -71,9 +71,10 @@ python src/gui.py
 - **Git Panel**: Full git integration (see Git Integration below)
 - **Agent Panel**: Visual status indicators with icons and capabilities
 - **Task Queue**: Real-time task tracking with status icons
+- **Reasoning Panel**: Live agent thought chains, coherence bar, event stream
 - **Tabbed Editor**: Multiple file tabs with close functionality
 - **Menu Bar**: FILE/EDIT/VIEW/HELP with full keyboard shortcuts
-- **Status Bar**: Live clock, task counter, Ollama status, cursor position
+- **Status Bar**: Live clock, task counter, Ollama status, coherence meter, cursor position
 - **Progress Bar**: Visual feedback during task processing
 - **Streaming Responses**: Real-time character-by-character output
 - **Matrix Overlay**: Animated rain effect
@@ -100,7 +101,11 @@ python src/gui.py
 │ QUEUE   │        [SEND]                                │
 │ ○ ○ ●   │                                               │
 │         ├───────────────────────────────────────────────┤
-│ Progress│ STATUS: READY | OLLAMA: ON | Tasks: 3/5      │
+│ REASON  │ STATUS: READY | OLLAMA: ON | C:0.95 | Tasks:3│
+│ C:0.95  │                                               │
+│ 🧠●●●   │                                               │
+│ ─────── │                                               │
+│ Progress│                                               │
 └─────────┴───────────────────────────────────────────────┘
 ```
 
@@ -111,6 +116,7 @@ python src/gui.py
 | **Project Files** | Tree view with hierarchical navigation |
 | **Agent Panel** | 6 agents with real-time status |
 | **Task Queue** | Live task tracking with status icons |
+| **Reasoning Panel** | Per-agent thought chains, coherence bar, event stream |
 | **Voice Typing** | Click VOICE to record (faster-whisper) |
 | **Code Editor** | Tabbed text editor with syntax highlighting (Python, JSON) |
 | **Terminal** | AI response display with streaming |
@@ -257,12 +263,15 @@ orchestrator.complete_task(task.task_id, "generated code here")
 
 | Agent | Role | Capabilities |
 |-------|------|--------------|
-| Supervisor | Coordinates | Delegate, manage |
-| Architect | Design | Planning, architecture |
-| Coder | Implementation | Code, write, modify |
-| Executor | Execution | Run, execute, test |
-| Reviewer | Analysis | Review, debug, fix |
-| Searcher | Discovery | Search, find, grep |
+| Supervisor | Coordinates | Delegate, manage, all |
+| Architect | Design | Planning, architecture, blueprint |
+| Coder | Implementation | Code, write, modify, create |
+| Executor | Execution | Run, execute, test, deploy |
+| Reviewer | Analysis | Review, debug, optimize, fix |
+| Searcher | Discovery | Search, find, grep, analyze |
+| Tester | Quality Assurance | Test, validate, verify |
+| Debugger | Bug Fixing | Debug, trace, patch |
+| Documenter | Documentation | Document, explain, annotate |
 
 ### Task States
 
@@ -375,6 +384,7 @@ The autonomous agent maintains persistent memory across sessions (OpenClaw style
 ├── PROJECT.md           # Current project context
 ├── TASKS.md             # Task queue and history
 ├── STANDING_INSTRUCTIONS.md  # Code standards and preferences
+├── REASONING.md         # Chain-of-thought archive and coherence history
 ├── REQUIREMENTS.md      # Analyzed requirements
 └── ARCHITECTURE.md      # Architecture design decisions
 ```
@@ -828,27 +838,28 @@ python test_system.py
 ```
 crackedcode/
 ├── src/
-│   ├── main.py              # CLI application
-│   ├── gui.py               # PyQt6 Desktop GUI
-│   ├── gui_enhancements.py  # UX widgets (toast, palette, welcome)
-│   ├── gui_git_panel.py     # Git sidebar panel
-│   ├── gui_settings.py      # Settings dialog
-│   ├── gui_syntax.py        # Code syntax highlighting
-│   ├── reasoning.py         # Agent Reasoning Engine
-│   ├── atlan_ui.py          # Sci-Fi UI effects
-│   ├── voice_typing.py      # Voice compatibility wrapper
-│   ├── voice_engine.py      # Unified voice engine (STT/TTS/VAD)
-│   ├── voice.py             # Legacy voice module
-│   ├── orchestrator.py      # Unified task orchestrator
-│   ├── parallel_processor.py # Parallel executor
-│   ├── engine.py            # CrackedCodeEngine
-│   ├── autonomous.py        # Autonomous production system
-│   ├── file_watcher.py      # File monitor
+│   ├── main.py              # CLI application with AgentSwarm
+│   ├── gui.py               # PyQt6 Desktop GUI (primary interface)
+│   ├── gui_enhancements.py  # UX widgets: Toast, Command Palette, Welcome
+│   ├── gui_git_panel.py     # Git sidebar with diff viewer and AI commits
+│   ├── gui_settings.py      # Preferences dialog with Ollama discovery
+│   ├── gui_syntax.py        # Code syntax highlighting (Python, JSON)
+│   ├── reasoning.py         # Agent Reasoning Engine - thought chains, coherence
+│   ├── engine.py            # CrackedCodeEngine - core logic
+│   ├── orchestrator.py      # UnifiedOrchestrator - task lifecycle, priorities
+│   ├── autonomous.py        # AutonomousAppProducer - OpenClaw-style agent
+│   ├── voice_engine.py      # UnifiedVoiceEngine - STT/TTS/VAD/commands
+│   ├── voice_typing.py      # Backward compatibility wrapper
+│   ├── atlan_ui.py          # Sci-Fi UI effects (Matrix, Glitch, etc.)
+│   ├── parallel_processor.py # ParallelExecutor, PipelineProcessor
+│   ├── file_watcher.py      # File system monitoring with auto-save
 │   ├── git_integration.py   # Git operations
 │   └── logger_config.py     # Centralized logging
-├── test_system.py           # E2E tests (72 tests)
-├── config.json
-└── README.md
+├── test_system.py           # Comprehensive E2E test suite (72 tests)
+├── config.json              # Configuration file
+├── README.md                # User documentation
+├── AGENTS.md                # Developer guide
+└── WHITE_PAPER.md           # Technical white paper
 ```
 
 ---
@@ -859,4 +870,4 @@ MIT
 
 ---
 
-**CrackedCode v2.6.0** - Autonomous AI Coding Agent with SOTA Architecture Production
+**CrackedCode v2.6.0** - Autonomous AI Coding Agent with Agent Reasoning Engine and SOTA Architecture Production

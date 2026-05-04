@@ -5,7 +5,7 @@
 CrackedCode is a 100% local AI coding assistant featuring autonomous application production (OpenClaw-style), multi-agent orchestration, voice I/O, and a sci-fi neural interface.
 
 **Current Version:** 2.6.0
-**Branch:** feat/voice-typing-2.3.8
+**Branch:** main
 **License:** MIT
 
 ## Architecture
@@ -32,7 +32,8 @@ crackedcode/
 │   └── logger_config.py     # Centralized logging
 ├── test_system.py           # Comprehensive E2E test suite (72 tests)
 ├── config.json              # Configuration file
-└── README.md                # User documentation
+├── README.md                # User documentation
+└── WHITE_PAPER.md           # Technical white paper
 ```
 
 ## Key Components
@@ -59,7 +60,7 @@ crackedcode/
 ### AutonomousAppProducer (src/autonomous.py)
 - 7-phase pipeline: Analyze → Architect → Scaffold → Code → Test → Correct → Deliver
 - 7 architecture templates: MVC, Clean, Layered, CLI, Web API, Desktop GUI, Microservices
-- Persistent workspace (IDENTITY.md, MEMORY.md, PROJECT.md, TASKS.md, STANDING_INSTRUCTIONS.md)
+- Persistent workspace (IDENTITY.md, MEMORY.md, PROJECT.md, TASKS.md, STANDING_INSTRUCTIONS.md, REASONING.md)
 - SkillRegistry with 6 composable skills
 - HeartbeatScheduler for background tasks
 
