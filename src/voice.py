@@ -311,7 +311,7 @@ class TTSEngine:
                 error="TTS timeout"
             )
         except Exception as e:
-            return SynthesisOptionError(
+            return SynthesisResult(
                 audio_file=str(output_path),
                 success=False,
                 error=str(e)
@@ -345,7 +345,7 @@ class TTSEngine:
             )
 
 
-class AlternativeSynthesisError(Exception):
+class SynthesisError(Exception):
     pass
 
 

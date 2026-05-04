@@ -11,9 +11,9 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 import hashlib
-import logging
+from src.logger_config import get_logger
 
-logger = logging.getLogger("FileWatcher")
+logger = get_logger("FileWatcher")
 
 ChangeType = Enum("ChangeType", ["CREATED", "MODIFIED", "DELETED", "MOVED"])
 
@@ -176,25 +176,49 @@ class FileWatcher:
 
 
 def demo():
-    print("=== FILE WATCHER DEMO ===\n")
+    current_dir = Path(".").resolve()
+    print(f"=== FILE WATCHER DEMO ===")
+    print(f"Watching: {current_dir}")
+    print(f"Press Ctrl+C to stop\n")
 
     def on_change(change: FileChange) -> None:
-        print(f"  {change.change_type.name}: {change.path}")
+        timestamp = change.timestamp.strftime("%H:%M:%S")
+        print(f"  [{timestamp}] {change.change_type.name}: {change.path.relative_to(current_dir)}")
 
-    watcher = FileWatcher(".", on_change=on_change, debounce=1.0)
+    watcher = FileWatcher(
+        root=str(current_dir),
+        on_change=on_change,
+        debounce=0.5
+    )
     watcher.start()
-
-    print("Watching for changes (Ctrl+C to stop)...\n")
+    print("Monitoring started.\n")
 
     try:
         while True:
-            time.sleep(1)
+            time.sleep(2)
             if watcher.changes:
-                print(f"\nStats: {watcher.get_stats()}\n")
+                print("\n--- Recent Changes ---")
+                for c in watcher.changes:
+                    on_change(c)
+                print()
+                stats = watcher.get_stats()
+                print("--- Stats ---")
+                print(f"  Files watched: {stats['watching']}")
+                print(f"  Scans performed: {stats['scans']}")
+                print(f"  Total changes: {stats['changes']}")
+                print(f"  Errors: {stats['errors']}")
+                print(f"  Root: {stats['root']}")
+                print()
                 watcher.clear_changes()
     except KeyboardInterrupt:
+        pass
+    finally:
         watcher.stop()
-        print("\nStopped.")
+        stats = watcher.get_stats()
+        print("\n=== Watcher Stopped ===")
+        print(f"  Files watched: {stats['watching']}")
+        print(f"  Total scans: {stats['scans']}")
+        print(f"  Total changes detected: {stats['changes']}")
 
 
 if __name__ == "__main__":
