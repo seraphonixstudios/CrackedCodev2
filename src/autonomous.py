@@ -11,6 +11,19 @@ from enum import Enum
 
 from src.logger_config import get_logger
 
+try:
+    from src.reasoning import (
+        ReasoningEngine, ThoughtChain, ReasoningType,
+        get_reasoning_engine
+    )
+    _reasoning_available = True
+except ImportError:
+    _reasoning_available = False
+    ReasoningEngine = None
+    ThoughtChain = None
+    ReasoningType = None
+    get_reasoning_engine = None
+
 logger = get_logger("AutonomousSystem")
 
 
@@ -69,6 +82,9 @@ class AutonomousResult:
     errors: List[str] = field(default_factory=list)
     summary: str = ""
     duration: float = 0.0
+    reasoning_log: List[Dict[str, Any]] = field(default_factory=list)
+    architecture_reasoning: str = ""
+    phase_reasoning: Dict[str, List[Dict[str, Any]]] = field(default_factory=dict)
 
 
 class WorkspaceManager:
@@ -1921,6 +1937,45 @@ class AutonomousAppProducer:
         self._running = False
         self._cancelled = False
         self._start_time = 0.0
+        
+        # Reasoning
+        self._reasoning_engine = get_reasoning_engine() if _reasoning_available else None
+        self._reasoning_log: List[Dict[str, Any]] = []
+        self._phase_reasoning: Dict[str, List[Dict[str, Any]]] = {}
+        if _reasoning_available and self._reasoning_engine:
+            self._agent_reasoning = self._reasoning_engine.register_agent("autonomous_producer", "autonomous")
+        else:
+            self._agent_reasoning = None
+    
+    def _log_reasoning(self, step_type: str, content: str, confidence: float = 0.5, evidence: List[str] = None):
+        """Log a reasoning step."""
+        entry = {
+            "type": step_type,
+            "content": content,
+            "confidence": confidence,
+            "evidence": evidence or [],
+            "timestamp": time.time(),
+            "phase": self.current_phase.value,
+        }
+        self._reasoning_log.append(entry)
+        phase_key = self.current_phase.value
+        if phase_key not in self._phase_reasoning:
+            self._phase_reasoning[phase_key] = []
+        self._phase_reasoning[phase_key].append(entry)
+        
+        if self._agent_reasoning:
+            if step_type == "observation":
+                self._agent_reasoning.observe(content, evidence)
+            elif step_type == "analysis":
+                self._agent_reasoning.analyze(content, confidence, evidence)
+            elif step_type == "decision":
+                self._agent_reasoning.decide(content, confidence, evidence)
+            elif step_type == "reflection":
+                self._agent_reasoning.reflect(content, confidence)
+            elif step_type == "correction":
+                self._agent_reasoning.correct(content, evidence[0] if evidence else "", confidence)
+            else:
+                self._agent_reasoning.add_step(content, getattr(ReasoningType, step_type.upper(), ReasoningType.OBSERVATION), confidence, evidence)
 
     def set_progress_callback(self, callback: Callable[[str, float], None]):
         self._progress_callback = callback
@@ -1987,22 +2042,81 @@ class AutonomousAppProducer:
             return False
 
     def _select_architecture(self, spec: str) -> ArchitecturePattern:
-        """Select best architecture pattern based on specification analysis."""
+        """Select best architecture pattern based on specification analysis with reasoning."""
         text = spec.lower()
         
-        if any(kw in text for kw in ["microservice", "distributed", "service mesh", "api gateway"]):
-            return ArchitecturePattern.MICROSERVICES
-        if any(kw in text for kw in ["gui", "desktop", "pyqt", "qt", "window", "application window"]):
-            return ArchitecturePattern.DESKTOP_GUI
-        if any(kw in text for kw in ["web api", "rest", "restful", "api server", "endpoint", "http"]):
-            return ArchitecturePattern.WEB_API
-        if any(kw in text for kw in ["cli", "command line", "terminal", "console"]):
-            return ArchitecturePattern.CLI
-        if any(kw in text for kw in ["clean", "hexagonal", "ports and adapter", "ddd", "domain driven"]):
-            return ArchitecturePattern.CLEAN
-        if any(kw in text for kw in ["mvc", "model view controller", "models views controllers", "controllers"]):
-            return ArchitecturePattern.MVC
+        self._log_reasoning("analysis", "Analyzing specification for architecture selection", 0.8)
         
+        # Define keyword mappings with confidence weights
+        architecture_signals = {
+            ArchitecturePattern.MICROSERVICES: {
+                "keywords": ["microservice", "distributed", "service mesh", "api gateway"],
+                "confidence": 0.95,
+                "reason": "Explicit microservices terminology detected",
+            },
+            ArchitecturePattern.DESKTOP_GUI: {
+                "keywords": ["gui", "desktop", "pyqt", "qt", "window", "application window"],
+                "confidence": 0.95,
+                "reason": "Desktop/GUI terminology detected",
+            },
+            ArchitecturePattern.WEB_API: {
+                "keywords": ["web api", "rest", "restful", "api server", "endpoint", "http"],
+                "confidence": 0.95,
+                "reason": "Web API/REST terminology detected",
+            },
+            ArchitecturePattern.CLI: {
+                "keywords": ["cli", "command line", "terminal", "console"],
+                "confidence": 0.95,
+                "reason": "CLI terminology detected",
+            },
+            ArchitecturePattern.CLEAN: {
+                "keywords": ["clean", "hexagonal", "ports and adapter", "ddd", "domain driven"],
+                "confidence": 0.9,
+                "reason": "Clean architecture terminology detected",
+            },
+            ArchitecturePattern.MVC: {
+                "keywords": ["mvc", "model view controller", "models views controllers", "controllers"],
+                "confidence": 0.9,
+                "reason": "MVC terminology detected",
+            },
+        }
+        
+        # Score each architecture
+        scores = {}
+        for arch, config in architecture_signals.items():
+            matched = [kw for kw in config["keywords"] if kw in text]
+            if matched:
+                scores[arch] = {
+                    "score": len(matched),
+                    "confidence": config["confidence"],
+                    "reason": config["reason"],
+                    "matched": matched,
+                }
+                self._log_reasoning(
+                    "observation",
+                    f"Architecture signal: {arch.value} - matched {matched}",
+                    config["confidence"],
+                    matched
+                )
+        
+        if scores:
+            # Pick highest confidence match
+            best_arch = max(scores.keys(), key=lambda a: scores[a]["score"])
+            self._log_reasoning(
+                "decision",
+                f"Selected {best_arch.value} architecture: {scores[best_arch]['reason']}",
+                scores[best_arch]["confidence"],
+                scores[best_arch]["matched"]
+            )
+            return best_arch
+        
+        # Default fallback with reasoning
+        self._log_reasoning(
+            "decision",
+            "No explicit architecture signals found. Defaulting to CLEAN architecture for maximum flexibility.",
+            0.6,
+            ["fallback: true", "reason: no_signals_detected"]
+        )
         return ArchitecturePattern.CLEAN
 
     def produce(self, spec: str, project_name: str = None, architecture: ArchitecturePattern = None,
@@ -2025,48 +2139,83 @@ class AutonomousAppProducer:
         self.files_created.clear()
         self.errors.clear()
         self.corrections = 0
+        self._reasoning_log.clear()
+        self._phase_reasoning.clear()
+        
+        # Start reasoning chain
+        if _reasoning_available and self._reasoning_engine:
+            self._reasoning_engine.create_reasoning_chain(
+                "autonomous_producer",
+                title="Autonomous Application Production",
+                context=f"Spec: {spec[:100]}..." if len(spec) > 100 else f"Spec: {spec}",
+                tags=["autonomous", "production"],
+            )
+        
+        self._log_reasoning("observation", f"Starting autonomous production for spec: {spec[:80]}...", 0.9)
 
         if not project_name:
             project_name = spec.split(".")[0].strip().replace(" ", "_").lower()[:50]
             if not project_name:
                 project_name = "new_app"
+            self._log_reasoning("analysis", f"Auto-generated project name: {project_name}", 0.7, ["auto_name: true"])
 
         if output_dir is None:
             output_dir = str(Path("./projects") / project_name)
+            self._log_reasoning("analysis", f"Auto-selected output dir: {output_dir}", 0.8)
 
         if architecture is None:
             architecture = self._select_architecture(spec)
+            self._log_reasoning("decision", f"Auto-selected architecture: {architecture.value}", 0.8)
 
         result = AutonomousResult(
             project_path=output_dir,
             architecture=architecture.value,
         )
+        
+        # Pipeline execution reasoning
+        pipeline_phases = [
+            ("analyze", "Requirements analysis"),
+            ("architect", "Architecture design"),
+            ("scaffold", "Project scaffolding"),
+            ("code", "Code generation"),
+            ("test", "Testing"),
+            ("correct", "Self-correction"),
+            ("deliver", "Delivery"),
+        ]
+        self._log_reasoning("analysis", f"Planned pipeline: {', '.join(p[0] for p in pipeline_phases)}", 0.9)
 
         try:
             self.workspace.update_project(project_name, spec, architecture.value)
 
             if not self._phase_analyze(spec, project_name, result):
+                self._log_reasoning("correction", "Analysis phase failed, aborting pipeline", 0.3, ["phase: analyze", "status: failed"])
                 return self._finalize(result)
 
             if not self._phase_architect(spec, project_name, architecture, result):
+                self._log_reasoning("correction", "Architecture phase failed, aborting pipeline", 0.3, ["phase: architect", "status: failed"])
                 return self._finalize(result)
 
             if not self._phase_scaffold(project_name, architecture, output_dir, result):
+                self._log_reasoning("correction", "Scaffold phase failed, aborting pipeline", 0.3, ["phase: scaffold", "status: failed"])
                 return self._finalize(result)
 
             if not self._phase_code(spec, project_name, architecture, output_dir, result):
+                self._log_reasoning("correction", "Code phase failed, aborting pipeline", 0.3, ["phase: code", "status: failed"])
                 return self._finalize(result)
 
             if not self._phase_test(project_name, output_dir, result):
+                self._log_reasoning("analysis", "Tests failed, initiating self-correction", 0.6, ["phase: test", "status: failed"])
                 self._phase_correct(project_name, output_dir, result)
 
             if not self._phase_deliver(project_name, output_dir, spec, architecture, result):
+                self._log_reasoning("correction", "Delivery phase failed", 0.3, ["phase: deliver", "status: failed"])
                 return self._finalize(result)
 
             self._notify_phase(Phase.COMPLETE, "Production complete")
             result.success = True
             result.files_created = len(self.files_created)
             result.phases_completed = [p.value for p in Phase if p.value != "idle"]
+            self._log_reasoning("decision", "Production completed successfully", 0.95, ["phases_completed: " + str(len(result.phases_completed))])
 
         except Exception as e:
             self.errors.append(f"Fatal error: {e}")
@@ -2074,6 +2223,7 @@ class AutonomousAppProducer:
             result.success = False
             result.errors = list(self.errors)
             self._notify_phase(Phase.FAILED, str(e))
+            self._log_reasoning("correction", f"Fatal error in production: {str(e)}", 0.1, ["fatal_error: true"])
 
         return self._finalize(result)
 
@@ -2483,10 +2633,17 @@ python -m pytest tests/
         return "\n".join(tree_lines)
 
     def _finalize(self, result: AutonomousResult) -> AutonomousResult:
-        """Finalize the production run."""
+        """Finalize the production run with reasoning."""
         result.duration = time.time() - self._start_time
         result.errors = list(self.errors)
         result.files_created = len(self.files_created)
+        result.reasoning_log = list(self._reasoning_log)
+        result.phase_reasoning = dict(self._phase_reasoning)
+        
+        # Build architecture reasoning summary
+        arch_reasoning = [r for r in self._reasoning_log if "architecture" in r.get("content", "").lower()]
+        if arch_reasoning:
+            result.architecture_reasoning = arch_reasoning[-1]["content"]
 
         if result.success:
             result.summary = (
@@ -2495,21 +2652,32 @@ python -m pytest tests/
                 f"Files: {result.files_created} | "
                 f"Tests: {result.tests_passed} passed, {result.tests_failed} failed | "
                 f"Corrections: {result.corrections_applied} | "
-                f"Duration: {result.duration:.1f}s"
+                f"Duration: {result.duration:.1f}s | "
+                f"Reasoning steps: {len(result.reasoning_log)}"
             )
         else:
             result.summary = (
                 f"Project production completed with issues.\n"
                 f"Errors: {len(result.errors)}\n"
                 f"Files: {result.files_created} | "
-                f"Duration: {result.duration:.1f}s"
+                f"Duration: {result.duration:.1f}s | "
+                f"Reasoning steps: {len(result.reasoning_log)}"
             )
 
         self._running = False
+        
+        # Complete reasoning chain
+        if _reasoning_available and self._reasoning_engine:
+            self._reasoning_engine.complete_reasoning_chain(
+                "autonomous_producer",
+                f"Production {'successful' if result.success else 'failed'}: {result.summary[:100]}",
+                0.9 if result.success else 0.3,
+            )
+        
         return result
 
     def get_status(self) -> Dict[str, Any]:
-        """Get current production status."""
+        """Get current production status with reasoning."""
         return {
             "running": self._running,
             "phase": self.current_phase.value,
@@ -2520,4 +2688,6 @@ python -m pytest tests/
             "files_created": len(self.files_created),
             "errors": len(self.errors),
             "corrections": self.corrections,
+            "reasoning_steps": len(self._reasoning_log),
+            "current_phase_reasoning": len(self._phase_reasoning.get(self.current_phase.value, [])),
         }

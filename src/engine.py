@@ -14,6 +14,19 @@ import asyncio
 
 from src.logger_config import get_logger
 
+try:
+    from src.reasoning import (
+        ReasoningEngine, ThoughtChain, ReasoningType,
+        get_reasoning_engine
+    )
+    _reasoning_available = True
+except ImportError:
+    _reasoning_available = False
+    ReasoningEngine = None
+    ThoughtChain = None
+    ReasoningType = None
+    get_reasoning_engine = None
+
 logger = get_logger("CrackedCodeEngine")
 
 
@@ -35,6 +48,16 @@ class PromptRequest:
     context: Dict = field(default_factory=dict)
     user_level: str = "intermediate"
     timestamp: datetime = field(default_factory=datetime.now)
+    reasoning_log: List[Dict] = field(default_factory=list)
+    
+    def add_reasoning(self, step_type: str, content: str, confidence: float = 0.5):
+        """Add a reasoning step to the request."""
+        self.reasoning_log.append({
+            "type": step_type,
+            "content": content,
+            "confidence": confidence,
+            "timestamp": time.time(),
+        })
 
 
 @dataclass
@@ -44,6 +67,18 @@ class AgentResponse:
     intent: Intent = Intent.CHAT
     error: Optional[str] = None
     execution_time: float = 0.0
+    reasoning_log: List[Dict] = field(default_factory=list)
+    model_used: str = ""
+    processing_path: str = ""
+    
+    def add_reasoning(self, step_type: str, content: str, confidence: float = 0.5):
+        """Add a reasoning step to the response."""
+        self.reasoning_log.append({
+            "type": step_type,
+            "content": content,
+            "confidence": confidence,
+            "timestamp": time.time(),
+        })
 
 
 class VoiceEngine:
@@ -513,40 +548,68 @@ Output plan in a code block.
             Intent.CHAT,
         ]
         
+        reasoning_log = []
+        
+        # Step 1: Score analysis
+        score_analysis = "Intent scoring analysis: " + ", ".join(
+            f"{k.value}={v}" for k, v in intent_scores.items() if v > 0
+        )
+        reasoning_log.append({"type": "analysis", "content": score_analysis, "confidence": 0.7})
+        
         if max_score >= 2:
+            reasoning_log.append({"type": "analysis", "content": f"High confidence signals detected (max_score={max_score})", "confidence": 0.8})
             if len(top_intents) > 1:
+                tie_reasoning = f"Tie detected between: {[i.value for i in top_intents]}. Applying tiebreaker priority."
+                reasoning_log.append({"type": "analysis", "content": tie_reasoning, "confidence": 0.7})
                 for p in tiebreaker_priority:
                     if p in top_intents:
                         intent = p
+                        reasoning_log.append({"type": "decision", "content": f"Selected {p.value} via tiebreaker (higher priority in tiebreaker list)", "confidence": 0.75})
                         break
                 else:
                     intent = top_intents[0]
+                    reasoning_log.append({"type": "decision", "content": f"Selected {intent.value} as first in tie list", "confidence": 0.6})
             else:
                 intent = top_intents[0]
+                reasoning_log.append({"type": "decision", "content": f"Clear winner: {intent.value} (score={max_score}, no ties)", "confidence": 0.9})
         elif max_score == 1:
             intent = Intent.CHAT
+            reasoning_log.append({"type": "decision", "content": "Weak signal detected (max_score=1), defaulting to CHAT for safety", "confidence": 0.5})
         else:
+            reasoning_log.append({"type": "analysis", "content": "No keyword matches found. Analyzing sentence structure.", "confidence": 0.5})
+            
             has_question = any(text.startswith(q) for q in ["how ", "what ", "why ", "can ", "is ", "are ", "do ", "does ", "when ", "where "])
             has_command = any(text.startswith(c) for c in ["run ", "start ", "open ", "show ", "list ", "get ", "set "])
             
             if has_command or "code" in word_set or "function" in word_set or "file" in word_set:
                 intent = Intent.CODE
+                reasoning_log.append({"type": "inference", "content": "Detected command structure or code reference, inferring CODE intent", "confidence": 0.6})
             elif has_question:
+                reasoning_log.append({"type": "observation", "content": f"Question detected. Analyzing question words: {[w for w in ['debug', 'error', 'bug', 'fail', 'broken', 'review', 'better', 'improve', 'optimize', 'plan', 'design', 'architect', 'build', 'start', 'run', 'execute', 'test', 'install'] if w in word_set]}", "confidence": 0.5})
                 if any(w in word_set for w in ["debug", "error", "bug", "fail", "broken"]):
                     intent = Intent.DEBUG
+                    reasoning_log.append({"type": "decision", "content": "Question contains debug/error terms -> DEBUG intent", "confidence": 0.65})
                 elif any(w in word_set for w in ["review", "better", "improve", "optimize"]):
                     intent = Intent.REVIEW
+                    reasoning_log.append({"type": "decision", "content": "Question contains review/improve terms -> REVIEW intent", "confidence": 0.65})
                 elif any(w in word_set for w in ["plan", "design", "architect", "build", "start"]):
                     intent = Intent.BUILD
+                    reasoning_log.append({"type": "decision", "content": "Question contains plan/design terms -> BUILD intent", "confidence": 0.65})
                 elif any(w in word_set for w in ["run", "execute", "test", "install"]):
                     intent = Intent.EXECUTE
+                    reasoning_log.append({"type": "decision", "content": "Question contains run/execute terms -> EXECUTE intent", "confidence": 0.65})
                 else:
                     intent = Intent.CHAT
+                    reasoning_log.append({"type": "decision", "content": "Generic question with no specific coding terms -> CHAT intent", "confidence": 0.5})
             else:
                 intent = Intent.CHAT
+                reasoning_log.append({"type": "decision", "content": "No recognizable patterns -> default CHAT intent", "confidence": 0.4})
         
         total_possible = 20
         confidence = min(max_score / total_possible, 1.0)
+        
+        # Final reasoning summary
+        reasoning_log.append({"type": "reflection", "content": f"Final intent: {intent.value} (confidence={confidence:.2f})", "confidence": confidence})
         
         context = {
             "keyword_matches": {k.value: v for k, v in intent_scores.items()},
@@ -556,12 +619,14 @@ Output plan in a code block.
             "has_code_reference": any(w in word_set for w in ["code", "function", "class", "file", "method", "module"]),
         }
         
-        return PromptRequest(
+        request = PromptRequest(
             text=prompt,
             intent=intent,
             context=context,
             timestamp=datetime.now()
         )
+        request.reasoning_log = reasoning_log
+        return request
 
     def _extract_code_from_response(self, text: str) -> tuple[str, str]:
         """Extract code from response text, handling code blocks."""
@@ -655,37 +720,85 @@ Output plan in a code block.
         return None
 
     async def process(self, prompt: str, streaming: bool = False, callback: Callable = None) -> AgentResponse:
-        """Process a user prompt with full intent detection and execution."""
+        """Process a user prompt with full intent detection and execution.
+        
+        Includes complete reasoning chain for:
+        - Intent classification decisions
+        - Mode/plan checks
+        - Execution path selection
+        - Model selection
+        - Response handling
+        """
         request = self.parse_intent(prompt)
         
-        if not self.plan_enabled and request.intent != Intent.CHAT:
-            return AgentResponse(success=False, text="Plan mode is disabled")
+        # Build execution path reasoning
+        execution_reasoning = []
+        execution_reasoning.append({"type": "observation", "content": f"Intent detected: {request.intent.value} (confidence: {request.context.get('confidence', 0):.2f})", "confidence": request.context.get('confidence', 0.5)})
         
+        # Check plan mode
+        if not self.plan_enabled and request.intent != Intent.CHAT:
+            execution_reasoning.append({"type": "decision", "content": "Plan mode disabled - rejecting non-chat intent", "confidence": 1.0})
+            return AgentResponse(
+                success=False,
+                text="Plan mode is disabled",
+                reasoning_log=execution_reasoning,
+                processing_path="plan_disabled_rejection"
+            )
+        execution_reasoning.append({"type": "observation", "content": "Plan mode enabled", "confidence": 1.0})
+        
+        # Check build mode
         if not self.build_enabled and request.intent == Intent.BUILD:
+            execution_reasoning.append({"type": "analysis", "content": "BUILD mode disabled, falling back to CODE intent", "confidence": 0.8})
             logger.info("BUILD mode disabled, falling back to CODE intent")
             request.intent = Intent.CODE
         
         logger.info(f"Processing: {request.intent.value} (confidence: {request.context.get('confidence', 0):.2f})")
         
+        # Route to execution handler with reasoning
         if request.intent == Intent.EXECUTE:
+            execution_reasoning.append({"type": "decision", "content": "Routing to CodeExecutor (shell command execution)", "confidence": 0.9})
             cmd = prompt.replace("run ", "").replace("execute ", "").strip()
-            return self.executor.run_shell(cmd)
+            response = self.executor.run_shell(cmd)
+            response.reasoning_log = execution_reasoning + request.reasoning_log
+            response.processing_path = "execute_shell"
+            return response
         
         if request.intent == Intent.SEARCH:
-            return self._search_files(prompt)
+            execution_reasoning.append({"type": "decision", "content": "Routing to file search handler", "confidence": 0.9})
+            response = self._search_files(prompt)
+            response.reasoning_log = execution_reasoning + request.reasoning_log
+            response.processing_path = "file_search"
+            return response
         
+        # LLM processing path
         template = self.PROMPT_TEMPLATES.get(request.intent, "{prompt}")
         formatted_prompt = template.format(prompt=request.text)
         
+        # Model selection reasoning
         if self.unified_mode:
+            execution_reasoning.append({"type": "decision", "content": "Using unified mode (multi-model ensemble)", "confidence": 0.8})
             response = self.ollama.unified_chat(formatted_prompt)
+            response.model_used = "unified_ensemble"
+            response.processing_path = "unified_chat"
         elif streaming and callback:
+            execution_reasoning.append({"type": "decision", "content": f"Using streaming mode with {self.model}", "confidence": 0.9})
             response = self.ollama.chat_stream(formatted_prompt, callback=callback)
+            response.model_used = self.model
+            response.processing_path = "stream_chat"
         else:
+            execution_reasoning.append({"type": "decision", "content": f"Using standard chat with {self.model}", "confidence": 0.9})
             response = self.ollama.chat(formatted_prompt)
+            response.model_used = self.model
+            response.processing_path = "standard_chat"
+        
+        # Combine reasoning logs
+        response.reasoning_log = execution_reasoning + request.reasoning_log
         
         if response.success:
+            execution_reasoning.append({"type": "reflection", "content": f"LLM responded successfully via {response.processing_path}", "confidence": 0.9})
             self.session.add_turn(request, response)
+        else:
+            execution_reasoning.append({"type": "correction", "content": f"LLM failed: {response.error}", "confidence": 0.3})
         
         return response
     

@@ -1731,6 +1731,11 @@ def main() -> int:
         ("GUI File Watcher", test_gui_has_file_watcher_methods),
         ("Female TTS Voice", test_female_tts_voice),
         ("Syntax Highlighter", test_syntax_highlighter),
+        ("Reasoning Engine", test_reasoning_engine),
+        ("Reasoning + Orchestrator", test_reasoning_integration_orchestrator),
+        ("Reasoning + Engine", test_reasoning_integration_engine),
+        ("Reasoning + Autonomous", test_reasoning_integration_autonomous),
+        ("Reasoning Coherence", test_reasoning_coherence),
     ]
     
     results: list[tuple[str, bool]] = []
@@ -2272,6 +2277,233 @@ def test_syntax_highlighter() -> bool:
         return True
     except Exception as e:
         return FAIL("Syntax highlighter", str(e)[:50])
+
+
+def test_reasoning_engine() -> bool:
+    print_header("REASONING ENGINE")
+    try:
+        from src.reasoning import (
+            ReasoningEngine, ThoughtChain, ReasoningStep, ReasoningType,
+            ConfidenceLevel, AgentReasoning, CoherenceTracker,
+            get_reasoning_engine, reset_reasoning_engine
+        )
+        
+        PASS("All reasoning classes imported")
+        
+        # Test reasoning engine singleton
+        engine1 = get_reasoning_engine()
+        engine2 = get_reasoning_engine()
+        if engine1 is engine2:
+            PASS("Singleton pattern works")
+        else:
+            return FAIL("Singleton broken")
+        
+        # Test thought chain
+        chain = ThoughtChain(title="Test Chain", context="Testing reasoning")
+        chain.add_observation("Observed test data", ["evidence1"], "tester")
+        chain.add_analysis("Analysis of data", 0.8, ["evidence2"], "tester")
+        chain.add_decision("Decided to test", 0.9, ["evidence3"], "tester")
+        
+        if len(chain.steps) == 3:
+            PASS("Thought chain has 3 steps")
+        else:
+            return FAIL(f"Expected 3 steps, got {len(chain.steps)}")
+        
+        if chain.coherence_score > 0.5:
+            PASS(f"Coherence score: {chain.coherence_score:.2f}")
+        else:
+            return FAIL(f"Low coherence: {chain.coherence_score}")
+        
+        # Test agent reasoning
+        agent_reasoning = AgentReasoning(agent_id="test_1", agent_role="tester")
+        agent_reasoning.start_chain("Test Decision", "Context")
+        agent_reasoning.observe("Observation")
+        agent_reasoning.analyze("Analysis", 0.7)
+        agent_reasoning.decide("Final decision", 0.85)
+        
+        if len(agent_reasoning.thought_chains) == 1:
+            PASS("Agent reasoning has 1 chain")
+        else:
+            return FAIL(f"Expected 1 chain, got {len(agent_reasoning.thought_chains)}")
+        
+        # Test coherence tracker
+        tracker = CoherenceTracker()
+        tracker.register_agent("agent1", "coder")
+        tracker.register_agent("agent2", "tester")
+        
+        coherence = tracker.measure_cross_agent_coherence()
+        if "overall_coherence" in coherence:
+            PASS("Coherence metrics generated")
+        else:
+            return FAIL("Missing coherence metrics")
+        
+        # Test reset
+        reset_reasoning_engine()
+        PASS("Reset reasoning engine")
+        
+        return True
+    except Exception as e:
+        return FAIL("Reasoning engine", str(e)[:50])
+
+
+def test_reasoning_integration_orchestrator() -> bool:
+    print_header("REASONING + ORCHESTRATOR INTEGRATION")
+    try:
+        from src.orchestrator import UnifiedOrchestrator, TaskStatus, AgentRole
+        from src.reasoning import get_reasoning_engine, reset_reasoning_engine
+        
+        reset_reasoning_engine()
+        orch = UnifiedOrchestrator(engine=None, max_workers=2)
+        
+        # Create task and verify reasoning is added
+        task = orch.create_task("Write a function to sort a list", intent="code")
+        
+        if task.reasoning_log:
+            PASS(f"Task has {len(task.reasoning_log)} reasoning steps")
+        else:
+            return FAIL("Task missing reasoning log")
+        
+        if task.reasoning_chain_id:
+            PASS("Task has reasoning chain ID")
+        else:
+            return FAIL("Task missing reasoning chain ID")
+        
+        # Check task dict includes reasoning
+        task_dict = task.to_dict()
+        if "reasoning_steps" in task_dict:
+            PASS("Task dict includes reasoning_steps")
+        else:
+            return FAIL("Task dict missing reasoning_steps")
+        
+        # Submit and verify reasoning
+        orch.submit(task)
+        if any(r["type"] == "action" for r in task.reasoning_log):
+            PASS("Submit added action reasoning")
+        else:
+            return FAIL("Submit missing action reasoning")
+        
+        orch.stop()
+        return True
+    except Exception as e:
+        return FAIL("Reasoning orchestrator integration", str(e)[:50])
+
+
+def test_reasoning_integration_engine() -> bool:
+    print_header("REASONING + ENGINE INTEGRATION")
+    try:
+        from src.engine import CrackedCodeEngine
+        from src.reasoning import reset_reasoning_engine
+        
+        reset_reasoning_engine()
+        
+        # We can't fully init engine without Ollama, but we can test parse_intent reasoning
+        engine = CrackedCodeEngine(config={"model": "qwen3:8b-gpu", "unified_mode": False})
+        
+        # Test intent parsing with reasoning
+        request = engine.parse_intent("Write a Python function to reverse a string")
+        
+        if request.reasoning_log:
+            PASS(f"Intent parsing produced {len(request.reasoning_log)} reasoning steps")
+        else:
+            return FAIL("Intent parsing missing reasoning")
+        
+        # Verify reasoning includes decision step
+        decisions = [r for r in request.reasoning_log if r.get("type") == "decision"]
+        if decisions:
+            PASS(f"Found {len(decisions)} decision steps")
+        else:
+            return FAIL("No decision steps in reasoning")
+        
+        # Verify context has confidence
+        if "confidence" in request.context:
+            PASS(f"Intent confidence: {request.context['confidence']}")
+        else:
+            return FAIL("Missing confidence in context")
+        
+        return True
+    except Exception as e:
+        return FAIL("Reasoning engine integration", str(e)[:50])
+
+
+def test_reasoning_integration_autonomous() -> bool:
+    print_header("REASONING + AUTONOMOUS INTEGRATION")
+    try:
+        from src.autonomous import AutonomousAppProducer, ArchitecturePattern
+        from src.reasoning import reset_reasoning_engine
+        
+        reset_reasoning_engine()
+        producer = AutonomousAppProducer(engine=None, workspace_path="./test_auto_reasoning")
+        
+        # Test architecture selection reasoning
+        arch = producer._select_architecture("Build a web API with REST endpoints")
+        
+        if arch == ArchitecturePattern.WEB_API:
+            PASS("Correct architecture selected")
+        else:
+            return FAIL(f"Expected web_api, got {arch.value}")
+        
+        # Verify reasoning was logged
+        if producer._reasoning_log:
+            PASS(f"Architecture selection logged {len(producer._reasoning_log)} steps")
+        else:
+            return FAIL("No reasoning logged for architecture selection")
+        
+        # Test with GUI keywords
+        arch2 = producer._select_architecture("Create a desktop GUI application with PyQt6")
+        if arch2 == ArchitecturePattern.DESKTOP_GUI:
+            PASS("GUI architecture detected")
+        else:
+            return FAIL(f"Expected desktop_gui, got {arch2.value}")
+        
+        # Test fallback
+        arch3 = producer._select_architecture("Build something cool")
+        if arch3 == ArchitecturePattern.CLEAN:
+            PASS("Fallback to CLEAN architecture")
+        else:
+            return FAIL(f"Expected clean fallback, got {arch3.value}")
+        
+        # Cleanup
+        import shutil
+        if Path("./test_auto_reasoning").exists():
+            shutil.rmtree("./test_auto_reasoning")
+        
+        return True
+    except Exception as e:
+        return FAIL("Reasoning autonomous integration", str(e)[:50])
+
+
+def test_reasoning_coherence() -> bool:
+    print_header("REASONING COHERENCE")
+    try:
+        from src.reasoning import ThoughtChain, ReasoningType
+        
+        # Test coherent chain
+        chain = ThoughtChain(title="Coherent Test")
+        chain.add_observation("User wants to build a web app", ["spec: web_app"], "analyzer")
+        chain.add_analysis("Web app needs API layer", 0.8, ["req: api"], "architect")
+        chain.add_decision("Use Web API architecture", 0.9, ["pattern: web_api"], "architect")
+        
+        coherence = chain.coherence_score
+        if coherence > 0.8:
+            PASS(f"Coherent chain score: {coherence:.2f}")
+        else:
+            return FAIL(f"Low coherence: {coherence:.2f}")
+        
+        # Test incoherent chain
+        bad_chain = ThoughtChain(title="Incoherent Test")
+        bad_chain.add_decision("Decide first", 0.9)
+        bad_chain.add_observation("Then observe", ["late_evidence"])
+        bad_chain.add_analysis("Then analyze", 0.3)
+        
+        bad_coherence = bad_chain.coherence_score
+        if bad_coherence < coherence:
+            PASS(f"Incoherent chain correctly scored lower: {bad_coherence:.2f}")
+        else:
+            return FAIL(f"Incoherent chain should score lower than {coherence:.2f}")
+        
+        return True
+    except Exception as e:
+        return FAIL("Reasoning coherence", str(e)[:50])
 
 
 if __name__ == "__main__":

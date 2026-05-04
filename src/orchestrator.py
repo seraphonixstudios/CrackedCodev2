@@ -30,6 +30,20 @@ from queue import PriorityQueue
 
 from src.logger_config import get_logger
 
+try:
+    from src.reasoning import (
+        ReasoningEngine, ThoughtChain, ReasoningType,
+        get_reasoning_engine, AgentReasoning
+    )
+    _reasoning_available = True
+except ImportError:
+    _reasoning_available = False
+    ReasoningEngine = None
+    ThoughtChain = None
+    ReasoningType = None
+    get_reasoning_engine = None
+    AgentReasoning = None
+
 logger = get_logger("UnifiedOrchestrator")
 
 
@@ -130,6 +144,20 @@ class Task:
     on_complete: Optional[Callable[["Task"], None]] = None
     on_fail: Optional[Callable[["Task"], None]] = None
     
+    # Reasoning
+    reasoning_chain_id: Optional[str] = None
+    reasoning_log: List[Dict[str, Any]] = field(default_factory=list)
+    
+    def add_reasoning(self, step_type: str, content: str, confidence: float = 0.5, evidence: List[str] = None):
+        """Add a reasoning step to the task's log."""
+        self.reasoning_log.append({
+            "type": step_type,
+            "content": content,
+            "confidence": confidence,
+            "evidence": evidence or [],
+            "timestamp": time.time(),
+        })
+    
     def set_status(self, status: TaskStatus, error: str = ""):
         """Update status with timestamp tracking."""
         old = self.status
@@ -216,6 +244,8 @@ class Task:
             "parent_id": self.parent_id,
             "has_result": self.result is not None,
             "has_error": bool(self.error),
+            "reasoning_steps": len(self.reasoning_log),
+            "reasoning_chain_id": self.reasoning_chain_id,
         }
 
 
@@ -251,14 +281,25 @@ class Blackboard:
 class AgentWorker:
     """Represents an agent that can execute tasks."""
     
-    def __init__(self, role: AgentRole, engine=None):
+    def __init__(self, role: AgentRole, engine=None, agent_id: str = None):
         self.role = role
         self.engine = engine
+        self.agent_id = agent_id or f"{role.value}_{str(uuid.uuid4())[:6]}"
         self.status = "idle"
         self.tasks_completed = 0
         self.tasks_failed = 0
         self.current_task: Optional[str] = None
         self.capabilities = AGENT_CAPABILITIES.get(role, [])
+        self._reasoning: Optional[Any] = None
+    
+    @property
+    def reasoning(self) -> Optional[Any]:
+        """Get agent reasoning state."""
+        return self._reasoning
+    
+    @reasoning.setter
+    def reasoning(self, value: Any):
+        self._reasoning = value
     
     def can_handle(self, intent: str) -> bool:
         """Check if this agent can handle an intent."""
@@ -271,6 +312,21 @@ class AgentWorker:
         
         self.status = "active"
         self.current_task = task.id
+        
+        # Log reasoning about task execution
+        task.add_reasoning(
+            "action",
+            f"Agent {self.role.value} executing task {task.id}",
+            0.8,
+            [f"capabilities: {self.capabilities}", f"intent: {task.intent}"]
+        )
+        
+        if self._reasoning:
+            self._reasoning.add_action(
+                f"Executing task {task.id} with intent '{task.intent}'",
+                0.8,
+                [f"Agent: {self.role.value}"],
+            )
         
         try:
             from src.engine import Intent
@@ -297,7 +353,37 @@ class AgentWorker:
             )
             
             self.tasks_completed += 1
+            
+            # Log completion reasoning
+            task.add_reasoning(
+                "reflection",
+                f"Task execution completed successfully",
+                0.9 if response and getattr(response, 'success', False) else 0.5,
+            )
+            
+            if self._reasoning:
+                self._reasoning.reflect(
+                    f"Task {task.id} completed. Success: {getattr(response, 'success', False)}",
+                    0.9 if response and getattr(response, 'success', False) else 0.5,
+                )
+            
             return response
+            
+        except Exception as e:
+            self.tasks_failed += 1
+            task.add_reasoning(
+                "correction",
+                f"Task execution failed: {str(e)}",
+                0.3,
+                [f"error: {str(e)}"]
+            )
+            if self._reasoning:
+                self._reasoning.correct(
+                    f"Task {task.id} failed: {str(e)}",
+                    str(e),
+                    0.3,
+                )
+            raise
             
         finally:
             self.status = "idle"
@@ -323,10 +409,18 @@ class UnifiedOrchestrator:
         
         # Agent management
         self._agents: Dict[AgentRole, AgentWorker] = {}
-        self._init_agents()
         
         # Shared state
         self.blackboard = Blackboard()
+        
+        # Reasoning - must be before _init_agents
+        self._reasoning_engine = get_reasoning_engine() if _reasoning_available else None
+        
+        # Register orchestrator itself for reasoning
+        if _reasoning_available and self._reasoning_engine:
+            self._reasoning_engine.register_agent("orchestrator", "orchestrator")
+        
+        self._init_agents()
         
         # Execution
         self._running = False
@@ -341,9 +435,15 @@ class UnifiedOrchestrator:
         self.on_queue_changed: Optional[Callable[[], None]] = None
     
     def _init_agents(self):
-        """Initialize all agent workers."""
+        """Initialize all agent workers and register with reasoning engine."""
         for role in AgentRole:
-            self._agents[role] = AgentWorker(role, self.engine)
+            agent = AgentWorker(role, self.engine)
+            self._agents[role] = agent
+            
+            # Register with reasoning engine
+            if _reasoning_available and self._reasoning_engine:
+                reasoning = self._reasoning_engine.register_agent(agent.agent_id, role.value)
+                agent.reasoning = reasoning
     
     def create_task(
         self,
@@ -372,9 +472,57 @@ class UnifiedOrchestrator:
             context: Shared context for the task
             metadata: Additional metadata
         """
-        # Auto-select agent based on intent
+        # Start reasoning chain for task creation
+        reasoning_chain = None
+        if _reasoning_available and self._reasoning_engine:
+            reasoning_chain = self._reasoning_engine.create_reasoning_chain(
+                agent_id="orchestrator",
+                title=f"Task Creation: {intent}",
+                context=f"Prompt: {prompt[:100]}..." if len(prompt) > 100 else f"Prompt: {prompt}",
+                tags=["task_creation", intent],
+            )
+        
+        # Auto-select agent based on intent with reasoning
         if agent is None:
             agent = INTENT_TO_AGENT.get(intent.lower(), AgentRole.CODER)
+            
+            # Log agent selection reasoning
+            agent_reasoning = f"Selected agent '{agent.value}' based on intent '{intent}'"
+            agent_evidence = [f"intent: {intent}", f"mapped_to: {agent.value}"]
+            
+            # Check capability match
+            capabilities = AGENT_CAPABILITIES.get(agent, [])
+            if intent.lower() in capabilities:
+                agent_reasoning += f" (capability match: {intent} in {capabilities})"
+                agent_evidence.append(f"capabilities: {capabilities}")
+            else:
+                agent_reasoning += f" (fallback: default agent for unmatched intent)"
+                agent_evidence.append("fallback: true")
+            
+            if reasoning_chain:
+                reasoning_chain.add_analysis(agent_reasoning, 0.75, agent_evidence, "orchestrator")
+        else:
+            agent_reasoning = f"Agent '{agent.value}' explicitly specified"
+            if reasoning_chain:
+                reasoning_chain.add_observation(agent_reasoning, ["explicit_assignment"], "orchestrator")
+        
+        # Reasoning about priority
+        priority_reasoning = f"Priority set to {priority.name}"
+        priority_evidence = []
+        if parent_id:
+            priority_reasoning += " (inherited from parent task)"
+            priority_evidence.append(f"parent_id: {parent_id}")
+        if depends_on:
+            priority_reasoning += f" with {len(depends_on)} dependencies"
+            priority_evidence.append(f"dependencies: {len(depends_on)}")
+        if reasoning_chain:
+            reasoning_chain.add_analysis(priority_reasoning, 0.7, priority_evidence, "orchestrator")
+        
+        # Reasoning about dependencies
+        if depends_on:
+            dep_reasoning = f"Task depends on {len(depends_on)} prerequisite task(s): {', '.join(depends_on)}"
+            if reasoning_chain:
+                reasoning_chain.add_observation(dep_reasoning, depends_on, "orchestrator")
         
         task = Task(
             intent=intent,
@@ -388,6 +536,21 @@ class UnifiedOrchestrator:
             context=context or {},
             metadata=metadata or {},
         )
+        
+        # Link reasoning chain to task
+        if reasoning_chain:
+            task.reasoning_chain_id = reasoning_chain.id
+            task.add_reasoning(
+                "decision",
+                f"Task created with agent={agent.value}, priority={priority.name}",
+                0.8,
+                [f"agent_selection: {agent_reasoning}", f"priority: {priority_reasoning}"]
+            )
+            self._reasoning_engine.complete_reasoning_chain(
+                "orchestrator",
+                f"Created task {task.id} -> {agent.value}",
+                0.8,
+            )
         
         with self._lock:
             self._tasks[task.id] = task
@@ -410,6 +573,16 @@ class UnifiedOrchestrator:
         """
         task.set_status(TaskStatus.QUEUED)
         
+        # Reasoning about queue submission
+        queue_reasoning = f"Task submitted to queue with priority {task.priority.name}"
+        queue_evidence = [f"priority_value: {-task.priority.value}", f"queue_size: {self._task_queue.qsize()}"]
+        
+        if task.depends_on:
+            queue_reasoning += f". Will wait for {len(task.depends_on)} dependencies."
+            queue_evidence.append(f"dependencies: {task.depends_on}")
+        
+        task.add_reasoning("action", queue_reasoning, 0.75, queue_evidence)
+        
         # Priority: higher value = higher priority
         # Negative because PriorityQueue is min-heap
         priority_value = -task.priority.value
@@ -423,6 +596,7 @@ class UnifiedOrchestrator:
         
         # Auto-start if not running
         if not self._running:
+            task.add_reasoning("action", "Auto-starting orchestrator executor", 0.9)
             self.start()
         
         return task.id
@@ -512,30 +686,72 @@ class UnifiedOrchestrator:
                 time.sleep(0.5)
     
     def _check_dependencies(self, task: Task) -> bool:
-        """Check if all dependencies are satisfied."""
+        """Check if all dependencies are satisfied with reasoning."""
         with self._lock:
             for dep_id in task.depends_on:
                 if dep_id not in self._tasks:
+                    dep_reasoning = f"Dependency {dep_id} not found in task registry"
+                    task.add_reasoning("observation", dep_reasoning, 0.2, [f"missing_dep: {dep_id}"])
                     logger.warning(f"Task {task.id} depends on unknown task {dep_id}")
                     return False
                 dep = self._tasks[dep_id]
                 if dep.status != TaskStatus.COMPLETED:
+                    dep_reasoning = f"Waiting for dependency {dep_id} (status: {dep.status.value})"
+                    task.add_reasoning("observation", dep_reasoning, 0.4, [
+                        f"dep_id: {dep_id}",
+                        f"dep_status: {dep.status.value}",
+                        f"dep_progress: {dep.execution_time:.1f}s elapsed"
+                    ])
                     return False
+            
+            # All dependencies satisfied
+            if task.depends_on:
+                task.add_reasoning(
+                    "analysis",
+                    f"All {len(task.depends_on)} dependencies satisfied",
+                    0.9,
+                    [f"deps: {task.depends_on}"]
+                )
         return True
     
     def _start_task(self, task: Task):
-        """Start executing a task in a new thread."""
+        """Start executing a task in a new thread with reasoning."""
         task.set_status(TaskStatus.RUNNING)
         
         if self.on_task_started:
             self.on_task_started(task)
         
-        # Get agent
+        # Get agent with reasoning
         agent = self._agents.get(task.agent)
         if not agent:
+            fail_reasoning = f"Agent '{task.agent.value}' not found in registered agents"
+            task.add_reasoning("correction", fail_reasoning, 0.1, [
+                f"requested_agent: {task.agent.value}",
+                f"available: {[r.value for r in self._agents.keys()]}"
+            ])
             task.set_status(TaskStatus.FAILED, f"Unknown agent: {task.agent}")
             self._handle_task_complete(task)
             return
+        
+        # Log agent assignment reasoning
+        active_agents = sum(1 for a in self._agents.values() if a.status == "active")
+        assignment_reasoning = f"Assigned task to {agent.role.value} (agent_id: {agent.agent_id})"
+        assignment_evidence = [
+            f"agent_role: {agent.role.value}",
+            f"agent_status: {agent.status}",
+            f"active_agents: {active_agents}/{self.max_workers}",
+            f"agent_capabilities: {agent.capabilities}",
+        ]
+        task.add_reasoning("action", assignment_reasoning, 0.85, assignment_evidence)
+        
+        # Start reasoning chain for agent execution
+        if _reasoning_available and self._reasoning_engine and agent.reasoning:
+            self._reasoning_engine.create_reasoning_chain(
+                agent.agent_id,
+                title=f"Execute Task {task.id}: {task.intent}",
+                context=f"Task: {task.prompt[:80]}..." if len(task.prompt) > 80 else f"Task: {task.prompt}",
+                tags=["task_execution", task.intent],
+            )
         
         # Start execution thread
         thread = threading.Thread(
@@ -557,13 +773,29 @@ class UnifiedOrchestrator:
             if result is not None:
                 task.result = result
                 task.set_status(TaskStatus.COMPLETED)
+                task.add_reasoning("decision", "Task completed successfully", 0.9, [
+                    f"result_type: {type(result).__name__}",
+                    f"execution_time: {task.execution_time:.2f}s"
+                ])
             else:
+                fail_reason = "Execution returned None - possible agent failure"
+                task.add_reasoning("correction", fail_reason, 0.2, ["null_result"])
                 task.set_status(TaskStatus.FAILED, "Execution returned None")
         
         except TimeoutError:
+            timeout_reasoning = f"Task timed out after {task.timeout}s (exceeded limit)"
+            task.add_reasoning("correction", timeout_reasoning, 0.3, [
+                f"timeout_limit: {task.timeout}s",
+                f"execution_time: {task.execution_time:.2f}s"
+            ])
             task.set_status(TaskStatus.TIMEDOUT, f"Timeout after {task.timeout}s")
         
         except Exception as e:
+            error_reasoning = f"Execution failed: {str(e)}"
+            task.add_reasoning("correction", error_reasoning, 0.2, [
+                f"error_type: {type(e).__name__}",
+                f"error_message: {str(e)}"
+            ])
             task.set_status(TaskStatus.FAILED, str(e))
         
         finally:
@@ -605,8 +837,20 @@ class UnifiedOrchestrator:
             return loop.run_until_complete(agent.execute(task))
     
     def _handle_task_complete(self, task: Task):
-        """Handle task completion, retry, and queue next tasks."""
+        """Handle task completion, retry, and queue next tasks with reasoning."""
         logger.info(f"Task {task.id} completed with status: {task.status.value}")
+        
+        # Add completion reasoning
+        completion_reasoning = f"Task completed with status: {task.status.value}"
+        completion_evidence = [
+            f"status: {task.status.value}",
+            f"duration: {task.duration:.2f}s",
+            f"execution_time: {task.execution_time:.2f}s",
+            f"retries: {task.retries}/{task.max_retries}",
+        ]
+        if task.error:
+            completion_evidence.append(f"error: {task.error[:100]}")
+        task.add_reasoning("reflection", completion_reasoning, 0.7, completion_evidence)
         
         with self._lock:
             if task.status == TaskStatus.COMPLETED:
@@ -615,8 +859,21 @@ class UnifiedOrchestrator:
                     self.on_task_completed(task)
             elif task.status == TaskStatus.FAILED:
                 if task.can_retry:
+                    task.add_reasoning(
+                        "analysis",
+                        f"Task failed but eligible for retry ({task.retries}/{task.max_retries})",
+                        0.6,
+                        ["retry_eligible: true"]
+                    )
                     self._retry_task(task)
                     return
+                else:
+                    task.add_reasoning(
+                        "decision",
+                        f"Task failed and exhausted retries ({task.retries}/{task.max_retries})",
+                        0.3,
+                        ["retry_eligible: false", "final_status: failed"]
+                    )
                 if self.on_task_failed:
                     self.on_task_failed(task)
         
@@ -627,9 +884,31 @@ class UnifiedOrchestrator:
             self.on_queue_changed()
     
     def _retry_task(self, task: Task):
-        """Retry a failed task."""
+        """Retry a failed task with reasoning."""
         task.retries += 1
         task.set_status(TaskStatus.RETRYING)
+        
+        retry_reasoning = f"Retrying task (attempt {task.retries}/{task.max_retries})"
+        retry_evidence = [
+            f"retry_count: {task.retries}",
+            f"max_retries: {task.max_retries}",
+            f"previous_error: {task.error[:100] if task.error else 'none'}",
+            f"delay: {0.5 * task.retries}s",
+        ]
+        
+        # Analyze failure for retry strategy
+        if task.error:
+            if "timeout" in task.error.lower():
+                retry_reasoning += " - previous failure was timeout, may succeed with retry"
+                retry_evidence.append("failure_type: timeout")
+            elif "connection" in task.error.lower():
+                retry_reasoning += " - connection issue detected, retry may resolve"
+                retry_evidence.append("failure_type: connection")
+            else:
+                retry_reasoning += " - retrying with same parameters"
+                retry_evidence.append("failure_type: unknown")
+        
+        task.add_reasoning("action", retry_reasoning, 0.6, retry_evidence)
         
         logger.info(f"Task {task.id} retrying ({task.retries}/{task.max_retries})")
         
@@ -680,7 +959,7 @@ class UnifiedOrchestrator:
         agent: Optional[AgentRole] = None,
         priority: TaskPriority = None,
     ) -> str:
-        """Delegate a sub-task from a parent task.
+        """Delegate a sub-task from a parent task with reasoning.
         
         Args:
             parent_task_id: Parent task ID
@@ -698,8 +977,30 @@ class UnifiedOrchestrator:
         if not parent:
             raise ValueError(f"Parent task {parent_task_id} not found")
         
+        # Reasoning about delegation
+        delegation_reasoning = f"Delegating sub-task from {parent_task_id}"
+        delegation_evidence = [
+            f"parent_id: {parent_task_id}",
+            f"parent_status: {parent.status.value}",
+            f"subtask_intent: {intent}",
+        ]
+        
         if priority is None:
             priority = parent.priority
+            delegation_reasoning += f" - inherited priority {priority.name} from parent"
+            delegation_evidence.append(f"priority_source: inherited")
+        else:
+            delegation_reasoning += f" - explicit priority {priority.name}"
+            delegation_evidence.append(f"priority_source: explicit")
+        
+        if agent:
+            delegation_reasoning += f" - assigned to {agent.value}"
+            delegation_evidence.append(f"assigned_agent: {agent.value}")
+        else:
+            delegation_reasoning += " - agent will be auto-selected"
+            delegation_evidence.append("agent_selection: auto")
+        
+        parent.add_reasoning("analysis", delegation_reasoning, 0.75, delegation_evidence)
         
         task = self.create_task(
             prompt=prompt,
@@ -713,6 +1014,14 @@ class UnifiedOrchestrator:
         )
         
         parent.sub_tasks.append(task.id)
+        
+        # Link reasoning between parent and child
+        task.add_reasoning(
+            "observation",
+            f"Created as sub-task of {parent_task_id}",
+            0.8,
+            [f"parent_id: {parent_task_id}", f"parent_intent: {parent.intent}"]
+        )
         
         self.submit(task)
         

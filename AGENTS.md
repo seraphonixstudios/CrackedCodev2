@@ -18,6 +18,8 @@ crackedcode/
 │   ├── gui_enhancements.py  # UX widgets: Toast, Command Palette, Welcome
 │   ├── gui_git_panel.py     # Git sidebar with diff viewer and AI commits
 │   ├── gui_settings.py      # Preferences dialog with Ollama discovery
+│   ├── gui_syntax.py        # Code syntax highlighting (Python, JSON)
+│   ├── reasoning.py         # Agent Reasoning Engine - thought chains, coherence
 │   ├── engine.py            # CrackedCodeEngine - core logic
 │   ├── orchestrator.py      # UnifiedOrchestrator - task lifecycle, priorities
 │   ├── autonomous.py        # AutonomousAppProducer - OpenClaw-style agent
@@ -28,7 +30,7 @@ crackedcode/
 │   ├── file_watcher.py      # File system monitoring with auto-save
 │   ├── git_integration.py   # Git operations
 │   └── logger_config.py     # Centralized logging
-├── test_system.py           # Comprehensive E2E test suite (62 tests)
+├── test_system.py           # Comprehensive E2E test suite (72 tests)
 ├── config.json              # Configuration file
 └── README.md                # User documentation
 ```
@@ -69,10 +71,18 @@ crackedcode/
 - VoiceSession: Complete listen → process → respond cycle
 - UnifiedVoiceEngine: Singleton orchestrator with hotword detection
 
+### Agent Reasoning Engine (src/reasoning.py)
+- ThoughtChain: Complete reasoning chains from observation to decision
+- ReasoningStep: Individual steps with type, confidence, evidence, source
+- AgentReasoning: Per-agent reasoning state with memory and coherence
+- CoherenceTracker: Cross-agent coherence measurement and conflict detection
+- ReasoningEngine: Singleton coordinating all reasoning across the system
+- Integrated into orchestrator, engine, and autonomous producer
+
 ### GUI (src/gui.py)
 - PyQt6-based with Atlantean theme (#00FF41 on black)
-- Tabbed editor, searchable terminal, task queue, agent panel
-- Git panel with diff viewer and AI commit messages
+- Tabbed editor with syntax highlighting (Python, JSON), searchable terminal
+- Task queue, agent panel, Git panel with diff viewer and AI commit messages
 - Toast notifications, command palette (Ctrl+Shift+P), welcome screen
 - Enhanced status bar with activity pulse and model/mode display
 - Autonomous production dialog (Ctrl+A)
@@ -92,7 +102,7 @@ crackedcode/
 2. Update version numbers in ALL relevant files if version changes
 3. Update test_system.py with new tests
 4. Update README.md and AGENTS.md
-5. Run `python test_system.py` to verify (62 tests, all must pass)
+5. Run `python test_system.py` to verify (72 tests, all must pass)
 6. Commit with descriptive message
 7. Push to origin
 
@@ -154,6 +164,23 @@ Key settings in `config.json`:
 2. Add parameter extraction logic in `_extract_params()` if needed
 3. Register handler in `CrackedCodeGUI._register_voice_command_handlers()`
 4. Add test in `test_system.py`
+
+### Adding Syntax Highlighting for a New Language
+1. Create a new highlighter class extending `QSyntaxHighlighter` in `src/gui_syntax.py`
+2. Define `_init_formats()` for token colors and `_init_rules()` for regex patterns
+3. Implement `highlightBlock(self, text)` to apply formats
+4. Register in `HIGHLIGHTERS` dict with file extension
+5. Add test in `test_system.py`
+6. Update README.md
+
+### Adding Reasoning to a New Component
+1. Import reasoning module with graceful fallback: `try: from src.reasoning import ... except ImportError: ...`
+2. Register the component with `get_reasoning_engine().register_agent(agent_id, role)`
+3. Create reasoning chains with `engine.create_reasoning_chain(agent_id, title, context, tags)`
+4. Log steps using `agent_reasoning.observe()`, `.analyze()`, `.decide()`, `.reflect()`, `.correct()`
+5. Complete chains with `engine.complete_reasoning_chain(agent_id, decision, confidence)`
+6. Add reasoning fields to result dataclasses
+7. Add tests in `test_system.py`
 
 ### Adding a New Architecture Template
 1. Add pattern to `ArchitecturePattern` enum in `src/autonomous.py`

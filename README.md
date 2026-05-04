@@ -112,7 +112,7 @@ python src/gui.py
 | **Agent Panel** | 6 agents with real-time status |
 | **Task Queue** | Live task tracking with status icons |
 | **Voice Typing** | Click VOICE to record (faster-whisper) |
-| **Code Editor** | Tabbed text editor with multiple files |
+| **Code Editor** | Tabbed text editor with syntax highlighting (Python, JSON) |
 | **Terminal** | AI response display with streaming |
 | **Matrix Overlay** | Animated rain effect |
 | **Atlantean Theme** | Green `#00FF41` on black |
@@ -666,6 +666,97 @@ GUI preferences editor (`Ctrl+,`):
 
 ---
 
+## Code Syntax Highlighting (v2.6.0)
+
+Automatic syntax highlighting in the code editor:
+
+### Supported Languages
+
+| Language | Extensions | Highlighted Elements |
+|----------|-----------|---------------------|
+| **Python** | `.py` | Keywords, builtins, strings, comments, numbers, decorators, function/class definitions, self/cls |
+| **JSON** | `.json` | Keys, strings, numbers, booleans, null |
+
+### Color Scheme (Atlantean Theme)
+
+| Element | Color | Style |
+|---------|-------|-------|
+| Keywords | `#9D00FF` (Purple) | Bold |
+| Builtins | `#00FFFF` (Cyan) | Normal |
+| Strings | `#00FF41` (Green) | Normal |
+| Comments | `#555555` (Gray) | Italic |
+| Numbers | `#FFD700` (Gold) | Normal |
+| Functions/Classes | `#FF8C00` (Orange) | Bold |
+| Decorators | `#0080FF` (Blue) | Normal |
+| self/cls | `#FF3333` (Red) | Italic |
+
+### Extending
+
+Add new languages by creating a highlighter class and registering it in `src/gui_syntax.py`:
+
+```python
+# Add to HIGHLIGHTERS dict
+HIGHLIGHTERS[".js"] = JavaScriptHighlighter
+```
+
+---
+
+## Agent Reasoning Engine (v2.6.0)
+
+Full chain-of-thought reasoning for all agent decisions:
+
+### Architecture
+
+```
+ReasoningStep -> ThoughtChain -> AgentReasoning -> CoherenceTracker -> ReasoningEngine
+```
+
+### Reasoning Types
+
+| Type | Purpose | Example |
+|------|---------|---------|
+| **Observation** | Record what the agent sees | "User wants to build a web API" |
+| **Analysis** | Evaluate options | "Web API needs REST endpoints" |
+| **Hypothesis** | Form educated guesses | "FastAPI would be suitable" |
+| **Decision** | Make a choice | "Selected WEB_API architecture" |
+| **Action** | Execute a step | "Executing task with coder agent" |
+| **Reflection** | Review outcomes | "Task completed successfully" |
+| **Correction** | Fix errors | "Tests failed, retrying with fixes" |
+| **Inference** | Draw conclusions | "Based on keywords, intent is CODE" |
+
+### Confidence Scoring
+
+Every reasoning step includes a confidence score (0.0-1.0):
+- **0.0-0.3**: Low confidence - requires verification
+- **0.3-0.6**: Medium confidence - proceed with caution
+- **0.6-0.8**: High confidence - likely correct
+- **0.8-1.0**: Very high confidence - reliable
+
+### Coherence Tracking
+
+Measures how well agents' reasoning aligns:
+- **Internal coherence**: Logical flow within a single agent's thought chain
+- **Cross-agent coherence**: Agreement between multiple agents
+- **Conflict detection**: Identifies when agents disagree strongly
+- **Consensus building**: Records points of agreement
+
+### Integration Points
+
+- **Orchestrator**: Agent selection, priority assignment, dependency resolution, retry decisions
+- **Engine**: Intent parsing (why each intent was scored), model selection, execution path
+- **Autonomous**: Architecture selection, phase transitions, self-correction rationale
+
+### Accessing Reasoning
+
+Tasks include `reasoning_log` and `reasoning_chain_id`:
+```python
+task = orch.create_task("Write a function", intent="code")
+for step in task.reasoning_log:
+    print(f"[{step['type']}] {step['content']} (confidence: {step['confidence']})")
+```
+
+---
+
 ## Configuration
 
 ```json
@@ -703,7 +794,7 @@ GUI preferences editor (`Ctrl+,`):
 python test_system.py
 ```
 
-### Test Coverage (62 tests)
+### Test Coverage (72 tests)
 
 - Module imports, Config loading, Engine initialization
 - Ollama Bridge, Intent parsing (8 types), Code Executor
@@ -716,6 +807,16 @@ python test_system.py
 - Priority queue, Dependencies, Cancellation
 - Engine orchestrator integration
 - Git panel imports, Widget, Repo detection, Diff viewer
+- Settings dialog imports
+- File watcher integration
+- GUI file watcher methods
+- Female TTS voice selection
+- Syntax highlighter imports and registration
+- Reasoning Engine (singleton, thought chains, coherence)
+- Reasoning + Orchestrator integration
+- Reasoning + Engine integration
+- Reasoning + Autonomous integration
+- Reasoning coherence scoring
 
 ---
 
@@ -729,6 +830,8 @@ crackedcode/
 │   ├── gui_enhancements.py  # UX widgets (toast, palette, welcome)
 │   ├── gui_git_panel.py     # Git sidebar panel
 │   ├── gui_settings.py      # Settings dialog
+│   ├── gui_syntax.py        # Code syntax highlighting
+│   ├── reasoning.py         # Agent Reasoning Engine
 │   ├── atlan_ui.py          # Sci-Fi UI effects
 │   ├── voice_typing.py      # Voice compatibility wrapper
 │   ├── voice_engine.py      # Unified voice engine (STT/TTS/VAD)
@@ -740,7 +843,7 @@ crackedcode/
 │   ├── file_watcher.py      # File monitor
 │   ├── git_integration.py   # Git operations
 │   └── logger_config.py     # Centralized logging
-├── test_system.py           # E2E tests (62 tests)
+├── test_system.py           # E2E tests (72 tests)
 ├── config.json
 └── README.md
 ```
