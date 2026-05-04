@@ -4,7 +4,7 @@
 
 CrackedCode is a 100% local AI coding assistant featuring autonomous application production (OpenClaw-style), multi-agent orchestration, voice I/O, and a sci-fi neural interface.
 
-**Current Version:** 2.6.1
+**Current Version:** 2.6.2
 **Branch:** main
 **License:** MIT
 
@@ -92,6 +92,17 @@ crackedcode/
 - **Engine integration**: Automatic context injection for CODE/DEBUG/REVIEW intents
 - **Autonomous integration**: Existing codebase awareness before generating new code
 - **GUI integration**: Semantic search dialog (Ctrl+Shift+F) with ranked results
+
+### Tool Calling Framework (src/tool_framework.py) (v2.6.2)
+- `@tool` decorator: Auto-register functions with JSON schema from type hints
+- ToolRegistry: Central registry with permission levels (READ/WRITE/EXECUTE/DANGEROUS)
+- ReActLoop: Full reasoning → action → observation cycle with max iterations
+- 16 built-in tools: filesystem, code, shell, git, rag, reasoning, system
+- Safety: Dangerous tools blocked by default, shell command filtering
+- Execution log: All tool calls tracked with timestamps and results
+- **Engine integration**: `process_with_tools()` for debug/review/build/search intents
+- **Orchestrator integration**: AgentWorker auto-enables tools for complex tasks
+- **Autonomous integration**: Producer uses tools for file ops, testing, git
 
 ### GUI (src/gui.py)
 - PyQt6-based with Atlantean theme (#00FF41 on black)
@@ -216,6 +227,24 @@ Key settings in `config.json`:
 4. Use `indexer.search(query, top_k=5)` for semantic search
 5. Use `indexer.get_context_for_prompt(query)` for LLM context injection
 6. Add tests in `test_system.py`
+
+### Adding a New Tool
+1. Define the function in `src/tool_framework.py` (or a new module)
+2. Add `@tool(description="...", permission=ToolPermission.READ, category=ToolCategory.SYSTEM)` decorator
+3. Use type hints for all parameters — schema auto-generated from annotations
+4. Return `Dict[str, Any]` with `{"success": bool, ...}` format
+5. Add examples list for few-shot prompting
+6. Add test in `test_system.py`
+7. Update README.md tool table
+
+### Adding Tools to a New Component
+1. Import tool module with graceful fallback: `try: from src.tool_framework import ... except ImportError: ...`
+2. Use `get_tool_registry()` to access the global registry
+3. Call `registry.execute(tool_name, **params)` to run tools
+4. Use `registry.get_schemas()` for LLM tool calling prompts
+5. Use `ReActLoop(agent_id, max_iterations)` for full reasoning → action → observation cycles
+6. Log tool calls to reasoning engine via `log_observation()` / `log_decision()` tools
+7. Add tests in `test_system.py`
 
 ## Known Issues
 

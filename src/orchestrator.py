@@ -346,11 +346,23 @@ class AgentWorker:
             if task.context:
                 self.engine.session.add_context(task.context)
             
-            response = await self.engine.process(
-                task.prompt,
-                streaming=task.metadata.get("streaming", False),
-                callback=task.metadata.get("callback")
-            )
+            # Use ReAct tool loop for complex tasks
+            use_tools = task.metadata.get("use_tools", False) or task.intent in ("debug", "review", "build", "search")
+            
+            if use_tools and hasattr(self.engine, 'process_with_tools'):
+                task.add_reasoning(
+                    "decision",
+                    f"Using ReAct tool loop for {task.intent} task",
+                    0.85,
+                    ["tool_framework: enabled", f"intent: {task.intent}"]
+                )
+                response = self.engine.process_with_tools(task.prompt, max_iterations=task.metadata.get("max_iterations", 5))
+            else:
+                response = await self.engine.process(
+                    task.prompt,
+                    streaming=task.metadata.get("streaming", False),
+                    callback=task.metadata.get("callback")
+                )
             
             self.tasks_completed += 1
             

@@ -1,7 +1,7 @@
 # CrackedCode White Paper
 ## SOTA Local Multi-Agent Coding Swarm with Agent Reasoning Engine
 
-**Version:** 2.6.1  
+**Version:** 2.6.2  
 **Date:** May 2026  
 **Author:** CrackedCode Team  
 **License:** MIT  
@@ -10,7 +10,7 @@
 
 ## Executive Summary
 
-CrackedCode is a production-grade local AI coding assistant that operates 100% offline using Ollama for large language model inference and local speech recognition/synthesis for voice I/O. Version 2.6.0 introduced the **Agent Reasoning Engine** — a full chain-of-thought reasoning system that makes every agent decision transparent, measurable, and coherent across the swarm. Version 2.6.1 adds **Codebase RAG** — semantic search with local embeddings that gives every agent full awareness of the existing codebase before acting.
+CrackedCode is a production-grade local AI coding assistant that operates 100% offline using Ollama for large language model inference and local speech recognition/synthesis for voice I/O. Version 2.6.0 introduced the **Agent Reasoning Engine** — a full chain-of-thought reasoning system that makes every agent decision transparent, measurable, and coherent across the swarm. Version 2.6.1 added **Codebase RAG** — semantic search with local embeddings that gives every agent full awareness of the existing codebase before acting. Version 2.6.2 introduces the **Tool Calling Framework** — a ReAct-style action system that gives agents a rich, safe action space including file system, git, shell, test runner, and codebase search.
 
 This white paper details the architecture, implementation, and capabilities of CrackedCode v2.6.0.
 
@@ -56,7 +56,7 @@ CrackedCode v2.6.0 addresses all这些问题 by:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                           CrackedCode v2.6.1                                │
+│                           CrackedCode v2.6.2                                │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  ┌─────────────┐     ┌─────────────┐     ┌─────────────────────────────┐  │
 │  │  Voice I/O  │────▶│  Unified    │────▶│   Agent Reasoning Engine    │  │
@@ -74,6 +74,12 @@ CrackedCode v2.6.0 addresses all这些问题 by:
 │  │ Git Panel   │     │  Codebase RAG   │   │   Ollama Bridge             ││
 │  │ Diff Viewer │     │  Semantic Search│   │  Cache + Stream + Retry     ││
 │  └─────────────┘     └─────────────────┘   └─────────────────────────────┘│
+│                            │                                               │
+│                            ▼                                               │
+│                     ┌──────────────────────────────────┐                   │
+│                     │  Tool Calling Framework          │                   │
+│                     │  @tool → Registry → ReAct Loop   │                   │
+│                     └──────────────────────────────────┘                   │
 │                            │                                               │
 │                            ▼                                               │
 │                     ┌─────────────┐                                        │
@@ -258,7 +264,107 @@ context = indexer.get_context_for_prompt("Add OAuth support")
 
 ---
 
-## 4. Autonomous Application Production
+## 4. Tool Calling Framework (v2.6.2)
+
+### 4.1 Architecture
+
+```
+@tool decorator → ToolRegistry → ReActLoop → AgentWorker
+```
+
+### 4.2 Tool Definition
+
+Tools are Python functions decorated with `@tool()` that auto-generate JSON schemas from type hints and docstrings:
+
+```python
+@tool(description="Read a file", permission=ToolPermission.READ, category=ToolCategory.FILESYSTEM)
+def read_file(path: str, limit_lines: int = 100) -> Dict[str, Any]:
+    ...
+```
+
+Each tool has:
+- **Permission level**: READ, WRITE, EXECUTE, or DANGEROUS (dangerous blocked by default)
+- **Category**: filesystem, code, shell, git, rag, engine, reasoning, system
+- **JSON schema**: Auto-generated from type hints for LLM tool calling
+- **Examples**: Usage examples for few-shot prompting
+
+### 4.3 Built-in Tools
+
+| Tool | Permission | Description |
+|------|-----------|-------------|
+| `read_file` | READ | Read file contents with line limit |
+| `write_file` | WRITE | Write content to file (creates dirs) |
+| `list_directory` | READ | List files and directories |
+| `grep_files` | READ | Search files by regex pattern |
+| `get_signature` | READ | Extract function/class signature from source |
+| `run_tests` | EXECUTE | Run pytest tests |
+| `run_linter` | EXECUTE | Run ruff linter |
+| `run_shell` | DANGEROUS | Execute shell command (safety filtered) |
+| `git_status` | READ | Get git repository status |
+| `git_diff` | READ | Get git diff for file or all changes |
+| `search_codebase` | READ | Semantic search over codebase (RAG) |
+| `get_context` | READ | Get formatted codebase context for LLM |
+| `log_observation` | READ | Log observation to reasoning engine |
+| `log_decision` | READ | Log decision to reasoning engine |
+| `get_tool_stats` | READ | Get tool registry statistics |
+| `list_tools` | READ | List all available tools with schemas |
+
+### 4.4 ReAct Loop
+
+The `ReActLoop` implements the full reasoning → action → observation cycle:
+
+1. **Thought**: Agent reasons about the task and decides what tool to use
+2. **Action**: Selected tool is executed with parameters
+3. **Observation**: Result is converted to human-readable observation
+4. **Reflection**: Observation is fed back to the LLM for next step
+
+```python
+from src.tool_framework import ReActLoop, get_tool_registry
+
+react = ReActLoop(agent_id="coder", max_iterations=10)
+result = react.run(
+    task_description="Find all authentication-related code",
+    llm_callback=lambda prompt: ollama.chat(prompt).text,
+)
+```
+
+### 4.5 Safety Model
+
+- **Permission gating**: DANGEROUS tools require explicit user approval
+- **Shell filtering**: Dangerous commands (rm, del, format, fdisk, mkfs, dd) are blocked
+- **Execution log**: All tool calls are logged with timestamps, results, and errors
+- **Tool disable**: Individual tools can be disabled at runtime
+
+### 4.6 Integration Points
+
+- **Engine**: `process_with_tools()` runs ReAct loop for complex intents (debug, review, build, search)
+- **Orchestrator**: AgentWorker auto-enables `use_tools` for debug/review/build/search intents
+- **Autonomous**: Producer uses tools for file operations, testing, and git during the pipeline
+- **Reasoning**: Every tool call generates an observation logged to the reasoning engine
+
+### 4.7 Usage
+
+```python
+from src.tool_framework import get_tool_registry, ToolPermission
+
+registry = get_tool_registry()
+
+# Execute a tool
+result = registry.execute("read_file", path="src/main.py", limit_lines=50)
+
+# Get tool schemas for LLM prompting
+schemas = registry.get_schemas()
+
+# Enable dangerous tools
+registry.set_permission("run_shell", True)
+
+# Get execution stats
+stats = registry.get_stats()
+```
+
+---
+
+## 5. Autonomous Application Production
 
 ### 3.1 Production Pipeline
 
@@ -307,7 +413,7 @@ Specification → Analyze → Architect → Scaffold → Code → Test → Corre
 
 ---
 
-## 5. Voice I/O
+## 6. Voice I/O
 
 ### 4.1 Speech-to-Text (STT)
 
@@ -363,7 +469,7 @@ engine.speak("CrackedCode is ready")
 
 ---
 
-## 6. Implementation
+## 7. Implementation
 
 ### 5.1 Technology Stack
 
@@ -441,7 +547,7 @@ All agents output valid JSON for reliable parsing:
 
 ---
 
-## 7. Security
+## 8. Security
 
 ### 6.1 Command Whitelist
 
@@ -475,7 +581,7 @@ All operations logged to `logs/crackedcode.log`:
 
 ---
 
-## 8. Performance
+## 9. Performance
 
 ### 7.1 Benchmarks
 
@@ -516,7 +622,7 @@ All operations logged to `logs/crackedcode.log`:
 
 ---
 
-## 9. Usage Scenarios
+## 10. Usage Scenarios
 
 ### 8.1 Voice-First Development
 
@@ -566,7 +672,7 @@ CrackedCode: "Starting autonomous production..."
 
 ---
 
-## 10. Comparison
+## 11. Comparison
 
 ### 9.1 Vs Cloud AI Assistants
 
@@ -594,15 +700,16 @@ CrackedCode: "Starting autonomous production..."
 
 ---
 
-## 11. Future Work
+## 12. Future Work
 
-### 11.1 Planned Features
+### 12.1 Planned Features
 
 - [x] Agent Reasoning Engine with coherence tracking
 - [x] GUI Reasoning Panel with live event stream
 - [x] Persistent reasoning memory
 - [x] LLM meta-reasoning
 - [x] Codebase RAG with semantic search
+- [x] Tool Calling Framework with ReAct loop
 - [x] Git Integration Sidebar
 - [x] File Watcher + Auto-Save
 - [x] Settings Dialog
@@ -614,7 +721,7 @@ CrackedCode: "Starting autonomous production..."
 - [ ] Multi-language support
 - [ ] Video I/O for screen analysis
 
-### 11.2 Model Updates
+### 12.2 Model Updates
 
 - [x] Qwen3 8B optimization
 - [x] faster-whisper integration
@@ -725,7 +832,7 @@ result = voice.listen(duration=5.0)
 
 ---
 
-**Document Version:** 2.6.1  
+**Document Version:** 2.6.2  
 **Last Updated:** May 2026  
 **Author:** CrackedCode Team  
 **License:** MIT

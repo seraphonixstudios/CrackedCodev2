@@ -36,6 +36,19 @@ except ImportError:
     SearchResult = None
     get_codebase_indexer = None
 
+try:
+    from src.tool_framework import (
+        ToolRegistry, ReActLoop, ToolPermission,
+        get_tool_registry
+    )
+    _tools_available = True
+except ImportError:
+    _tools_available = False
+    ToolRegistry = None
+    ReActLoop = None
+    ToolPermission = None
+    get_tool_registry = None
+
 logger = get_logger("CrackedCodeEngine")
 
 
@@ -837,6 +850,66 @@ Output plan in a code block.
             execution_reasoning.append({"type": "correction", "content": f"LLM failed: {response.error}", "confidence": 0.3})
         
         return response
+    
+    def process_with_tools(self, prompt: str, max_iterations: int = 5) -> AgentResponse:
+        """Process a prompt using the ReAct tool-calling framework.
+        
+        The agent reasons step-by-step, choosing tools to gather information
+        and complete the task.
+        
+        Args:
+            prompt: The task description
+            max_iterations: Max ReAct iterations
+            
+        Returns:
+            AgentResponse with final answer
+        """
+        if not _tools_available:
+            return AgentResponse(success=False, text="", error="Tool framework not available")
+        
+        start = time.time()
+        
+        def llm_callback(prompt_text: str) -> str:
+            """Internal LLM callback for ReAct loop."""
+            response = self.ollama.chat(prompt_text, system="You are a coding agent. Use tools to accomplish tasks. Respond ONLY in JSON format.")
+            return response.text if response.success else '{"thought": "LLM failed", "action": "finish", "answer": "Error: LLM unavailable"}'
+        
+        try:
+            react = ReActLoop(agent_id="engine_react", max_iterations=max_iterations)
+            result = react.run(
+                task_description=prompt,
+                llm_callback=llm_callback,
+            )
+            
+            if result.get("success"):
+                answer = result.get("final_answer", "Task completed")
+                tool_calls = result.get("tool_calls", [])
+                
+                text = f"**ReAct Result** ({result['iterations']} iterations, {len(tool_calls)} tool calls)\n\n"
+                text += f"**Answer:**\n{answer}\n\n"
+                
+                if tool_calls:
+                    text += "**Tool Calls:**\n"
+                    for tc in tool_calls:
+                        text += f"- {tc['tool']} → {'success' if tc['success'] else 'failed'}: {tc['observation'][:80]}...\n"
+                
+                return AgentResponse(
+                    success=True,
+                    text=text,
+                    execution_time=time.time() - start,
+                    processing_path="react_tool_loop",
+                )
+            else:
+                return AgentResponse(
+                    success=False,
+                    text="",
+                    error=result.get("error", "ReAct loop failed"),
+                    execution_time=time.time() - start,
+                    processing_path="react_tool_loop",
+                )
+        except Exception as e:
+            logger.error(f"process_with_tools failed: {e}")
+            return AgentResponse(success=False, text="", error=str(e), processing_path="react_tool_loop")
     
     def _search_files(self, prompt: str) -> AgentResponse:
         """Search for files or content using semantic search (RAG) with keyword fallback."""

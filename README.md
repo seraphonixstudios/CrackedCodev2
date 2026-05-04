@@ -118,6 +118,7 @@ python src/gui.py
 | **Agent Panel** | 6 agents with real-time status |
 | **Task Queue** | Live task tracking with status icons |
 | **Reasoning Panel** | Per-agent thought chains, coherence bar, event stream |
+| **Tool Framework** | ReAct-style tool calling with 16 built-in tools |
 | **Voice Typing** | Click VOICE to record (faster-whisper) |
 | **Code Editor** | Tabbed text editor with syntax highlighting (Python, JSON) |
 | **Terminal** | AI response display with streaming |
@@ -876,6 +877,76 @@ context = indexer.get_context_for_prompt("How do I add a new endpoint?")
 
 ---
 
+## Tool Calling Framework (v2.6.2)
+
+ReAct-style agent action system with 16 built-in tools across 8 categories:
+
+```python
+from src.tool_framework import get_tool_registry, ToolPermission
+
+registry = get_tool_registry()
+
+# Execute a tool
+result = registry.execute("read_file", path="src/main.py", limit_lines=50)
+print(result.observation)  # Human-readable result summary
+
+# Get tool schemas for LLM tool calling
+schemas = registry.get_schemas()
+
+# Enable dangerous tools (requires user approval)
+registry.set_permission("run_shell", True)
+```
+
+### Built-in Tools
+
+| Tool | Category | Permission | Description |
+|------|----------|-----------|-------------|
+| `read_file` | filesystem | READ | Read file contents |
+| `write_file` | filesystem | WRITE | Write content to file |
+| `list_directory` | filesystem | READ | List files and directories |
+| `grep_files` | filesystem | READ | Search files by pattern |
+| `get_signature` | code | READ | Extract function/class signature |
+| `run_tests` | shell | EXECUTE | Run pytest tests |
+| `run_linter` | shell | EXECUTE | Run ruff linter |
+| `run_shell` | shell | DANGEROUS | Execute shell command (filtered) |
+| `git_status` | git | READ | Get git status |
+| `git_diff` | git | READ | Get git diff |
+| `search_codebase` | rag | READ | Semantic codebase search |
+| `get_context` | rag | READ | Get LLM context from codebase |
+| `log_observation` | reasoning | READ | Log observation to reasoning engine |
+| `log_decision` | reasoning | READ | Log decision to reasoning engine |
+| `get_tool_stats` | system | READ | Registry statistics |
+| `list_tools` | system | READ | List all tools with schemas |
+
+### ReAct Loop
+
+The `ReActLoop` runs the full reasoning → action → observation cycle:
+
+```python
+from src.tool_framework import ReActLoop
+
+react = ReActLoop(agent_id="coder", max_iterations=10)
+result = react.run(
+    task_description="Find all authentication-related code and run tests",
+    llm_callback=lambda prompt: engine.ollama.chat(prompt).text,
+)
+```
+
+### Safety
+
+- **DANGEROUS tools blocked by default** (e.g., `run_shell`)
+- **Shell command filtering** blocks rm, del, format, fdisk, mkfs, dd
+- **Execution log** tracks all tool calls with timestamps
+- **Per-tool permissions** can be toggled at runtime
+
+### Integration
+
+- **Engine**: `process_with_tools()` auto-enabled for debug/review/build/search intents
+- **Orchestrator**: AgentWorker uses ReAct loop for complex tasks
+- **Autonomous**: Producer uses tools for file ops, testing, git during pipeline
+
+---
+
 ## File Structure
 
 ```
@@ -889,6 +960,7 @@ crackedcode/
 │   ├── gui_syntax.py        # Code syntax highlighting (Python, JSON)
 │   ├── reasoning.py         # Agent Reasoning Engine - thought chains, coherence
 │   ├── codebase_rag.py      # Semantic search with local embeddings
+│   ├── tool_framework.py    # Tool Calling Framework - ReAct, 16 built-in tools
 │   ├── engine.py            # CrackedCodeEngine - core logic
 │   ├── orchestrator.py      # UnifiedOrchestrator - task lifecycle, priorities
 │   ├── autonomous.py        # AutonomousAppProducer - OpenClaw-style agent
@@ -914,4 +986,4 @@ MIT
 
 ---
 
-**CrackedCode v2.6.1** - Autonomous AI Coding Agent with Agent Reasoning Engine, Codebase RAG, and SOTA Architecture Production
+**CrackedCode v2.6.2** - Autonomous AI Coding Agent with Agent Reasoning Engine, Codebase RAG, Tool Calling Framework, and SOTA Architecture Production
