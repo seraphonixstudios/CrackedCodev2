@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CRACKEDCODE v2.6.9 - Comprehensive End-to-End Test Suite
+CRACKEDCODE v2.7.0 - Comprehensive End-to-End Test Suite
 Full coverage with real operations, no placeholders
 """
 
@@ -595,11 +595,11 @@ def test_version_info() -> bool:
         PASS(f"Engine version: {status.get('version', 'unknown')}")
         
         version_checks = 0
-        if CrackedCode.VERSION == "2.6.9":
+        if CrackedCode.VERSION == "2.7.0":
             version_checks += 1
-        if MatrixUI.VERSION == "2.6.9":
+        if MatrixUI.VERSION == "2.7.0":
             version_checks += 1
-        if status.get("version") == "2.6.9":
+        if status.get("version") == "2.7.0":
             version_checks += 1
         
         PASS(f"Version consistency: {version_checks}/3")
@@ -709,10 +709,10 @@ def test_cli_integration_e2e() -> bool:
             version = result.stdout.strip()
             PASS(f"CLI import: version {version}")
             
-            if version == "2.6.9":
+            if version == "2.7.0":
                 PASS("CLI version correct")
             else:
-                FAIL("CLI version", f"Expected 2.6.9, got {version}")
+                FAIL("CLI version", f"Expected 2.7.0, got {version}")
                 return False
         else:
             FAIL("CLI import", result.stderr[:50])
@@ -1663,7 +1663,7 @@ def test_voice_hotword_detection() -> bool:
 
 
 def main() -> int:
-    print(f"\n{'='*60}\n  CRACKEDCODE v2.6.9 - E2E TEST SUITE\n{'='*60}\n")
+    print(f"\n{'='*60}\n  CRACKEDCODE v2.7.0 - E2E TEST SUITE\n{'='*60}\n")
     
     tests = [
         ("Modules", test_modules),
@@ -1751,6 +1751,7 @@ def main() -> int:
         ("Browser Automation", test_browser_automation),
         ("A2A Protocol", test_a2a_protocol),
         ("Model Routing", test_model_routing),
+        ("Conversation Manager", test_conversation_manager),
     ]
     
     results: list[tuple[str, bool]] = []
@@ -3272,6 +3273,106 @@ def test_model_routing() -> bool:
         import traceback
         traceback.print_exc()
         return FAIL("Model routing", str(e)[:50])
+
+
+def test_conversation_manager() -> bool:
+    print_header("CONVERSATION MANAGER")
+    try:
+        from src.conversation_manager import (
+            ConversationManager, Conversation, ConversationTurn,
+            get_conversation_manager,
+        )
+        import tempfile
+        import os
+        
+        # Reset singleton
+        import src.conversation_manager as cm_module
+        cm_module._manager_instance = None
+        
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Test creation
+            manager = ConversationManager(db_path=os.path.join(tmpdir, "conv.db"))
+            PASS("ConversationManager created")
+            
+            # Test create conversation
+            conv = manager.create_conversation(name="Test Chat")
+            if conv.name == "Test Chat" and conv.id:
+                PASS("Conversation created with name")
+            else:
+                return FAIL("Conversation creation failed")
+            
+            # Test add turn
+            turn = manager.add_turn(
+                user_message="Hello",
+                assistant_response="Hi there!",
+                intent="chat",
+                model_used="qwen3:8b-gpu",
+            )
+            if turn.user_message == "Hello":
+                PASS("Turn added")
+            else:
+                return FAIL("Turn add failed")
+            
+            # Test list conversations
+            conversations = manager.list_conversations()
+            if len(conversations) == 1:
+                PASS("List conversations works")
+            else:
+                return FAIL("List conversations wrong count")
+            
+            # Test search
+            results = manager.search_conversations("Hello")
+            if len(results) > 0:
+                PASS("Search conversations works")
+            else:
+                return FAIL("Search returned no results")
+            
+            # Test load conversation
+            loaded = manager.load_conversation(conv.id)
+            if loaded and len(loaded.turns) == 1:
+                PASS("Conversation loaded with turns")
+            else:
+                return FAIL("Conversation load failed")
+            
+            # Test export
+            md = manager.export_to_markdown(conv.id)
+            if "# Test Chat" in md and "Hello" in md:
+                PASS("Markdown export works")
+            else:
+                return FAIL("Markdown export failed")
+            
+            # Test stats
+            stats = manager.get_stats()
+            if stats["total_conversations"] == 1 and stats["total_turns"] == 1:
+                PASS("Stats correct")
+            else:
+                return FAIL("Stats incorrect")
+            
+            # Test rename
+            if manager.rename_conversation(conv.id, "Renamed Chat"):
+                PASS("Rename works")
+            else:
+                return FAIL("Rename failed")
+            
+            # Test delete
+            if manager.delete_conversation(conv.id):
+                PASS("Delete works")
+            else:
+                return FAIL("Delete failed")
+            
+            # Test engine integration
+            from src.engine import CrackedCodeEngine
+            engine = CrackedCodeEngine()
+            if hasattr(engine, 'conversation_manager'):
+                PASS("Engine has conversation_manager")
+            else:
+                return FAIL("Engine missing conversation_manager")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Conversation manager", str(e)[:50])
 
 
 if __name__ == "__main__":

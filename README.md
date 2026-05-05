@@ -3,7 +3,7 @@
 Local AI Coding Assistant with Sci-Fi Neural Interface
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.6.9-blue?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Version-2.7.0-blue?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License">
   <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-orange?style=for-the-badge" alt="Platform">
   <img src="https://img.shields.io/badge/Python-3.10%2B-yellow?style=for-the-badge" alt="Python">
@@ -38,18 +38,18 @@ python test_system.py
 
 | Version | Features |
 |---------|----------|
-| 2.6.9 | **Multi-Model Auto-Routing** - Intent-based model selection (qwen3/dolphin/llava) |
-| 2.6.9 | **Security Agent** - 11th agent role with vulnerability scanning, secret audit, permission check |
-| 2.6.9 | **Browser Automation** - Playwright-based web agent with 6 tools |
-| 2.6.9 | **Persistent Long-Term Memory** - Vector store of conversations, decisions, errors, fixes |
-| 2.6.9 | **A2A Protocol** - Google's Agent-to-Agent protocol for multi-agent communication |
-| 2.6.9 | **MCP Integration** - Model Context Protocol for external tool servers |
-| 2.6.9 | **Screen Capture / Vision** - AI-powered screen understanding with llava:13b-gpu |
-| 2.6.9 | **DevOps Agent** - 10th agent role with Docker, deploy, CI tools |
-| 2.6.9 | **Plugin System** - Extensible hooks with hot-reload |
-| 2.6.9 | **Tool Calling Framework** - ReAct loop with 36+ tools |
-| 2.6.9 | **Codebase RAG** - Semantic search with local embeddings |
-| 2.6.9 | **Agent Reasoning Engine** - Thought chains, coherence tracking, LLM meta-reasoning |
+| 2.7.0 | **Multi-Model Auto-Routing** - Intent-based model selection (qwen3/dolphin/llava) |
+| 2.7.0 | **Security Agent** - 11th agent role with vulnerability scanning, secret audit, permission check |
+| 2.7.0 | **Browser Automation** - Playwright-based web agent with 6 tools |
+| 2.7.0 | **Persistent Long-Term Memory** - Vector store of conversations, decisions, errors, fixes |
+| 2.7.0 | **A2A Protocol** - Google's Agent-to-Agent protocol for multi-agent communication |
+| 2.7.0 | **MCP Integration** - Model Context Protocol for external tool servers |
+| 2.7.0 | **Screen Capture / Vision** - AI-powered screen understanding with llava:13b-gpu |
+| 2.7.0 | **DevOps Agent** - 10th agent role with Docker, deploy, CI tools |
+| 2.7.0 | **Plugin System** - Extensible hooks with hot-reload |
+| 2.7.0 | **Tool Calling Framework** - ReAct loop with 36+ tools |
+| 2.7.0 | **Codebase RAG** - Semantic search with local embeddings |
+| 2.7.0 | **Agent Reasoning Engine** - Thought chains, coherence tracking, LLM meta-reasoning |
 | 2.5.0 | UI/UX overhaul, toast notifications, searchable terminal, command palette |
 | 2.4.0 | Streaming responses, response caching, context management |
 | 2.3.9 | Task queue, Agent orchestration |
@@ -57,7 +57,7 @@ python test_system.py
 
 ---
 
-## Desktop GUI (v2.6.9)
+## Desktop GUI (v2.7.0)
 
 ```bash
 python src/gui.py
@@ -100,7 +100,7 @@ python src/gui.py
 
 ---
 
-## Multi-Model Auto-Routing (v2.6.9)
+## Multi-Model Auto-Routing (v2.7.0)
 
 CrackedCode automatically routes each request to the best model based on intent:
 
@@ -132,7 +132,7 @@ Set models in `config.json`:
 
 ---
 
-## Agent Reasoning Engine (v2.6.9)
+## Agent Reasoning Engine (v2.7.0)
 
 Every agent decision is transparent, measurable, and coherent:
 
@@ -150,7 +150,7 @@ Observation -> Analysis -> Decision -> Action -> Reflection
 
 ---
 
-## Codebase RAG (v2.6.9)
+## Codebase RAG (v2.7.0)
 
 Semantic search with local embeddings gives every agent full codebase awareness:
 
@@ -172,7 +172,7 @@ results = indexer.search("authentication middleware", top_k=5)
 
 ---
 
-## Tool Calling Framework (v2.6.9)
+## Tool Calling Framework (v2.7.0)
 
 36+ tools with ReAct-style reasoning:
 
@@ -245,7 +245,7 @@ results = indexer.search("authentication middleware", top_k=5)
 
 ---
 
-## Plugin System (v2.6.9)
+## Plugin System (v2.7.0)
 
 Extensible hooks with hot-reload:
 
@@ -270,7 +270,7 @@ class HelloPlugin:
 
 ---
 
-## DevOps Agent (v2.6.9)
+## DevOps Agent (v2.7.0)
 
 ```
 User: "Deploy the API to production"
@@ -288,7 +288,7 @@ User: "Deploy the API to production"
 
 ---
 
-## Security Agent (v2.6.9)
+## Security Agent (v2.7.0)
 
 ```
 User: "Audit this code for vulnerabilities"
@@ -306,7 +306,7 @@ User: "Audit this code for vulnerabilities"
 
 ---
 
-## Screen Capture / Vision Analysis (v2.6.9)
+## Screen Capture / Vision Analysis (v2.7.0)
 
 AI-powered screen understanding:
 
@@ -322,7 +322,7 @@ User: "What's on my screen?"
 
 ---
 
-## Browser Automation (v2.6.9)
+## Browser Automation (v2.7.0)
 
 ```
 User: "Go to https://example.com and tell me what's wrong"
@@ -344,7 +344,7 @@ agent.close()
 
 ---
 
-## Persistent Long-Term Memory (v2.6.9)
+## Persistent Long-Term Memory (v2.7.0)
 
 CrackedCode remembers everything:
 
@@ -362,7 +362,7 @@ results = memory.recall("threading bug")
 
 ---
 
-## MCP Integration (v2.6.9)
+## MCP Integration (v2.7.0)
 
 Connect to external services via Model Context Protocol:
 
@@ -381,7 +381,7 @@ MCP tools auto-sync into ToolRegistry as `server_name/tool_name`.
 
 ---
 
-## A2A Protocol (v2.6.9)
+## A2A Protocol (v2.7.0)
 
 Agent-to-Agent communication:
 
@@ -535,5 +535,5 @@ MIT License - See LICENSE file for details.
 ---
 
 <p align="center">
-  <strong>CrackedCode v2.6.9</strong> — Neural Coding Interface
+  <strong>CrackedCode v2.7.0</strong> — Neural Coding Interface
 </p>

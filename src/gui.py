@@ -1471,7 +1471,7 @@ class CrackedCodeGUI(QMainWindow):
         self.restore_state()
         self.setup_paste_handler()
         
-        logger.info("CrackedCode GUI v2.6.9 started")
+        logger.info("CrackedCode GUI v2.7.0 started")
 
     def init_orchestrator(self):
         self.orchestrator = AgentOrchestrator(gui_ref=self)
@@ -1636,7 +1636,7 @@ class CrackedCodeGUI(QMainWindow):
             self.config = {"model": "qwen3:8b-gpu", "project_root": "."}
 
     def setup_atlan_theme(self):
-        self.setWindowTitle("CRACKEDCODE v2.6.9 // AUTONOMOUS NEURAL SYSTEM")
+        self.setWindowTitle("CRACKEDCODE v2.7.0 // AUTONOMOUS NEURAL SYSTEM")
         self.setMinimumSize(1400, 900)
         
         self.atlan_font = QFont("Consolas", 11)
@@ -2353,6 +2353,10 @@ class CrackedCodeGUI(QMainWindow):
         self.reasoning_panel = ReasoningPanelWidget(gui_ref=self)
         layout.addWidget(self.reasoning_panel)
         
+        # Conversation history panel
+        self.conversation_panel = self.create_conversation_panel()
+        layout.addWidget(self.conversation_panel)
+        
         # Tool execution log
         if TOOLS_AVAILABLE:
             self.tool_log = ToolLogWidget(gui_ref=self)
@@ -2369,6 +2373,69 @@ class CrackedCodeGUI(QMainWindow):
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, dock)
         
         return dock
+
+    def create_conversation_panel(self):
+        """Create conversation history panel."""
+        group = QGroupBox("CONVERSATIONS")
+        layout = QVBoxLayout(group)
+        layout.setContentsMargins(4, 10, 4, 4)
+        
+        self.conversation_list = QListWidget()
+        self.conversation_list.setToolTip("Conversation history - double-click to resume")
+        self.conversation_list.itemDoubleClicked.connect(self.on_conversation_clicked)
+        layout.addWidget(self.conversation_list)
+        
+        btn_layout = QHBoxLayout()
+        new_btn = QPushButton("NEW")
+        new_btn.setToolTip("Start new conversation")
+        new_btn.clicked.connect(self.new_conversation)
+        refresh_btn = QPushButton("REFRESH")
+        refresh_btn.setToolTip("Refresh conversation list")
+        refresh_btn.clicked.connect(self.refresh_conversations)
+        btn_layout.addWidget(new_btn)
+        btn_layout.addWidget(refresh_btn)
+        layout.addLayout(btn_layout)
+        
+        # Load existing conversations
+        QTimer.singleShot(2000, self.refresh_conversations)
+        
+        return group
+
+    def refresh_conversations(self):
+        """Refresh the conversation list."""
+        if not self.engine or not self.engine.conversation_manager:
+            return
+        
+        self.conversation_list.clear()
+        conversations = self.engine.conversation_manager.list_conversations(limit=20)
+        
+        for conv in conversations:
+            item = QListWidgetItem(f"{conv.name} ({conv.turn_count} turns)")
+            item.setData(Qt.ItemDataRole.UserRole, conv.id)
+            self.conversation_list.addItem(item)
+
+    def new_conversation(self):
+        """Start a new conversation."""
+        if not self.engine or not self.engine.conversation_manager:
+            self.term("[ERROR] Conversation manager not available")
+            return
+        
+        conv = self.engine.conversation_manager.create_conversation()
+        self.term(f"[CONVERSATION] Started: {conv.name}")
+        self.refresh_conversations()
+
+    def on_conversation_clicked(self, item):
+        """Load a conversation when double-clicked."""
+        conv_id = item.data(Qt.ItemDataRole.UserRole)
+        if not conv_id or not self.engine or not self.engine.conversation_manager:
+            return
+        
+        conv = self.engine.conversation_manager.load_conversation(conv_id)
+        if conv:
+            self.term(f"[CONVERSATION] Resumed: {conv.name} ({len(conv.turns)} turns)")
+            for turn in conv.turns:
+                self.term(f"> {turn.user_message}")
+                self.term(f"{turn.assistant_response[:200]}...")
 
     def refresh_file_tree(self):
         if self.project_path:
@@ -3370,7 +3437,7 @@ class CrackedCodeGUI(QMainWindow):
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
 
-        subtitle = QLabel("AUTONOMOUS NEURAL SYSTEM v2.6.9")
+        subtitle = QLabel("AUTONOMOUS NEURAL SYSTEM v2.7.0")
         subtitle.setStyleSheet(f"font-size: 12px; color: {ATLAN_GOLD}; font-family: Consolas;")
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(subtitle)

@@ -566,8 +566,10 @@ Question: {prompt}
         self._codebase_indexer = None
         self._mcp_client = None
         self._long_term_memory = None
+        self._conversation_manager = None
         self._init_mcp()
         self._init_long_term_memory()
+        self._init_conversation_manager()
         self._check()
         logger.info("CrackedCodeEngine initialized")
 
@@ -637,6 +639,24 @@ Question: {prompt}
         """Get the long-term memory instance."""
         return self._long_term_memory
 
+    def _init_conversation_manager(self):
+        """Initialize conversation manager for persistent chat history."""
+        try:
+            from src.conversation_manager import get_conversation_manager
+            self._conversation_manager = get_conversation_manager(
+                db_path=str(Path(self.project_root) / ".crackedcode" / "conversations.db")
+            )
+            stats = self._conversation_manager.get_stats()
+            logger.info(f"Conversation manager initialized: {stats['total_conversations']} conversations")
+        except Exception as e:
+            logger.warning(f"Conversation manager initialization failed: {e}")
+            self._conversation_manager = None
+
+    @property
+    def conversation_manager(self):
+        """Get the conversation manager instance."""
+        return self._conversation_manager
+
     def _check(self):
         status = self.ollama.detect()
         logger.info(f"Ollama: {status['available']}, Models: {status['models']}")
@@ -662,7 +682,7 @@ Question: {prompt}
                 pass
         
         return {
-            "version": "2.6.9",
+            "version": "2.7.0",
             "model": self.model,
             "vision_model": self.vision_model,
             "secondary_model": self.secondary_model,
@@ -1244,6 +1264,19 @@ Question: {prompt}
             execution_reasoning.append({"type": "reflection", "content": f"LLM responded successfully via {response.processing_path}", "confidence": 0.9})
             self.session.add_turn(request, response)
             
+            # Store in conversation manager
+            if self._conversation_manager:
+                try:
+                    self._conversation_manager.add_turn(
+                        user_message=request.text,
+                        assistant_response=response.text,
+                        intent=request.intent.value,
+                        model_used=response.model_used,
+                        execution_time=response.execution_time,
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to store conversation: {e}")
+            
             # Store in long-term memory
             if self._long_term_memory:
                 try:
@@ -1258,6 +1291,19 @@ Question: {prompt}
                     logger.warning(f"Failed to store memory: {e}")
         else:
             execution_reasoning.append({"type": "correction", "content": f"LLM failed: {response.error}", "confidence": 0.3})
+            
+            # Store error in conversation manager
+            if self._conversation_manager:
+                try:
+                    self._conversation_manager.add_turn(
+                        user_message=request.text,
+                        assistant_response=f"[ERROR] {response.error}",
+                        intent=request.intent.value,
+                        model_used=response.model_used or "",
+                        execution_time=response.execution_time,
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to store error conversation: {e}")
             
             # Store error in long-term memory
             if self._long_term_memory:

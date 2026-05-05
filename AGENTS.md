@@ -4,7 +4,7 @@
 
 CrackedCode is a 100% local AI coding assistant featuring autonomous application production (OpenClaw-style), multi-agent orchestration, voice I/O, screen capture/vision analysis, web browser automation, security auditing, persistent long-term memory, MCP integration, A2A protocol support, and a sci-fi neural interface.
 
-**Current Version:** 2.6.9
+**Current Version:** 2.7.0
 **Branch:** main
 **License:** MIT
 **Tests:** 86/86 passing
@@ -332,7 +332,7 @@ Key settings in config.json:
 - Git push sometimes times out (requires retries)
 - Version consistency check: ensure all files are updated together
 - Windows path separators may need special handling in tests
-- PyQt6 QStatusBar.addSeparator() doesn't exist (removed in v2.6.9)
+- PyQt6 QStatusBar.addSeparator() doesn't exist (removed in v2.7.0)
 - QLocalSocket stale sockets need removeServer() before listen
 
 ## Models
