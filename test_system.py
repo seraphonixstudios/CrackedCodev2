@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CRACKEDCODE v2.7.6 - Comprehensive End-to-End Test Suite
+CRACKEDCODE v2.7.7 - Comprehensive End-to-End Test Suite
 Full coverage with real operations, no placeholders
 """
 
@@ -595,11 +595,11 @@ def test_version_info() -> bool:
         PASS(f"Engine version: {status.get('version', 'unknown')}")
         
         version_checks = 0
-        if CrackedCode.VERSION == "2.7.6":
+        if CrackedCode.VERSION == "2.7.7":
             version_checks += 1
-        if MatrixUI.VERSION == "2.7.6":
+        if MatrixUI.VERSION == "2.7.7":
             version_checks += 1
-        if status.get("version") == "2.7.6":
+        if status.get("version") == "2.7.7":
             version_checks += 1
         
         PASS(f"Version consistency: {version_checks}/3")
@@ -709,10 +709,10 @@ def test_cli_integration_e2e() -> bool:
             version = result.stdout.strip()
             PASS(f"CLI import: version {version}")
             
-            if version == "2.7.6":
+            if version == "2.7.7":
                 PASS("CLI version correct")
             else:
-                FAIL("CLI version", f"Expected 2.7.6, got {version}")
+                FAIL("CLI version", f"Expected 2.7.7, got {version}")
                 return False
         else:
             FAIL("CLI import", result.stderr[:50])
@@ -1663,7 +1663,7 @@ def test_voice_hotword_detection() -> bool:
 
 
 def main() -> int:
-    print(f"\n{'='*60}\n  CRACKEDCODE v2.7.6 - E2E TEST SUITE\n{'='*60}\n")
+    print(f"\n{'='*60}\n  CRACKEDCODE v2.7.7 - E2E TEST SUITE\n{'='*60}\n")
     
     tests = [
         ("Modules", test_modules),
@@ -1758,6 +1758,7 @@ def main() -> int:
         ("Code Diff", test_code_diff),
         ("WebSocket API", test_websocket_api),
         ("Notification System", test_notification_system),
+        ("Metrics System", test_metrics_system),
     ]
     
     results: list[tuple[str, bool]] = []
@@ -3912,6 +3913,129 @@ def test_notification_system() -> bool:
         import traceback
         traceback.print_exc()
         return FAIL("Notification system", str(e)[:50])
+
+
+def test_metrics_system() -> bool:
+    print_header("METRICS SYSTEM")
+    try:
+        from src.metrics import MetricsCollector, RequestMetrics, AggregatedMetrics, get_metrics_collector, timed_request
+        import tempfile
+        import os
+        
+        # Test metrics collector creation
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mc = MetricsCollector(data_dir=tmpdir, max_history=100)
+            PASS("MetricsCollector created")
+            
+            # Test record request
+            mc.record_request(
+                intent="code",
+                model="qwen3:8b-gpu",
+                latency_ms=1500.0,
+                success=True,
+                processing_path="standard_chat",
+                token_estimate=42,
+            )
+            PASS("Record request works")
+            
+            # Test snapshot
+            snapshot = mc.get_snapshot()
+            if snapshot.requests_total == 1:
+                PASS("Snapshot has 1 request")
+            else:
+                return FAIL(f"Snapshot has {snapshot.requests_total} requests")
+            
+            # Test model usage
+            if snapshot.model_usage.get("qwen3:8b-gpu") == 1:
+                PASS("Model usage tracked")
+            else:
+                return FAIL("Model usage not tracked")
+            
+            # Test intent distribution
+            if snapshot.intent_distribution.get("code") == 1:
+                PASS("Intent distribution tracked")
+            else:
+                return FAIL("Intent distribution not tracked")
+            
+            # Test latency stats
+            if snapshot.avg_latency_ms == 1500.0 and snapshot.min_latency_ms == 1500.0 and snapshot.max_latency_ms == 1500.0:
+                PASS("Latency stats correct")
+            else:
+                return FAIL(f"Latency stats wrong: avg={snapshot.avg_latency_ms}")
+            
+            # Test tokens generated
+            if snapshot.tokens_generated == 42:
+                PASS("Tokens tracked")
+            else:
+                return FAIL("Tokens not tracked")
+            
+            # Test multiple requests
+            mc.record_request(intent="chat", model="dolphin", latency_ms=500.0, success=True)
+            mc.record_request(intent="code", model="qwen3:8b-gpu", latency_ms=2000.0, success=False)
+            snapshot2 = mc.get_snapshot()
+            if snapshot2.requests_total == 3 and snapshot2.requests_success == 2 and snapshot2.requests_failed == 1:
+                PASS("Multiple requests aggregated")
+            else:
+                return FAIL(f"Aggregation wrong: total={snapshot2.requests_total}")
+            
+            # Test persistence
+            mc._save()
+            metrics_file = os.path.join(tmpdir, "metrics.json")
+            if os.path.exists(metrics_file):
+                PASS("Metrics persisted")
+            else:
+                return FAIL("Metrics not persisted")
+            
+            # Test reload
+            mc2 = MetricsCollector(data_dir=tmpdir, max_history=100)
+            snapshot3 = mc2.get_snapshot()
+            if snapshot3.requests_total == 3:
+                PASS("Metrics reloaded")
+            else:
+                return FAIL(f"Reload wrong: {snapshot3.requests_total}")
+            
+            # Test recent requests
+            recent = mc.get_recent_requests(2)
+            if len(recent) == 2:
+                PASS("Recent requests works")
+            else:
+                return FAIL("Recent requests wrong")
+            
+            # Test reset
+            mc.reset()
+            snapshot4 = mc.get_snapshot()
+            if snapshot4.requests_total == 0:
+                PASS("Reset works")
+            else:
+                return FAIL("Reset failed")
+            
+            # Test timed_request context manager
+            mc3 = MetricsCollector(data_dir=tmpdir, max_history=10)
+            with timed_request(mc3, intent="test", model="test-model") as recorder:
+                recorder.success = True
+                recorder.processing_path = "test_path"
+            
+            snapshot5 = mc3.get_snapshot()
+            if snapshot5.requests_total == 1 and snapshot5.intent_distribution.get("test") == 1:
+                PASS("timed_request context manager works")
+            else:
+                return FAIL("timed_request failed")
+        
+        # Test singleton
+        import src.metrics as metrics_module
+        metrics_module._metrics_collector = None
+        s1 = get_metrics_collector()
+        s2 = get_metrics_collector()
+        if s1 is s2:
+            PASS("Singleton works")
+        else:
+            return FAIL("Singleton failed")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Metrics system", str(e)[:50])
 
 
 if __name__ == "__main__":

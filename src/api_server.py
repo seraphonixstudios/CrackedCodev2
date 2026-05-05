@@ -137,7 +137,7 @@ class CrackedCodeAPI:
         self._app = FastAPI(
             title="CrackedCode API",
             description="REST API for the CrackedCode local AI coding assistant",
-            version="2.7.6",
+            version="2.7.7",
         )
         
         # CORS
@@ -178,7 +178,7 @@ class CrackedCodeAPI:
         async def root():
             return {
                 "name": "CrackedCode API",
-                "version": "2.7.6",
+                "version": "2.7.7",
                 "docs": "/docs",
                 "auth_required": bool(self.api_key),
                 "endpoints": [
@@ -190,6 +190,7 @@ class CrackedCodeAPI:
                     "/tools",
                     "/conversations",
                     "/models",
+                    "/metrics",
                 ],
             }
         
@@ -315,7 +316,7 @@ class CrackedCodeAPI:
         async def status():
             """Get system status."""
             if not self.engine:
-                return StatusResponse(version="2.7.6")
+                return StatusResponse(version="2.7.7")
             
             try:
                 status_data = self.engine.get_status()
@@ -334,7 +335,7 @@ class CrackedCodeAPI:
                     conv_count = self.engine.conversation_manager.get_stats().get('total_conversations', 0)
                 
                 return StatusResponse(
-                    version=status_data.get('version', '2.7.6'),
+                    version=status_data.get('version', '2.7.7'),
                     model=status_data.get('model', ''),
                     vision_model=status_data.get('vision_model', ''),
                     secondary_model=status_data.get('secondary_model', ''),
@@ -456,6 +457,34 @@ class CrackedCodeAPI:
                 }
             except Exception as e:
                 logger.error(f"API models error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.get("/metrics", dependencies=[Depends(self._verify_api_key)])
+        async def metrics(hours: Optional[int] = None):
+            """Get performance metrics and analytics."""
+            try:
+                from src.metrics import get_metrics_collector
+                collector = get_metrics_collector()
+                snapshot = collector.get_snapshot(hours=hours)
+                
+                return {
+                    "requests_total": snapshot.requests_total,
+                    "requests_success": snapshot.requests_success,
+                    "requests_failed": snapshot.requests_failed,
+                    "avg_latency_ms": round(snapshot.avg_latency_ms, 2),
+                    "min_latency_ms": round(snapshot.min_latency_ms, 2),
+                    "max_latency_ms": round(snapshot.max_latency_ms, 2),
+                    "tokens_generated": snapshot.tokens_generated,
+                    "tokens_per_second": round(snapshot.tokens_per_second, 2),
+                    "model_usage": snapshot.model_usage,
+                    "intent_distribution": snapshot.intent_distribution,
+                    "processing_paths": snapshot.processing_paths,
+                    "hourly_requests": snapshot.hourly_requests,
+                    "daily_requests": snapshot.daily_requests,
+                    "uptime_seconds": round(collector.get_uptime_seconds(), 0),
+                }
+            except Exception as e:
+                logger.error(f"API metrics error: {e}")
                 raise HTTPException(status_code=500, detail=str(e))
         
         @self._app.websocket("/ws")
@@ -593,7 +622,7 @@ if __name__ == "__main__":
     api_key = engine.config.get("api_key") if hasattr(engine, 'config') else None
     api = create_api_server(engine=engine, api_key=api_key)
     
-    print(f"Starting CrackedCode API Server v2.7.6")
+    print(f"Starting CrackedCode API Server v2.7.7")
     print(f"URL: {api.url}")
     print(f"Docs: {api.url}/docs")
     if api.api_key:

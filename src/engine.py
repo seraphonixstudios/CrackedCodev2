@@ -567,12 +567,38 @@ Question: {prompt}
         self._mcp_client = None
         self._long_term_memory = None
         self._conversation_manager = None
+        self._metrics = None
         self._init_mcp()
         self._init_long_term_memory()
         self._init_conversation_manager()
+        self._init_metrics()
         self._load_custom_intents()
         self._check()
         logger.info("CrackedCodeEngine initialized")
+    
+    def _init_metrics(self):
+        """Initialize metrics collector."""
+        try:
+            from src.metrics import get_metrics_collector
+            self._metrics = get_metrics_collector()
+            logger.info("Metrics collector initialized")
+        except Exception as e:
+            logger.debug(f"Metrics initialization failed: {e}")
+    
+    def _record_metrics(self, intent: str, model: str, latency_ms: float,
+                        success: bool, processing_path: str = ""):
+        """Record request metrics if collector is available."""
+        if self._metrics:
+            try:
+                self._metrics.record_request(
+                    intent=intent,
+                    model=model,
+                    latency_ms=latency_ms,
+                    success=success,
+                    processing_path=processing_path,
+                )
+            except Exception:
+                pass
 
     @property
     def codebase_indexer(self) -> Optional[CodebaseIndexer]:
@@ -701,7 +727,7 @@ Question: {prompt}
                 pass
         
         return {
-            "version": "2.7.6",
+            "version": "2.7.7",
             "model": self.model,
             "vision_model": self.vision_model,
             "secondary_model": self.secondary_model,
@@ -988,6 +1014,9 @@ Question: {prompt}
         - Model selection
         - Response handling
         """
+        import time
+        start_time = time.time()
+        
         # Plugin pre-process hook
         if _plugins_available:
             execute_hook(HookPoint.ENGINE_PRE_PROCESS, prompt)
@@ -1028,6 +1057,13 @@ Question: {prompt}
             response = self.executor.run_shell(cmd)
             response.reasoning_log = execution_reasoning + request.reasoning_log
             response.processing_path = "execute_shell"
+            self._record_metrics(
+                intent=request.intent.value,
+                model=self.model,
+                latency_ms=(time.time() - start_time) * 1000,
+                success=response.success,
+                processing_path="execute_shell",
+            )
             return response
         
         if request.intent == Intent.SEARCH:
@@ -1035,6 +1071,13 @@ Question: {prompt}
             response = self._search_files(prompt)
             response.reasoning_log = execution_reasoning + request.reasoning_log
             response.processing_path = "file_search"
+            self._record_metrics(
+                intent=request.intent.value,
+                model=self.model,
+                latency_ms=(time.time() - start_time) * 1000,
+                success=response.success,
+                processing_path="file_search",
+            )
             return response
         
         # Vision processing path
@@ -1075,6 +1118,13 @@ Question: {prompt}
                 )
             
             response.reasoning_log = execution_reasoning + request.reasoning_log
+            self._record_metrics(
+                intent=request.intent.value,
+                model=getattr(response, 'model_used', self.vision_model),
+                latency_ms=(time.time() - start_time) * 1000,
+                success=response.success,
+                processing_path="vision_analysis",
+            )
             return response
         
         # Security processing path
@@ -1156,6 +1206,13 @@ Question: {prompt}
                 )
             
             response.reasoning_log = execution_reasoning + request.reasoning_log
+            self._record_metrics(
+                intent=request.intent.value,
+                model=getattr(response, 'model_used', self.model),
+                latency_ms=(time.time() - start_time) * 1000,
+                success=response.success,
+                processing_path="security_analysis",
+            )
             return response
         
         # Browser processing path
@@ -1229,6 +1286,13 @@ Question: {prompt}
                 )
             
             response.reasoning_log = execution_reasoning + request.reasoning_log
+            self._record_metrics(
+                intent=request.intent.value,
+                model=getattr(response, 'model_used', self.model),
+                latency_ms=(time.time() - start_time) * 1000,
+                success=response.success,
+                processing_path="browser_automation",
+            )
             return response
         
         # LLM processing path with codebase context for relevant intents
@@ -1340,6 +1404,16 @@ Question: {prompt}
         # Plugin post-process hook
         if _plugins_available:
             execute_hook(HookPoint.ENGINE_POST_PROCESS, response)
+        
+        # Record metrics
+        latency_ms = (time.time() - start_time) * 1000
+        self._record_metrics(
+            intent=request.intent.value,
+            model=getattr(response, 'model_used', self.model),
+            latency_ms=latency_ms,
+            success=response.success,
+            processing_path=getattr(response, 'processing_path', ''),
+        )
         
         return response
     
