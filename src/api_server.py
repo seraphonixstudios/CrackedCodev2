@@ -1,0 +1,390 @@
+"""REST API Server - Expose CrackedCode capabilities via HTTP.
+
+Endpoints:
+- POST /process      - Process a prompt with the engine
+- GET  /status       - System status and configuration
+- GET  /agents       - List all agents (built-in + custom)
+- GET  /tools        - List available tools with schemas
+- GET  /conversations - List conversation history
+- POST /conversations - Create a new conversation
+- GET  /models       - List available Ollama models
+- GET  /docs         - OpenAPI/Swagger documentation (auto-generated)
+
+Usage:
+    python src/api_server.py
+    
+    curl -X POST http://localhost:8080/process \
+         -H "Content-Type: application/json" \
+         -d '{"prompt": "Write a Python function to add numbers", "intent": "code"}'
+"""
+
+import json
+import threading
+import time
+from dataclasses import dataclass, asdict
+from typing import Any, Dict, List, Optional
+
+from src.logger_config import get_logger
+
+try:
+    from fastapi import FastAPI, HTTPException
+    from fastapi.middleware.cors import CORSMiddleware
+    from pydantic import BaseModel
+    import uvicorn
+    FASTAPI_AVAILABLE = True
+except ImportError:
+    FASTAPI_AVAILABLE = False
+
+logger = get_logger("APIServer")
+
+
+# ── Request/Response Models ────────────────────────────────────────────────
+
+class ProcessRequest(BaseModel):
+    prompt: str
+    intent: Optional[str] = "chat"
+    streaming: Optional[bool] = False
+    context: Optional[Dict[str, Any]] = None
+
+
+class ProcessResponse(BaseModel):
+    success: bool
+    text: str = ""
+    error: str = ""
+    intent: str = ""
+    model_used: str = ""
+    execution_time: float = 0.0
+    processing_path: str = ""
+
+
+class StatusResponse(BaseModel):
+    version: str = ""
+    model: str = ""
+    vision_model: str = ""
+    secondary_model: str = ""
+    ollama_available: bool = False
+    ollama_models: List[str] = []
+    total_tools: int = 0
+    total_agents: int = 0
+    total_conversations: int = 0
+
+
+class AgentInfo(BaseModel):
+    name: str
+    role: str
+    capabilities: List[str] = []
+    description: str = ""
+    enabled: bool = True
+
+
+class ToolInfo(BaseModel):
+    name: str
+    description: str = ""
+    permission: str = ""
+    category: str = ""
+
+
+class ConversationInfo(BaseModel):
+    id: str
+    name: str
+    created_at: float
+    updated_at: float
+    turn_count: int
+    tags: List[str] = []
+
+
+# ── API Server ─────────────────────────────────────────────────────────────
+
+class CrackedCodeAPI:
+    """REST API server for CrackedCode."""
+    
+    def __init__(self, engine=None, host: str = "0.0.0.0", port: int = 8080):
+        self.engine = engine
+        self.host = host
+        self.port = port
+        self._app: Optional[Any] = None
+        self._server_thread: Optional[threading.Thread] = None
+        self._running = False
+        
+        if FASTAPI_AVAILABLE:
+            self._init_fastapi()
+    
+    def _init_fastapi(self):
+        """Initialize FastAPI application."""
+        self._app = FastAPI(
+            title="CrackedCode API",
+            description="REST API for the CrackedCode local AI coding assistant",
+            version="2.7.2",
+        )
+        
+        # CORS
+        self._app.add_middleware(
+            CORSMiddleware,
+            allow_origins=["*"],
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+        
+        self._register_routes()
+    
+    def _register_routes(self):
+        """Register API routes."""
+        
+        @self._app.get("/")
+        async def root():
+            return {
+                "name": "CrackedCode API",
+                "version": "2.7.2",
+                "docs": "/docs",
+                "endpoints": [
+                    "/process",
+                    "/status",
+                    "/agents",
+                    "/tools",
+                    "/conversations",
+                    "/models",
+                ],
+            }
+        
+        @self._app.post("/process", response_model=ProcessResponse)
+        async def process(request: ProcessRequest):
+            """Process a prompt with the CrackedCode engine."""
+            if not self.engine:
+                raise HTTPException(status_code=503, detail="Engine not initialized")
+            
+            try:
+                start = time.time()
+                response = self.engine.process(
+                    prompt=request.prompt,
+                    intent=request.intent,
+                )
+                
+                return ProcessResponse(
+                    success=response.success,
+                    text=response.text,
+                    error=response.error or "",
+                    intent=request.intent,
+                    model_used=getattr(response, 'model_used', ''),
+                    execution_time=time.time() - start,
+                    processing_path=getattr(response, 'processing_path', ''),
+                )
+            except Exception as e:
+                logger.error(f"API process error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.get("/status", response_model=StatusResponse)
+        async def status():
+            """Get system status."""
+            if not self.engine:
+                return StatusResponse(version="2.7.2")
+            
+            try:
+                status_data = self.engine.get_status()
+                
+                # Count tools
+                try:
+                    from src.tool_framework import get_tool_registry
+                    registry = get_tool_registry()
+                    tool_count = len(registry.list_tools())
+                except Exception:
+                    tool_count = 0
+                
+                # Count conversations
+                conv_count = 0
+                if hasattr(self.engine, 'conversation_manager') and self.engine.conversation_manager:
+                    conv_count = self.engine.conversation_manager.get_stats().get('total_conversations', 0)
+                
+                return StatusResponse(
+                    version=status_data.get('version', '2.7.2'),
+                    model=status_data.get('model', ''),
+                    vision_model=status_data.get('vision_model', ''),
+                    secondary_model=status_data.get('secondary_model', ''),
+                    ollama_available=status_data.get('ollama_available', False),
+                    ollama_models=status_data.get('ollama_models', []),
+                    total_tools=tool_count,
+                    total_agents=12,  # Built-in agents
+                    total_conversations=conv_count,
+                )
+            except Exception as e:
+                logger.error(f"API status error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.get("/agents", response_model=List[AgentInfo])
+        async def agents():
+            """List all agents."""
+            agents_list = []
+            
+            # Built-in agents
+            try:
+                from src.orchestrator import AGENT_CAPABILITIES, AgentRole
+                for role in AgentRole:
+                    agents_list.append(AgentInfo(
+                        name=role.value,
+                        role=role.value,
+                        capabilities=AGENT_CAPABILITIES.get(role, []),
+                        description=f"Built-in {role.value} agent",
+                        enabled=True,
+                    ))
+            except Exception as e:
+                logger.warning(f"Failed to list built-in agents: {e}")
+            
+            # Custom agents
+            try:
+                from src.custom_agents import get_custom_agent_registry
+                registry = get_custom_agent_registry()
+                for custom in registry.list_enabled():
+                    agents_list.append(AgentInfo(
+                        name=custom.name,
+                        role=custom.role,
+                        capabilities=custom.capabilities,
+                        description=custom.description,
+                        enabled=custom.enabled,
+                    ))
+            except Exception as e:
+                logger.warning(f"Failed to list custom agents: {e}")
+            
+            return agents_list
+        
+        @self._app.get("/tools", response_model=List[ToolInfo])
+        async def tools():
+            """List available tools."""
+            tools_list = []
+            
+            try:
+                from src.tool_framework import get_tool_registry
+                registry = get_tool_registry()
+                for tool in registry.list_tools():
+                    tools_list.append(ToolInfo(
+                        name=tool.name,
+                        description=tool.description,
+                        permission=tool.permission.value,
+                        category=tool.category.value,
+                    ))
+            except Exception as e:
+                logger.warning(f"Failed to list tools: {e}")
+            
+            return tools_list
+        
+        @self._app.get("/conversations", response_model=List[ConversationInfo])
+        async def conversations():
+            """List conversation history."""
+            if not self.engine or not hasattr(self.engine, 'conversation_manager') or not self.engine.conversation_manager:
+                return []
+            
+            try:
+                convs = self.engine.conversation_manager.list_conversations(limit=50)
+                return [
+                    ConversationInfo(
+                        id=c.id,
+                        name=c.name,
+                        created_at=c.created_at,
+                        updated_at=c.updated_at,
+                        turn_count=c.turn_count,
+                        tags=c.tags,
+                    )
+                    for c in convs
+                ]
+            except Exception as e:
+                logger.error(f"API conversations error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.post("/conversations")
+        async def create_conversation(name: Optional[str] = None):
+            """Create a new conversation."""
+            if not self.engine or not hasattr(self.engine, 'conversation_manager') or not self.engine.conversation_manager:
+                raise HTTPException(status_code=503, detail="Conversation manager not available")
+            
+            try:
+                conv = self.engine.conversation_manager.create_conversation(name=name)
+                return {"id": conv.id, "name": conv.name, "created_at": conv.created_at}
+            except Exception as e:
+                logger.error(f"API create conversation error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.get("/models")
+        async def models():
+            """List available Ollama models."""
+            if not self.engine:
+                return {"models": []}
+            
+            try:
+                status = self.engine.get_status()
+                return {
+                    "models": status.get('ollama_models', []),
+                    "selected": status.get('model', ''),
+                    "vision_model": status.get('vision_model', ''),
+                    "secondary_model": status.get('secondary_model', ''),
+                }
+            except Exception as e:
+                logger.error(f"API models error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+    
+    def start(self) -> bool:
+        """Start the API server in a background thread."""
+        if not FASTAPI_AVAILABLE:
+            logger.error("FastAPI not available - cannot start API server")
+            return False
+        
+        if self._running:
+            logger.info("API server already running")
+            return True
+        
+        try:
+            self._server_thread = threading.Thread(
+                target=self._run_server,
+                daemon=True,
+            )
+            self._server_thread.start()
+            self._running = True
+            logger.info(f"API server started on http://{self.host}:{self.port}")
+            logger.info(f"API docs available at http://{self.host}:{self.port}/docs")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to start API server: {e}")
+            return False
+    
+    def _run_server(self):
+        """Run the uvicorn server."""
+        uvicorn.run(self._app, host=self.host, port=self.port, log_level="warning")
+    
+    def stop(self):
+        """Stop the API server."""
+        self._running = False
+        logger.info("API server stopped")
+    
+    @property
+    def is_running(self) -> bool:
+        return self._running
+    
+    @property
+    def url(self) -> str:
+        return f"http://{self.host}:{self.port}"
+
+
+def create_api_server(engine=None, host: str = "0.0.0.0", port: int = 8080) -> CrackedCodeAPI:
+    """Create a CrackedCodeAPI instance."""
+    return CrackedCodeAPI(engine=engine, host=host, port=port)
+
+
+# ── CLI Entry Point ────────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    from src.engine import CrackedCodeEngine
+    
+    engine = CrackedCodeEngine()
+    api = create_api_server(engine=engine)
+    
+    print(f"Starting CrackedCode API Server v2.7.2")
+    print(f"URL: {api.url}")
+    print(f"Docs: {api.url}/docs")
+    print(f"Press Ctrl+C to stop")
+    
+    api.start()
+    
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        api.stop()
+        print("\nAPI server stopped")

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 CrackedCode - Local AI Coding Assistant
-Version: 2.7.1
+Version: 2.7.2
 """
 
 import os
@@ -1903,7 +1903,7 @@ class AgentSwarm:
 
 
 class CrackedCode:
-    VERSION = "2.7.1"
+    VERSION = "2.7.2"
     BANNER = """
 ============================================================
   CRACKEDCODE v{version} - Local AI Coding Assistant
@@ -2135,6 +2135,10 @@ def main():
     code_parser.add_argument("-c", "--config", dest="config", required=False, help="Path to config JSON file")
     code_parser.add_argument("--swarm", action="store_true", help="Execute code generation via swarm coordinator")
     code_parser.add_argument("--validate", action="store_true", help="Validate generated code before returning")
+    
+    api_parser = subparsers.add_parser("api", help="Start REST API server")
+    api_parser.add_argument("--host", default="0.0.0.0", help="API server host (default: 0.0.0.0)")
+    api_parser.add_argument("--port", type=int, default=8080, help="API server port (default: 8080)")
 
     parser.add_argument(
         "-c", "--config",
@@ -2159,6 +2163,30 @@ def main():
 
     args = parser.parse_args()
 
+    # Handle API subcommand
+    if getattr(args, "subcmd", None) == "api":
+        from src.api_server import create_api_server
+        from src.engine import CrackedCodeEngine
+        
+        engine = CrackedCodeEngine()
+        api = create_api_server(engine=engine, host=getattr(args, 'host', '0.0.0.0'), port=getattr(args, 'port', 8080))
+        
+        print(f"Starting CrackedCode API Server v2.7.2")
+        print(f"URL: {api.url}")
+        print(f"Docs: {api.url}/docs")
+        print(f"Press Ctrl+C to stop")
+        
+        api.start()
+        
+        try:
+            import time
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            api.stop()
+            print("\nAPI server stopped")
+        return 0
+    
     # Handle CODE subcommand first
     if getattr(args, "subcmd", None) == "code":
         config = _load_config_from_path(getattr(args, "config", None))

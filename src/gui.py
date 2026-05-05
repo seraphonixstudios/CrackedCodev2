@@ -1471,7 +1471,7 @@ class CrackedCodeGUI(QMainWindow):
         self.restore_state()
         self.setup_paste_handler()
         
-        logger.info("CrackedCode GUI v2.7.1 started")
+        logger.info("CrackedCode GUI v2.7.2 started")
 
     def init_orchestrator(self):
         self.orchestrator = AgentOrchestrator(gui_ref=self)
@@ -1636,7 +1636,7 @@ class CrackedCodeGUI(QMainWindow):
             self.config = {"model": "qwen3:8b-gpu", "project_root": "."}
 
     def setup_atlan_theme(self):
-        self.setWindowTitle("CRACKEDCODE v2.7.1 // AUTONOMOUS NEURAL SYSTEM")
+        self.setWindowTitle("CRACKEDCODE v2.7.2 // AUTONOMOUS NEURAL SYSTEM")
         self.setMinimumSize(1400, 900)
         
         self.atlan_font = QFont("Consolas", 11)
@@ -2207,6 +2207,21 @@ class CrackedCodeGUI(QMainWindow):
         about_action.setToolTip("About CrackedCode")
         about_action.triggered.connect(self.show_about)
         help_menu.addAction(about_action)
+        
+        # API Server menu
+        api_menu = menubar.addMenu("API")
+        
+        start_api_action = QAction("START API SERVER", self)
+        start_api_action.setToolTip("Start REST API server")
+        start_api_action.triggered.connect(self.start_api_server)
+        api_menu.addAction(start_api_action)
+        
+        api_menu.addSeparator()
+        
+        api_docs_action = QAction("OPEN API DOCS", self)
+        api_docs_action.setToolTip("Open API documentation in browser")
+        api_docs_action.triggered.connect(self.open_api_docs)
+        api_menu.addAction(api_docs_action)
         
         # Plugins menu
         if PLUGINS_AVAILABLE:
@@ -3421,6 +3436,40 @@ class CrackedCodeGUI(QMainWindow):
 
     def show_docs(self):
         QDesktopServices.openUrl(QUrl("https://github.com/seraphonixstudios/CrackedCodev2"))
+    
+    def start_api_server(self):
+        """Start the REST API server."""
+        try:
+            from src.api_server import create_api_server
+            
+            if hasattr(self, '_api_server') and self._api_server and self._api_server.is_running:
+                self.term("[API] Server already running")
+                return
+            
+            self._api_server = create_api_server(
+                engine=self.engine if hasattr(self, 'engine') else None,
+                host="0.0.0.0",
+                port=8080,
+            )
+            success = self._api_server.start()
+            
+            if success:
+                self.term(f"[API] Server started at {self._api_server.url}")
+                self.term(f"[API] Docs: {self._api_server.url}/docs")
+            else:
+                self.term("[API] Failed to start server")
+        except Exception as e:
+            self.term(f"[API] Error: {e}")
+    
+    def open_api_docs(self):
+        """Open API documentation in browser."""
+        try:
+            url = "http://localhost:8080/docs"
+            if hasattr(self, '_api_server') and self._api_server and self._api_server.is_running:
+                url = f"{self._api_server.url}/docs"
+            QDesktopServices.openUrl(QUrl(url))
+        except Exception as e:
+            self.term(f"[API] Error opening docs: {e}")
 
     def show_about(self):
         dialog = QDialog(self)
@@ -3437,7 +3486,7 @@ class CrackedCodeGUI(QMainWindow):
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
 
-        subtitle = QLabel("AUTONOMOUS NEURAL SYSTEM v2.7.1")
+        subtitle = QLabel("AUTONOMOUS NEURAL SYSTEM v2.7.2")
         subtitle.setStyleSheet(f"font-size: 12px; color: {ATLAN_GOLD}; font-family: Consolas;")
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(subtitle)

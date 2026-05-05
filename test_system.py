@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CRACKEDCODE v2.7.1 - Comprehensive End-to-End Test Suite
+CRACKEDCODE v2.7.2 - Comprehensive End-to-End Test Suite
 Full coverage with real operations, no placeholders
 """
 
@@ -595,11 +595,11 @@ def test_version_info() -> bool:
         PASS(f"Engine version: {status.get('version', 'unknown')}")
         
         version_checks = 0
-        if CrackedCode.VERSION == "2.7.1":
+        if CrackedCode.VERSION == "2.7.2":
             version_checks += 1
-        if MatrixUI.VERSION == "2.7.1":
+        if MatrixUI.VERSION == "2.7.2":
             version_checks += 1
-        if status.get("version") == "2.7.1":
+        if status.get("version") == "2.7.2":
             version_checks += 1
         
         PASS(f"Version consistency: {version_checks}/3")
@@ -709,10 +709,10 @@ def test_cli_integration_e2e() -> bool:
             version = result.stdout.strip()
             PASS(f"CLI import: version {version}")
             
-            if version == "2.7.1":
+            if version == "2.7.2":
                 PASS("CLI version correct")
             else:
-                FAIL("CLI version", f"Expected 2.7.1, got {version}")
+                FAIL("CLI version", f"Expected 2.7.2, got {version}")
                 return False
         else:
             FAIL("CLI import", result.stderr[:50])
@@ -1663,7 +1663,7 @@ def test_voice_hotword_detection() -> bool:
 
 
 def main() -> int:
-    print(f"\n{'='*60}\n  CRACKEDCODE v2.7.1 - E2E TEST SUITE\n{'='*60}\n")
+    print(f"\n{'='*60}\n  CRACKEDCODE v2.7.2 - E2E TEST SUITE\n{'='*60}\n")
     
     tests = [
         ("Modules", test_modules),
@@ -1753,6 +1753,7 @@ def main() -> int:
         ("Model Routing", test_model_routing),
         ("Conversation Manager", test_conversation_manager),
         ("Custom Agents", test_custom_agents),
+        ("API Server", test_api_server),
     ]
     
     results: list[tuple[str, bool]] = []
@@ -3455,6 +3456,66 @@ def test_custom_agents() -> bool:
         import traceback
         traceback.print_exc()
         return FAIL("Custom agents", str(e)[:50])
+
+
+def test_api_server() -> bool:
+    print_header("API SERVER")
+    try:
+        from src.api_server import CrackedCodeAPI, create_api_server
+        
+        # Test API server creation without engine
+        api = create_api_server()
+        if api is not None:
+            PASS("API server created")
+        else:
+            return FAIL("API server creation failed")
+        
+        # Test properties
+        if api.host == "0.0.0.0" and api.port == 8080:
+            PASS("Default config correct")
+        else:
+            return FAIL("Default config wrong")
+        
+        if api.url == "http://0.0.0.0:8080":
+            PASS("URL property works")
+        else:
+            return FAIL("URL property wrong")
+        
+        # Test FastAPI app initialization
+        if api._app is not None:
+            PASS("FastAPI app initialized")
+        else:
+            return FAIL("FastAPI app not initialized")
+        
+        # Test route registration (check routes exist)
+        routes = [route.path for route in api._app.routes]
+        required_routes = ["/", "/process", "/status", "/agents", "/tools", "/conversations", "/models"]
+        missing = [r for r in required_routes if r not in routes]
+        if not missing:
+            PASS("All routes registered")
+        else:
+            return FAIL(f"Missing routes: {missing}")
+        
+        # Test CORS middleware
+        from fastapi.middleware.cors import CORSMiddleware
+        has_cors = any(
+            (isinstance(m, CORSMiddleware) or (hasattr(m, 'cls') and m.cls is CORSMiddleware))
+            for m in api._app.user_middleware
+        )
+        if has_cors:
+            PASS("CORS middleware enabled")
+        else:
+            return FAIL("CORS middleware missing")
+        
+        return True
+    except ImportError as e:
+        if "fastapi" in str(e).lower():
+            return FAIL("FastAPI not installed")
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("API server", str(e)[:50])
 
 
 if __name__ == "__main__":
