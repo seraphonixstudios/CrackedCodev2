@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CRACKEDCODE v2.6.5 - Comprehensive End-to-End Test Suite
+CRACKEDCODE v2.6.6 - Comprehensive End-to-End Test Suite
 Full coverage with real operations, no placeholders
 """
 
@@ -595,11 +595,11 @@ def test_version_info() -> bool:
         PASS(f"Engine version: {status.get('version', 'unknown')}")
         
         version_checks = 0
-        if CrackedCode.VERSION == "2.6.5":
+        if CrackedCode.VERSION == "2.6.6":
             version_checks += 1
-        if MatrixUI.VERSION == "2.6.5":
+        if MatrixUI.VERSION == "2.6.6":
             version_checks += 1
-        if status.get("version") == "2.6.5":
+        if status.get("version") == "2.6.6":
             version_checks += 1
         
         PASS(f"Version consistency: {version_checks}/3")
@@ -709,10 +709,10 @@ def test_cli_integration_e2e() -> bool:
             version = result.stdout.strip()
             PASS(f"CLI import: version {version}")
             
-            if version == "2.6.5":
+            if version == "2.6.6":
                 PASS("CLI version correct")
             else:
-                FAIL("CLI version", f"Expected 2.6.5, got {version}")
+                FAIL("CLI version", f"Expected 2.6.6, got {version}")
                 return False
         else:
             FAIL("CLI import", result.stderr[:50])
@@ -1663,7 +1663,7 @@ def test_voice_hotword_detection() -> bool:
 
 
 def main() -> int:
-    print(f"\n{'='*60}\n  CRACKEDCODE v2.6.5 - E2E TEST SUITE\n{'='*60}\n")
+    print(f"\n{'='*60}\n  CRACKEDCODE v2.6.6 - E2E TEST SUITE\n{'='*60}\n")
     
     tests = [
         ("Modules", test_modules),
@@ -1744,6 +1744,7 @@ def main() -> int:
         ("Tool + ReAct", test_tool_react),
         ("Plugin System", test_plugin_system),
         ("DevOps Agent", test_devops_agent),
+        ("Screen Capture", test_screen_capture),
     ]
     
     results: list[tuple[str, bool]] = []
@@ -2885,6 +2886,53 @@ def test_devops_agent() -> bool:
         import traceback
         traceback.print_exc()
         return FAIL("DevOps agent", str(e)[:50])
+
+
+def test_screen_capture() -> bool:
+    print_header("SCREEN CAPTURE / VISION")
+    try:
+        from src.screen_capture import ScreenCapture, VisionAnalyzer, CaptureResult
+        from src.engine import Intent
+        
+        PASS("All screen capture classes imported")
+        
+        # Test ScreenCapture creation
+        cap = ScreenCapture()
+        PASS("ScreenCapture created")
+        
+        # Test capture (may fail in headless but should still create result)
+        result = cap.capture_fullscreen()
+        if isinstance(result, CaptureResult):
+            PASS("capture_fullscreen returns CaptureResult")
+        else:
+            return FAIL("capture_fullscreen wrong type")
+        
+        # Test VISION intent exists
+        if hasattr(Intent, 'VISION'):
+            PASS("Intent.VISION exists")
+        else:
+            return FAIL("Intent.VISION missing")
+        
+        # Test vision tools registered
+        from src.tool_framework import get_tool_registry
+        registry = get_tool_registry()
+        
+        vision_tools = ["screen_capture", "analyze_screen", "detect_screen_errors", "ocr_screen"]
+        for tool_name in vision_tools:
+            if registry.get(tool_name):
+                PASS(f"{tool_name} tool registered")
+            else:
+                return FAIL(f"{tool_name} tool missing")
+        
+        # Test VisionAnalyzer creation
+        analyzer = VisionAnalyzer()
+        PASS("VisionAnalyzer created")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Screen capture", str(e)[:50])
 
 
 if __name__ == "__main__":

@@ -915,6 +915,77 @@ def run_ci_pipeline(pipeline_type: str = "local", script: str = None, workflow: 
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# SCREEN CAPTURE / VISION TOOLS
+# ─────────────────────────────────────────────────────────────────────────────
+
+@tool(description="Capture a screenshot of the entire screen", permission=ToolPermission.READ, category=ToolCategory.SYSTEM,
+      examples=["screen_capture(save_path='screenshot.png')"])
+def screen_capture(save_path: str = None) -> Dict[str, Any]:
+    """Capture the entire screen and optionally save it."""
+    try:
+        from src.screen_capture import ScreenCapture
+        cap = ScreenCapture()
+        result = cap.capture_fullscreen()
+        
+        if not result.success:
+            return {"success": False, "error": result.error}
+        
+        saved = None
+        if save_path:
+            saved = cap.save_capture(result, save_path)
+        
+        return {
+            "success": True,
+            "width": result.width,
+            "height": result.height,
+            "format": result.format,
+            "size_bytes": len(result.image_data),
+            "saved_path": saved,
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@tool(description="Capture screen and analyze with vision model", permission=ToolPermission.READ, category=ToolCategory.SYSTEM,
+      examples=["analyze_screen(prompt='What errors do you see?')"])
+def analyze_screen(prompt: str = "Describe what you see on this screen.", save_path: str = None) -> Dict[str, Any]:
+    """Capture screen and analyze with the vision model (llava)."""
+    try:
+        from src.screen_capture import VisionAnalyzer
+        analyzer = VisionAnalyzer()
+        result = analyzer.analyze_screen(prompt=prompt, save_path=save_path)
+        return result
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@tool(description="Detect UI errors and warnings on screen", permission=ToolPermission.READ, category=ToolCategory.SYSTEM,
+      examples=["detect_screen_errors()"])
+def detect_screen_errors() -> Dict[str, Any]:
+    """Capture screen and look for error messages or warnings."""
+    try:
+        from src.screen_capture import VisionAnalyzer
+        analyzer = VisionAnalyzer()
+        result = analyzer.detect_errors()
+        return result
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@tool(description="Extract all text from the screen (OCR)", permission=ToolPermission.READ, category=ToolCategory.SYSTEM,
+      examples=["ocr_screen()"])
+def ocr_screen() -> Dict[str, Any]:
+    """Capture screen and extract all visible text."""
+    try:
+        from src.screen_capture import VisionAnalyzer
+        analyzer = VisionAnalyzer()
+        result = analyzer.ocr_screen()
+        return result
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # ReAct LOOP
 # ─────────────────────────────────────────────────────────────────────────────
 

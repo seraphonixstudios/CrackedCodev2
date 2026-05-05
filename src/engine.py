@@ -73,6 +73,7 @@ class Intent(Enum):
     EXECUTE = "execute"
     BUILD = "build"
     HELP = "help"
+    VISION = "vision"
 
 
 @dataclass
@@ -449,6 +450,16 @@ Task: {prompt}
 
 Output plan in a code block.
 """,
+        Intent.VISION: """Analyze the provided screenshot and answer the user's question.
+
+Be specific about:
+- UI elements (buttons, menus, text fields)
+- Text content and labels
+- Error messages or warnings
+- Layout and visual structure
+
+Question: {prompt}
+""",
     }
     
     DEBUG_KEYWORDS = {
@@ -480,6 +491,11 @@ Output plan in a code block.
         "direct": ["search", "grep", "locate", "where", "query", "scan", "browse", "list", "show"],
         "phrases": ["find file", "find where", "find all", "find the", "search for", "grep for", "where is", "where are", "show me where", "locate the", "look for", "look up"],
         "negative": ["create", "build", "write", "generate", "execute"],
+    }
+    VISION_KEYWORDS = {
+        "direct": ["screen", "screenshot", "capture", "image", "picture", "photo", "visual", "look at", "see", "ocr", "read this"],
+        "phrases": ["what's on my screen", "what is on my screen", "describe the screen", "analyze the screen", "capture screen", "take a screenshot", "what do you see", "read the screen", "extract text from", "detect errors on screen"],
+        "negative": ["code", "write", "build", "create"],
     }
 
     def __init__(self, config: Dict = None):
@@ -529,7 +545,7 @@ Output plan in a code block.
         ollama = self.ollama.detect()
         cache_stats = self.ollama.get_cache_stats()
         return {
-            "version": "2.6.5",
+            "version": "2.6.6",
             "model": self.model,
             "unified_mode": self.unified_mode,
             "plan": self.plan_enabled,
@@ -555,6 +571,7 @@ Output plan in a code block.
             Intent.BUILD: self.BUILD_KEYWORDS,
             Intent.EXECUTE: self.EXECUTE_KEYWORDS,
             Intent.SEARCH: self.SEARCH_KEYWORDS,
+            Intent.VISION: self.VISION_KEYWORDS,
         }
         
         intent_scores = {}
@@ -590,6 +607,7 @@ Output plan in a code block.
         top_intents = [i for i, s in intent_scores.items() if s == max_score]
         
         tiebreaker_priority = [
+            Intent.VISION,
             Intent.DEBUG,
             Intent.EXECUTE,
             Intent.SEARCH,
@@ -827,6 +845,46 @@ Output plan in a code block.
             response = self._search_files(prompt)
             response.reasoning_log = execution_reasoning + request.reasoning_log
             response.processing_path = "file_search"
+            return response
+        
+        # Vision processing path
+        if request.intent == Intent.VISION:
+            execution_reasoning.append({"type": "decision", "content": "Routing to vision analysis handler", "confidence": 0.9})
+            try:
+                from src.screen_capture import VisionAnalyzer
+                analyzer = VisionAnalyzer(engine=self)
+                result = analyzer.analyze_screen(prompt=prompt)
+                
+                if result.get("success"):
+                    text = f"**Screen Analysis** (via {result.get('model', 'vision model')})\n\n"
+                    text += f"Screenshot: {result.get('width', 0)}x{result.get('height', 0)}\n"
+                    if result.get('screenshot_path'):
+                        text += f"Saved: {result['screenshot_path']}\n\n"
+                    text += f"**Analysis:**\n{result.get('analysis', 'No analysis')}\n"
+                    
+                    response = AgentResponse(
+                        success=True,
+                        text=text,
+                        execution_time=0.0,
+                        processing_path="vision_analysis",
+                        model_used=result.get("model", "vision"),
+                    )
+                else:
+                    response = AgentResponse(
+                        success=False,
+                        text="",
+                        error=result.get("error", "Vision analysis failed"),
+                        processing_path="vision_analysis",
+                    )
+            except Exception as e:
+                response = AgentResponse(
+                    success=False,
+                    text="",
+                    error=str(e),
+                    processing_path="vision_analysis",
+                )
+            
+            response.reasoning_log = execution_reasoning + request.reasoning_log
             return response
         
         # LLM processing path with codebase context for relevant intents

@@ -1471,7 +1471,7 @@ class CrackedCodeGUI(QMainWindow):
         self.restore_state()
         self.setup_paste_handler()
         
-        logger.info("CrackedCode GUI v2.6.5 started")
+        logger.info("CrackedCode GUI v2.6.6 started")
 
     def init_orchestrator(self):
         self.orchestrator = AgentOrchestrator(gui_ref=self)
@@ -1636,7 +1636,7 @@ class CrackedCodeGUI(QMainWindow):
             self.config = {"model": "qwen3:8b-gpu", "project_root": "."}
 
     def setup_atlan_theme(self):
-        self.setWindowTitle("CRACKEDCODE v2.6.5 // AUTONOMOUS NEURAL SYSTEM")
+        self.setWindowTitle("CRACKEDCODE v2.6.6 // AUTONOMOUS NEURAL SYSTEM")
         self.setMinimumSize(1400, 900)
         
         self.atlan_font = QFont("Consolas", 11)
@@ -2026,6 +2026,7 @@ class CrackedCodeGUI(QMainWindow):
             QuickActionItem("Copy Output", "", self.copy_output, "Terminal"),
             QuickActionItem("Show Help", "F1", self.show_help, "Help"),
             QuickActionItem("Toggle Fullscreen", "F11", self.toggle_full, "View"),
+            QuickActionItem("Analyze Screen", "Ctrl+Shift+S", self.analyze_screen, "Vision"),
             QuickActionItem("New Project", "", self.new_proj, "Project"),
         ]
         
@@ -2178,6 +2179,14 @@ class CrackedCodeGUI(QMainWindow):
         dev_action.setToolTip("Open dev console (F12)")
         dev_action.triggered.connect(self.toggle_dev_console)
         view_menu.addAction(dev_action)
+        
+        view_menu.addSeparator()
+        
+        vision_action = QAction("ANALYZE SCREEN", self)
+        vision_action.setShortcut(QKeySequence("Ctrl+Shift+S"))
+        vision_action.setToolTip("Capture and analyze screen with vision model (Ctrl+Shift+S)")
+        vision_action.triggered.connect(self.analyze_screen)
+        view_menu.addAction(vision_action)
         
         help_menu = menubar.addMenu("HELP")
         
@@ -2995,7 +3004,25 @@ class CrackedCodeGUI(QMainWindow):
             self.update_dev_console()
             self.dev_console.show()
             self.dev_console.raise_()
-            self.dev_console.activateWindow()
+
+    def analyze_screen(self):
+        """Capture screen and analyze with vision model."""
+        self.term("[VISION] Capturing screen...")
+        
+        try:
+            from src.screen_capture import VisionAnalyzer
+            analyzer = VisionAnalyzer(engine=self.engine)
+            result = analyzer.analyze_screen()
+            
+            if result.get("success"):
+                self.term(f"[VISION] Screenshot: {result.get('width', 0)}x{result.get('height', 0)}")
+                if result.get("screenshot_path"):
+                    self.term(f"[VISION] Saved: {result['screenshot_path']}")
+                self.term(f"[VISION] Analysis:\n{result.get('analysis', 'No analysis')}")
+            else:
+                self.term(f"[VISION ERROR] {result.get('error', 'Unknown error')}")
+        except Exception as e:
+            self.term(f"[VISION ERROR] {e}")
 
     def update_dev_console(self):
         status = self.engine.get_status() if self.engine else {}
@@ -3343,7 +3370,7 @@ class CrackedCodeGUI(QMainWindow):
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
 
-        subtitle = QLabel("AUTONOMOUS NEURAL SYSTEM v2.6.5")
+        subtitle = QLabel("AUTONOMOUS NEURAL SYSTEM v2.6.6")
         subtitle.setStyleSheet(f"font-size: 12px; color: {ATLAN_GOLD}; font-family: Consolas;")
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(subtitle)
