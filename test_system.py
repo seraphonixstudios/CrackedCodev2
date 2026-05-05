@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CRACKEDCODE v2.7.2 - Comprehensive End-to-End Test Suite
+CRACKEDCODE v2.7.3 - Comprehensive End-to-End Test Suite
 Full coverage with real operations, no placeholders
 """
 
@@ -595,11 +595,11 @@ def test_version_info() -> bool:
         PASS(f"Engine version: {status.get('version', 'unknown')}")
         
         version_checks = 0
-        if CrackedCode.VERSION == "2.7.2":
+        if CrackedCode.VERSION == "2.7.3":
             version_checks += 1
-        if MatrixUI.VERSION == "2.7.2":
+        if MatrixUI.VERSION == "2.7.3":
             version_checks += 1
-        if status.get("version") == "2.7.2":
+        if status.get("version") == "2.7.3":
             version_checks += 1
         
         PASS(f"Version consistency: {version_checks}/3")
@@ -709,10 +709,10 @@ def test_cli_integration_e2e() -> bool:
             version = result.stdout.strip()
             PASS(f"CLI import: version {version}")
             
-            if version == "2.7.2":
+            if version == "2.7.3":
                 PASS("CLI version correct")
             else:
-                FAIL("CLI version", f"Expected 2.7.2, got {version}")
+                FAIL("CLI version", f"Expected 2.7.3, got {version}")
                 return False
         else:
             FAIL("CLI import", result.stderr[:50])
@@ -1663,7 +1663,7 @@ def test_voice_hotword_detection() -> bool:
 
 
 def main() -> int:
-    print(f"\n{'='*60}\n  CRACKEDCODE v2.7.2 - E2E TEST SUITE\n{'='*60}\n")
+    print(f"\n{'='*60}\n  CRACKEDCODE v2.7.3 - E2E TEST SUITE\n{'='*60}\n")
     
     tests = [
         ("Modules", test_modules),
@@ -3489,7 +3489,7 @@ def test_api_server() -> bool:
         
         # Test route registration (check routes exist)
         routes = [route.path for route in api._app.routes]
-        required_routes = ["/", "/process", "/status", "/agents", "/tools", "/conversations", "/models"]
+        required_routes = ["/", "/process", "/process/stream", "/status", "/agents", "/tools", "/conversations", "/models"]
         missing = [r for r in required_routes if r not in routes]
         if not missing:
             PASS("All routes registered")
@@ -3506,6 +3506,18 @@ def test_api_server() -> bool:
             PASS("CORS middleware enabled")
         else:
             return FAIL("CORS middleware missing")
+        
+        # Test streaming endpoint exists and returns StreamingResponse
+        from fastapi.responses import StreamingResponse
+        stream_route = None
+        for route in api._app.routes:
+            if getattr(route, 'path', '') == '/process/stream':
+                stream_route = route
+                break
+        if stream_route is not None:
+            PASS("Streaming endpoint registered")
+        else:
+            return FAIL("Streaming endpoint not found")
         
         return True
     except ImportError as e:

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 CrackedCode - Local AI Coding Assistant
-Version: 2.7.2
+Version: 2.7.3
 """
 
 import os
@@ -1903,7 +1903,7 @@ class AgentSwarm:
 
 
 class CrackedCode:
-    VERSION = "2.7.2"
+    VERSION = "2.7.3"
     BANNER = """
 ============================================================
   CRACKEDCODE v{version} - Local AI Coding Assistant
@@ -2171,7 +2171,7 @@ def main():
         engine = CrackedCodeEngine()
         api = create_api_server(engine=engine, host=getattr(args, 'host', '0.0.0.0'), port=getattr(args, 'port', 8080))
         
-        print(f"Starting CrackedCode API Server v2.7.2")
+        print(f"Starting CrackedCode API Server v2.7.3")
         print(f"URL: {api.url}")
         print(f"Docs: {api.url}/docs")
         print(f"Press Ctrl+C to stop")

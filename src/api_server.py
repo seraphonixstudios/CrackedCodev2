@@ -18,17 +18,19 @@ Usage:
          -d '{"prompt": "Write a Python function to add numbers", "intent": "code"}'
 """
 
+import asyncio
 import json
 import threading
 import time
 from dataclasses import dataclass, asdict
-from typing import Any, Dict, List, Optional
+from typing import Any, AsyncGenerator, Dict, List, Optional
 
 from src.logger_config import get_logger
 
 try:
     from fastapi import FastAPI, HTTPException
     from fastapi.middleware.cors import CORSMiddleware
+    from fastapi.responses import StreamingResponse
     from pydantic import BaseModel
     import uvicorn
     FASTAPI_AVAILABLE = True
@@ -55,6 +57,15 @@ class ProcessResponse(BaseModel):
     model_used: str = ""
     execution_time: float = 0.0
     processing_path: str = ""
+
+
+class StreamResponse(BaseModel):
+    token: str = ""
+    done: bool = False
+    full_text: str = ""
+    intent: str = ""
+    model_used: str = ""
+    error: str = ""
 
 
 class StatusResponse(BaseModel):
@@ -114,7 +125,7 @@ class CrackedCodeAPI:
         self._app = FastAPI(
             title="CrackedCode API",
             description="REST API for the CrackedCode local AI coding assistant",
-            version="2.7.2",
+            version="2.7.3",
         )
         
         # CORS
@@ -135,10 +146,11 @@ class CrackedCodeAPI:
         async def root():
             return {
                 "name": "CrackedCode API",
-                "version": "2.7.2",
+                "version": "2.7.3",
                 "docs": "/docs",
                 "endpoints": [
                     "/process",
+                    "/process/stream",
                     "/status",
                     "/agents",
                     "/tools",
@@ -155,7 +167,7 @@ class CrackedCodeAPI:
             
             try:
                 start = time.time()
-                response = self.engine.process(
+                response = await self.engine.process(
                     prompt=request.prompt,
                     intent=request.intent,
                 )
@@ -173,11 +185,103 @@ class CrackedCodeAPI:
                 logger.error(f"API process error: {e}")
                 raise HTTPException(status_code=500, detail=str(e))
         
+        @self._app.post("/process/stream")
+        async def process_stream(request: ProcessRequest):
+            """Process a prompt with streaming (Server-Sent Events)."""
+            if not self.engine:
+                raise HTTPException(status_code=503, detail="Engine not initialized")
+            
+            async def event_generator() -> AsyncGenerator[str, None]:
+                """Async generator that yields SSE events from the engine stream."""
+                queue: asyncio.Queue[Dict[str, Any]] = asyncio.Queue()
+                
+                def token_callback(token: str) -> None:
+                    """Callback called by the engine for each token."""
+                    try:
+                        queue.put_nowait({"type": "token", "token": token})
+                    except Exception:
+                        pass
+                
+                # Run the engine in a background task
+                async def run_engine() -> None:
+                    try:
+                        response = await self.engine.process(
+                            prompt=request.prompt,
+                            intent=request.intent,
+                            streaming=True,
+                            callback=token_callback,
+                        )
+                        queue.put_nowait({
+                            "type": "done",
+                            "success": response.success,
+                            "full_text": response.text,
+                            "model_used": getattr(response, 'model_used', ''),
+                            "processing_path": getattr(response, 'processing_path', ''),
+                            "error": response.error or "",
+                        })
+                    except Exception as e:
+                        logger.error(f"Streaming engine error: {e}")
+                        queue.put_nowait({"type": "error", "error": str(e)})
+                
+                # Start engine in background
+                task = asyncio.create_task(run_engine())
+                
+                try:
+                    while True:
+                        event = await queue.get()
+                        
+                        if event["type"] == "token":
+                            data = json.dumps({
+                                "token": event["token"],
+                                "done": False,
+                            })
+                            yield f"data: {data}\n\n"
+                        
+                        elif event["type"] == "done":
+                            data = json.dumps({
+                                "token": "",
+                                "done": True,
+                                "full_text": event.get("full_text", ""),
+                                "intent": request.intent,
+                                "model_used": event.get("model_used", ""),
+                                "processing_path": event.get("processing_path", ""),
+                                "success": event.get("success", True),
+                            })
+                            yield f"data: {data}\n\n"
+                            break
+                        
+                        elif event["type"] == "error":
+                            data = json.dumps({
+                                "token": "",
+                                "done": True,
+                                "error": event.get("error", "Unknown error"),
+                                "success": False,
+                            })
+                            yield f"data: {data}\n\n"
+                            break
+                finally:
+                    if not task.done():
+                        task.cancel()
+                        try:
+                            await task
+                        except asyncio.CancelledError:
+                            pass
+            
+            return StreamingResponse(
+                event_generator(),
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
+                    "X-Accel-Buffering": "no",
+                },
+            )
+        
         @self._app.get("/status", response_model=StatusResponse)
         async def status():
             """Get system status."""
             if not self.engine:
-                return StatusResponse(version="2.7.2")
+                return StatusResponse(version="2.7.3")
             
             try:
                 status_data = self.engine.get_status()
@@ -196,7 +300,7 @@ class CrackedCodeAPI:
                     conv_count = self.engine.conversation_manager.get_stats().get('total_conversations', 0)
                 
                 return StatusResponse(
-                    version=status_data.get('version', '2.7.2'),
+                    version=status_data.get('version', '2.7.3'),
                     model=status_data.get('model', ''),
                     vision_model=status_data.get('vision_model', ''),
                     secondary_model=status_data.get('secondary_model', ''),
@@ -375,7 +479,7 @@ if __name__ == "__main__":
     engine = CrackedCodeEngine()
     api = create_api_server(engine=engine)
     
-    print(f"Starting CrackedCode API Server v2.7.2")
+    print(f"Starting CrackedCode API Server v2.7.3")
     print(f"URL: {api.url}")
     print(f"Docs: {api.url}/docs")
     print(f"Press Ctrl+C to stop")
