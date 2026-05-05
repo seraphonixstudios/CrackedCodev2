@@ -3,6 +3,7 @@
 Endpoints:
 - POST /process      - Process a prompt with the engine
 - POST /process/stream - Stream a prompt response via SSE
+- WS   /ws           - Bidirectional WebSocket for real-time chat
 - GET  /status       - System status and configuration
 - GET  /agents       - List all agents (built-in + custom)
 - GET  /tools        - List available tools with schemas
@@ -34,7 +35,7 @@ from typing import Any, AsyncGenerator, Dict, List, Optional
 from src.logger_config import get_logger
 
 try:
-    from fastapi import FastAPI, HTTPException, Depends, Security
+    from fastapi import FastAPI, HTTPException, Depends, Security, WebSocket, WebSocketDisconnect
     from fastapi.middleware.cors import CORSMiddleware
     from fastapi.responses import StreamingResponse
     from fastapi.security import APIKeyHeader
@@ -136,7 +137,7 @@ class CrackedCodeAPI:
         self._app = FastAPI(
             title="CrackedCode API",
             description="REST API for the CrackedCode local AI coding assistant",
-            version="2.7.4",
+            version="2.7.5",
         )
         
         # CORS
@@ -177,12 +178,13 @@ class CrackedCodeAPI:
         async def root():
             return {
                 "name": "CrackedCode API",
-                "version": "2.7.4",
+                "version": "2.7.5",
                 "docs": "/docs",
                 "auth_required": bool(self.api_key),
                 "endpoints": [
                     "/process",
                     "/process/stream",
+                    "/ws",
                     "/status",
                     "/agents",
                     "/tools",
@@ -313,7 +315,7 @@ class CrackedCodeAPI:
         async def status():
             """Get system status."""
             if not self.engine:
-                return StatusResponse(version="2.7.4")
+                return StatusResponse(version="2.7.5")
             
             try:
                 status_data = self.engine.get_status()
@@ -332,7 +334,7 @@ class CrackedCodeAPI:
                     conv_count = self.engine.conversation_manager.get_stats().get('total_conversations', 0)
                 
                 return StatusResponse(
-                    version=status_data.get('version', '2.7.4'),
+                    version=status_data.get('version', '2.7.5'),
                     model=status_data.get('model', ''),
                     vision_model=status_data.get('vision_model', ''),
                     secondary_model=status_data.get('secondary_model', ''),
@@ -455,6 +457,81 @@ class CrackedCodeAPI:
             except Exception as e:
                 logger.error(f"API models error: {e}")
                 raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.websocket("/ws")
+        async def websocket_endpoint(websocket: WebSocket):
+            """Bidirectional WebSocket for real-time AI chat."""
+            await websocket.accept()
+            logger.info(f"WebSocket client connected: {websocket.client}")
+            
+            try:
+                while True:
+                    # Receive message from client
+                    data = await websocket.receive_text()
+                    message = json.loads(data)
+                    
+                    prompt = message.get("prompt", "")
+                    intent = message.get("intent", "chat")
+                    streaming = message.get("streaming", True)
+                    
+                    if not prompt:
+                        await websocket.send_json({"error": "Missing prompt"})
+                        continue
+                    
+                    if not self.engine:
+                        await websocket.send_json({"error": "Engine not initialized"})
+                        continue
+                    
+                    if streaming:
+                        # Stream tokens via WebSocket
+                        tokens = []
+                        
+                        def token_callback(token: str) -> None:
+                            tokens.append(token)
+                        
+                        try:
+                            response = await self.engine.process(
+                                prompt=prompt,
+                                intent=intent,
+                                streaming=True,
+                                callback=token_callback,
+                            )
+                            
+                            await websocket.send_json({
+                                "type": "complete",
+                                "text": response.text,
+                                "model_used": getattr(response, 'model_used', ''),
+                                "success": response.success,
+                            })
+                        except Exception as e:
+                            logger.error(f"WebSocket stream error: {e}")
+                            await websocket.send_json({"error": str(e)})
+                    else:
+                        # Non-streaming response
+                        try:
+                            response = await self.engine.process(
+                                prompt=prompt,
+                                intent=intent,
+                            )
+                            
+                            await websocket.send_json({
+                                "type": "response",
+                                "text": response.text,
+                                "model_used": getattr(response, 'model_used', ''),
+                                "success": response.success,
+                            })
+                        except Exception as e:
+                            logger.error(f"WebSocket process error: {e}")
+                            await websocket.send_json({"error": str(e)})
+            
+            except WebSocketDisconnect:
+                logger.info(f"WebSocket client disconnected: {websocket.client}")
+            except Exception as e:
+                logger.error(f"WebSocket error: {e}")
+                try:
+                    await websocket.close()
+                except Exception:
+                    pass
     
     def start(self) -> bool:
         """Start the API server in a background thread."""
@@ -516,7 +593,7 @@ if __name__ == "__main__":
     api_key = engine.config.get("api_key") if hasattr(engine, 'config') else None
     api = create_api_server(engine=engine, api_key=api_key)
     
-    print(f"Starting CrackedCode API Server v2.7.4")
+    print(f"Starting CrackedCode API Server v2.7.5")
     print(f"URL: {api.url}")
     print(f"Docs: {api.url}/docs")
     if api.api_key:

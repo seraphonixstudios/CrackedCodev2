@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CRACKEDCODE v2.7.4 - Comprehensive End-to-End Test Suite
+CRACKEDCODE v2.7.5 - Comprehensive End-to-End Test Suite
 Full coverage with real operations, no placeholders
 """
 
@@ -595,11 +595,11 @@ def test_version_info() -> bool:
         PASS(f"Engine version: {status.get('version', 'unknown')}")
         
         version_checks = 0
-        if CrackedCode.VERSION == "2.7.4":
+        if CrackedCode.VERSION == "2.7.5":
             version_checks += 1
-        if MatrixUI.VERSION == "2.7.4":
+        if MatrixUI.VERSION == "2.7.5":
             version_checks += 1
-        if status.get("version") == "2.7.4":
+        if status.get("version") == "2.7.5":
             version_checks += 1
         
         PASS(f"Version consistency: {version_checks}/3")
@@ -709,10 +709,10 @@ def test_cli_integration_e2e() -> bool:
             version = result.stdout.strip()
             PASS(f"CLI import: version {version}")
             
-            if version == "2.7.4":
+            if version == "2.7.5":
                 PASS("CLI version correct")
             else:
-                FAIL("CLI version", f"Expected 2.7.4, got {version}")
+                FAIL("CLI version", f"Expected 2.7.5, got {version}")
                 return False
         else:
             FAIL("CLI import", result.stderr[:50])
@@ -1663,7 +1663,7 @@ def test_voice_hotword_detection() -> bool:
 
 
 def main() -> int:
-    print(f"\n{'='*60}\n  CRACKEDCODE v2.7.4 - E2E TEST SUITE\n{'='*60}\n")
+    print(f"\n{'='*60}\n  CRACKEDCODE v2.7.5 - E2E TEST SUITE\n{'='*60}\n")
     
     tests = [
         ("Modules", test_modules),
@@ -1754,6 +1754,9 @@ def main() -> int:
         ("Conversation Manager", test_conversation_manager),
         ("Custom Agents", test_custom_agents),
         ("API Server", test_api_server),
+        ("Task Scheduler", test_task_scheduler),
+        ("Code Diff", test_code_diff),
+        ("WebSocket API", test_websocket_api),
     ]
     
     results: list[tuple[str, bool]] = []
@@ -3585,6 +3588,217 @@ def test_api_server() -> bool:
         import traceback
         traceback.print_exc()
         return FAIL("API server", str(e)[:50])
+
+
+def test_task_scheduler() -> bool:
+    print_header("TASK SCHEDULER")
+    try:
+        from src.task_scheduler import TaskScheduler, Schedule, parse_cron, should_run_now
+        import tempfile
+        import os
+        
+        # Test cron parsing
+        cron = parse_cron("0 9 * * 1")
+        if (0 in cron["minute"] and 9 in cron["hour"] and 
+            1 in cron["day"] and 1 in cron["month"] and 1 in cron["dow"]):
+            PASS("Cron parsing works")
+        else:
+            return FAIL("Cron parsing failed")
+        
+        # Test cron with step
+        cron_step = parse_cron("*/5 * * * *")
+        if all(i in cron_step["minute"] for i in [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]):
+            PASS("Cron step parsing works")
+        else:
+            return FAIL("Cron step parsing failed")
+        
+        # Test cron with range
+        cron_range = parse_cron("0 9-17 * * 1-5")
+        if (9 in cron_range["hour"] and 17 in cron_range["hour"] and
+            1 in cron_range["dow"] and 5 in cron_range["dow"]):
+            PASS("Cron range parsing works")
+        else:
+            return FAIL("Cron range parsing failed")
+        
+        # Test should_run_now
+        # We can't reliably test exact time matching, but we can verify structure
+        from datetime import datetime
+        now = datetime.now()
+        cron_now = parse_cron(f"{now.minute} {now.hour} {now.day} {now.month} {now.weekday()}")
+        if should_run_now(cron_now):
+            PASS("Should run now works")
+        else:
+            return FAIL("Should run now failed")
+        
+        # Test scheduler creation
+        with tempfile.TemporaryDirectory() as tmpdir:
+            scheduler = TaskScheduler(schedules_dir=tmpdir, check_interval=1)
+            PASS("TaskScheduler created")
+            
+            # Test add schedule
+            schedule = scheduler.add_schedule(
+                name="test_schedule",
+                cron="0 9 * * *",
+                agent="coder",
+                prompt="Test prompt",
+                description="A test schedule",
+                tags=["test"],
+            )
+            if schedule.name == "test_schedule" and schedule.enabled:
+                PASS("Schedule added")
+            else:
+                return FAIL("Schedule add failed")
+            
+            # Test list schedules
+            schedules = scheduler.list_schedules()
+            if len(schedules) == 1 and schedules[0].name == "test_schedule":
+                PASS("List schedules works")
+            else:
+                return FAIL("List schedules failed")
+            
+            # Test disable/enable
+            scheduler.disable_schedule("test_schedule")
+            if not scheduler.schedules["test_schedule"].enabled:
+                PASS("Disable schedule works")
+            else:
+                return FAIL("Disable failed")
+            
+            scheduler.enable_schedule("test_schedule")
+            if scheduler.schedules["test_schedule"].enabled:
+                PASS("Enable schedule works")
+            else:
+                return FAIL("Enable failed")
+            
+            # Test remove schedule
+            scheduler.remove_schedule("test_schedule")
+            if len(scheduler.list_schedules()) == 0:
+                PASS("Remove schedule works")
+            else:
+                return FAIL("Remove failed")
+            
+            # Test file persistence
+            scheduler.add_schedule(
+                name="persisted",
+                cron="0 0 * * *",
+                agent="security",
+                prompt="Scan",
+            )
+            sched_file = os.path.join(tmpdir, "persisted.json")
+            if os.path.exists(sched_file):
+                PASS("Schedule persisted to disk")
+            else:
+                return FAIL("Schedule not persisted")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Task scheduler", str(e)[:50])
+
+
+def test_code_diff() -> bool:
+    print_header("CODE DIFF / PATCH")
+    try:
+        from src.code_diff import generate_patch, apply_patch, parse_diff
+        
+        # Test patch generation
+        old_text = "def add(a, b):\n    return a + b\n\ndef sub(a, b):\n    return a - b\n"
+        new_text = "def add(a, b):\n    return a + b\n\ndef mul(a, b):\n    return a * b\n\ndef sub(a, b):\n    return a - b\n"
+        
+        patch = generate_patch(old_text, new_text, "a/math.py", "b/math.py")
+        if "--- a/math.py" in patch and "+++ b/math.py" in patch and "@@" in patch:
+            PASS("Patch generated")
+        else:
+            return FAIL("Patch generation failed")
+        
+        if "+def mul(a, b):" in patch and "+    return a * b" in patch:
+            PASS("Patch contains additions")
+        else:
+            return FAIL("Patch missing additions")
+        
+        # Test patch application
+        result = apply_patch(old_text, patch)
+        if result.strip() == new_text.strip():
+            PASS("Patch applied correctly")
+        else:
+            return FAIL("Patch application failed")
+        
+        # Test parse diff
+        diff = parse_diff(patch)
+        if diff and diff.old_file == "a/math.py" and diff.new_file == "b/math.py":
+            PASS("Diff parsed")
+        else:
+            return FAIL("Diff parse failed")
+        
+        if diff and len(diff.hunks) > 0:
+            PASS("Hunks extracted")
+        else:
+            return FAIL("No hunks found")
+        
+        # Test empty diff
+        empty_patch = generate_patch("same", "same")
+        if empty_patch.strip() == "--- a/file.py\n+++ b/file.py":
+            PASS("Empty diff handled")
+        else:
+            return FAIL("Empty diff failed")
+        
+        # Test multiline changes
+        old_multi = "line1\nline2\nline3\nline4\n"
+        new_multi = "line1\nmodified2\nline3\nline4\n"
+        patch_multi = generate_patch(old_multi, new_multi)
+        result_multi = apply_patch(old_multi, patch_multi)
+        if result_multi.strip() == new_multi.strip():
+            PASS("Multiline patch works")
+        else:
+            return FAIL("Multiline patch failed")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Code diff", str(e)[:50])
+
+
+def test_websocket_api() -> bool:
+    print_header("WEBSOCKET API")
+    try:
+        from src.api_server import create_api_server
+        
+        # Create API server
+        api = create_api_server()
+        if api is None or api._app is None:
+            return FAIL("API server not created")
+        
+        # Check WebSocket route exists
+        ws_route = None
+        for route in api._app.routes:
+            if getattr(route, 'path', '') == '/ws':
+                ws_route = route
+                break
+        
+        if ws_route is not None:
+            PASS("WebSocket route registered")
+        else:
+            return FAIL("WebSocket route not found")
+        
+        # Check root endpoint lists /ws
+        from fastapi.testclient import TestClient
+        client = TestClient(api._app)
+        response = client.get("/")
+        if response.status_code == 200:
+            endpoints = response.json().get("endpoints", [])
+            if "/ws" in endpoints:
+                PASS("Root lists WebSocket endpoint")
+            else:
+                return FAIL("Root missing /ws endpoint")
+        else:
+            return FAIL("Root endpoint failed")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("WebSocket API", str(e)[:50])
 
 
 if __name__ == "__main__":
