@@ -10,9 +10,13 @@ Local AI Coding Assistant with Sci-Fi Neural Interface
   <img src="https://img.shields.io/badge/AI-Local%20Ollama-red?style=for-the-badge" alt="AI">
 </p>
 
+<p align="center">
+  <img src="assets/avatar.png" width="200" alt="CrackedCode Raven">
+</p>
+
 ## Overview
 
-CrackedCode is a **100% local AI coding assistant** featuring autonomous application production (OpenClaw-style), agent orchestration, task queue management, voice commands, streaming responses, response caching, and Matrix-style effects. No cloud, no API keys - all running with Ollama.
+CrackedCode is a **100% local AI coding assistant** featuring autonomous application production (OpenClaw-style), multi-agent orchestration, voice I/O, screen capture/vision analysis, web browser automation, security auditing, persistent long-term memory, MCP integration, A2A protocol support, and a sci-fi neural interface. No cloud, no API keys — all running locally with Ollama.
 
 ### Quick Start
 
@@ -34,12 +38,22 @@ python test_system.py
 
 | Version | Features |
 |---------|----------|
-| 2.6.9 | **Codebase RAG** - Semantic search with local embeddings, context-aware code generation, autonomous existing codebase awareness |
-| 2.6.9 | **Agent Reasoning Engine**, GUI Reasoning Panel, persistent reasoning memory, LLM meta-reasoning, autonomous production, unified orchestrator, SOTA voice engine, Git sidebar, file watcher, settings dialog, syntax highlighting, command palette |
-| 2.5.0 | UI/UX overhaul, toast notifications, searchable terminal, command history, tab management, pulse indicators |
-| 2.4.0 | Streaming responses, response caching, context management, retry logic, tabbed editor |
-| 2.3.9 | Task queue, Agent orchestration, Accessibility |
-| 2.3.8 | Code generation pipeline, CLI CODE subcommand, Swarm integration |
+| 2.6.9 | **Multi-Model Auto-Routing** - Intent-based model selection (qwen3/dolphin/llava) |
+| 2.6.9 | **Security Agent** - 11th agent role with vulnerability scanning, secret audit, permission check |
+| 2.6.9 | **Browser Automation** - Playwright-based web agent with 6 tools |
+| 2.6.9 | **Persistent Long-Term Memory** - Vector store of conversations, decisions, errors, fixes |
+| 2.6.9 | **A2A Protocol** - Google's Agent-to-Agent protocol for multi-agent communication |
+| 2.6.9 | **MCP Integration** - Model Context Protocol for external tool servers |
+| 2.6.9 | **Screen Capture / Vision** - AI-powered screen understanding with llava:13b-gpu |
+| 2.6.9 | **DevOps Agent** - 10th agent role with Docker, deploy, CI tools |
+| 2.6.9 | **Plugin System** - Extensible hooks with hot-reload |
+| 2.6.9 | **Tool Calling Framework** - ReAct loop with 36+ tools |
+| 2.6.9 | **Codebase RAG** - Semantic search with local embeddings |
+| 2.6.9 | **Agent Reasoning Engine** - Thought chains, coherence tracking, LLM meta-reasoning |
+| 2.5.0 | UI/UX overhaul, toast notifications, searchable terminal, command palette |
+| 2.4.0 | Streaming responses, response caching, context management |
+| 2.3.9 | Task queue, Agent orchestration |
+| 2.3.8 | Code generation pipeline, CLI CODE subcommand |
 
 ---
 
@@ -51,1121 +65,38 @@ python src/gui.py
 
 ### UI Features
 
-- **Toast Notifications**: Non-intrusive auto-dismissing notifications with fade animation
-- **Command Palette**: `Ctrl+Shift+P` fuzzy-search all actions with keyboard navigation
-- **Welcome Screen**: First-launch feature cards with shortcuts reference
-- **Enhanced Status Bar**: Multi-panel with model, mode, file count, voice status, activity pulse
-- **Searchable Terminal**: `Ctrl+F` to search and highlight terminal output, timestamped entries
-- **Command History**: Up/Down arrow keys to navigate previous commands
-- **Tab Management**: Rename tabs on double-click, modified indicators (*)
-- **File Tree Icons**: Extension-based colored icons for files
+- **Toast Notifications**: Non-intrusive auto-dismissing notifications
+- **Command Palette**: `Ctrl+Shift+P` fuzzy-search all actions
+- **Welcome Screen**: First-launch feature cards with shortcuts
+- **Enhanced Status Bar**: Model, mode, file count, voice status, activity pulse
+- **Searchable Terminal**: `Ctrl+F` to search terminal output
+- **Command History**: Up/Down arrow navigation
+- **Tab Management**: Rename tabs, modified indicators
 - **Matrix Rain Toggle**: `Ctrl+M` for sci-fi effect
-- **Auto-Save**: Automatic save after idle period (configurable)
-- **Refresh File Tree**: One-click refresh of project files
-- **Cache Size Display**: Real-time cache monitoring in status bar
-- **Enhanced Progress Bar**: Gradient animation with smooth transitions
-- **Improved Styling**: Rounded corners, hover states, better contrast
+- **Auto-Save**: Automatic save after idle period
+- **Cache Size Display**: Real-time cache monitoring
 
 ### Dockable Panels
 
-- **Project Files**: Hierarchical project navigation with auto-refresh
-- **Git Panel**: Full git integration (see Git Integration below)
-- **Agent Panel**: Visual status indicators with icons and capabilities
-- **Task Queue**: Real-time task tracking with status icons
-- **Reasoning Panel**: Live agent thought chains, coherence bar, event stream
-- **Tabbed Editor**: Multiple file tabs with close functionality
-- **Menu Bar**: FILE/EDIT/VIEW/HELP with full keyboard shortcuts
-- **Status Bar**: Live clock, task counter, Ollama status, coherence meter, cursor position
-- **Progress Bar**: Visual feedback during task processing
-- **Streaming Responses**: Real-time character-by-character output
-- **Matrix Overlay**: Animated rain effect
-
-### Layout
-
-```
-┌─────────────────────────────────────────────────────────┐
-│ MENU BAR: File | Edit | View | Help                       │
-├─────────┬───────────────────────────────────────────────┤
-│ CONTROL │ TOOLBAR: [PLAN][BUILD] [EXECUTE][VOICE]       │
-│ CENTER  │ [UNIFIED] [STREAM]                            │
-│         ├───────────────────────────────────────────────┤
-│ Project │ CODE EDITOR (Tabbed)                           │
-│ Files   │ [untitled] [file1.py] [file2.py]              │
-│         │                                               │
-│ ─────── │                                               │
-│ AGENTS  │                                               │
-│ S A C E │                                               │
-│ R F     │                                               │
-│         ├───────────────────────────────────────────────┤
-│ ─────── │                                               │
-│ TASK    │ TERMINAL: > Command input...                  │
-│ QUEUE   │        [SEND]                                │
-│ ○ ○ ●   │                                               │
-│         ├───────────────────────────────────────────────┤
-│ REASON  │ STATUS: READY | OLLAMA: ON | C:0.95 | Tasks:3│
-│ C:0.95  │                                               │
-│ 🧠●●●   │                                               │
-│ ─────── │                                               │
-│ Progress│                                               │
-└─────────┴───────────────────────────────────────────────┘
-```
-
-### Features
-
-| Feature | Description |
-|---------|-------------|
-| **Project Files** | Tree view with hierarchical navigation |
-| **Agent Panel** | 6 agents with real-time status |
-| **Task Queue** | Live task tracking with status icons |
-| **Reasoning Panel** | Per-agent thought chains, coherence bar, event stream |
-| **Tool Framework** | ReAct-style tool calling with 16 built-in tools |
-| **Voice Typing** | Click VOICE to record (faster-whisper) |
-| **Code Editor** | Tabbed text editor with syntax highlighting (Python, JSON) |
-| **Terminal** | AI response display with streaming |
-| **Matrix Overlay** | Animated rain effect |
-| **Atlantean Theme** | Green `#00FF41` on black |
-
-### Voice Commands
-
-Natural language commands detected from voice input:
-
-| Command | Keywords | Action |
-|---------|----------|--------|
-| stop | stop, cancel, abort, quit | Stop operation |
-| execute | run, execute, go | Run code |
-| save | save, store | Save file |
-| copy | copy, clipboard | Copy output |
-| clear | clear, wipe | Clear terminal |
-| voice | voice, listen | Toggle voice mode |
+- **Project Files**: Hierarchical navigation with auto-refresh
+- **Git Panel**: Full git integration with diff viewer
+- **Agent Panel**: Visual status with icons and capabilities
+- **Task Queue**: Real-time task tracking
+- **Reasoning Panel**: Live thought chains, coherence bar, event stream
+- **Tabbed Editor**: Multiple file tabs
+- **Menu Bar**: FILE/EDIT/VIEW/HELP with keyboard shortcuts
 
 ### Keyboard Shortcuts
 
 | Shortcut | Action |
 |----------|--------|
-| `Ctrl+N` | New file |
-| `Ctrl+O` | Open project |
-| `Ctrl+T` | New tab |
-| `Ctrl+S` | Save file |
-| `Ctrl+Shift+S` | Save as |
-| `Ctrl+W` | Close tab |
-| `Ctrl+Q` | Quit |
-| `Ctrl+Shift+C` | Copy output |
-| `Ctrl+L` | Clear terminal |
-| `Ctrl+V` | Paste (image or text) |
-| `Ctrl+A` | Autonomous production |
-| `Ctrl+Enter` | Execute code |
-| `Ctrl+Shift+V` | Toggle voice input |
-| `Ctrl+Shift+P` | Command palette |
-| `Ctrl+F` | Find in terminal |
-| `Ctrl+M` | Toggle matrix rain |
-| `Ctrl+,` | Settings |
-| `F1` | Help |
-| `F11` | Toggle fullscreen |
-| `F12` | Dev console |
-| `Escape` | Stop operation |
-| `Up/Down` | Command history |
-| `Ctrl+Tab` | Next tab |
-| `Ctrl+Shift+Tab` | Previous tab |
-
----
-
-## Streaming Responses (v2.4.0)
-
-Enable real-time character-by-character output from the AI:
-
-```python
-# In GUI: Click STREAM button in toolbar
-# In config: "streaming_enabled": true
-
-# Programmatic usage:
-response = await engine.process(prompt, streaming=True, callback=lambda chunk: print(chunk, end=""))
-```
-
-### Benefits
-- Immediate feedback during generation
-- Better user experience for long responses
-- Can cancel mid-stream if needed
-
----
-
-## Response Caching (v2.4.0)
-
-Automatic caching of responses to reduce redundant API calls:
-
-```python
-# Cache is enabled by default
-# Cache key: hash of (model, system_prompt, prompt)
-
-# Clear cache:
-engine.ollama.clear_cache()
-
-# Get cache stats:
-stats = engine.ollama.get_cache_stats()
-# {"size": 15, "context_length": 10, "max_context": 20}
-```
-
-### Benefits
-- Faster response for repeated queries
-- Reduced load on Ollama
-- Automatic cache management
-
----
-
-## Context Management (v2.4.0)
-
-Automatic conversation history tracking:
-
-```python
-# Context is maintained automatically
-# Max context window: 20 turns (configurable)
-
-# Clear context:
-engine.ollama.clear_context()
-
-# Context is sent with each request for coherent conversations
-```
-
----
-
-## Retry Logic (v2.4.0)
-
-Automatic retry on failed requests:
-
-```python
-# Default: 2 retries with exponential backoff
-# Configurable in config.json: "max_retries": 2
-
-# Backoff: 0.5s, 1s, 1.5s between retries
-```
-
----
-
-## Agent Orchestration
-
-Tasks are automatically delegated to specialized agents based on intent:
-
-```python
-from src.gui import AgentOrchestrator, AgentTask, TaskStatus
-
-orchestrator = AgentOrchestrator()
-
-# Delegate based on intent
-agent, task = orchestrator.delegate(Intent.CODE, "write a function")
-print(f"Delegated to {agent} for task {task.task_id}")
-
-# Check queue status
-status = orchestrator.get_queue_status()
-print(f"Pending: {status['pending']}, Running: {status['running']}")
-
-# Complete when done
-orchestrator.complete_task(task.task_id, "generated code here")
-```
-
-### Agent Types
-
-| Agent | Role | Capabilities |
-|-------|------|--------------|
-| Supervisor | Coordinates | Delegate, manage, all |
-| Architect | Design | Planning, architecture, blueprint |
-| Coder | Implementation | Code, write, modify, create |
-| Executor | Execution | Run, execute, test, deploy |
-| Reviewer | Analysis | Review, debug, optimize, fix |
-| Searcher | Discovery | Search, find, grep, analyze |
-| Tester | Quality Assurance | Test, validate, verify |
-| Debugger | Bug Fixing | Debug, trace, patch |
-| Documenter | Documentation | Document, explain, annotate |
-
-### Task States
-
-- `○` Pending
-- `◐` Running  
-- `●` Completed
-- `✕` Failed
-- `⊘` Cancelled
-
----
-
-## Code Generation Pipeline
-
-```bash
-# CLI code generation
-python src/main.py code -p "write a hello world function"
-
-# Save to file
-python src/main.py code -p "create hello.py" -o hello.py
-
-# With validation
-python src/main.py code -p "write function" --validate
-
-# With Swarm
-python src/main.py code -p "write parser" --swarm
-```
-
-### API
-
-```python
-from src.engine import CrackedCodeEngine
-
-engine = CrackedCodeEngine()
-
-# Generate code
-response = engine.generate_code("write a function to add numbers")
-
-# Generate and save
-response = engine.generate_and_save("create hello.py", "hello.py")
-
-# Validate
-result = engine.validate_code("def foo(): return 1")
-
-# Execute
-result = engine.execute_generated_code("print('Hello!')")
-```
-
----
-
-## Autonomous Application Production (v2.6.9)
-
-OpenClaw-style autonomous agent that takes a high-level specification and autonomously designs, codes, tests, and delivers complete applications.
-
-### Production Pipeline
-
-```
-Specification → Analysis → Architecture → Scaffold → Code → Tests → Self-Correction → Delivery
-```
-
-| Phase | Description |
-|-------|-------------|
-| **1. Analyze** | Extract requirements, identify features and constraints |
-| **2. Architect** | Design system architecture with component diagrams |
-| **3. Scaffold** | Create project file structure from templates |
-| **4. Code** | Generate production-ready code for all files |
-| **5. Test** | Run tests and validate functionality |
-| **6. Correct** | Self-correct test failures autonomously (up to 3 iterations) |
-| **7. Deliver** | Generate documentation and finalize project |
-
-### Usage
-
-```python
-from src.engine import CrackedCodeEngine
-
-engine = CrackedCodeEngine()
-
-# Autonomous production
-result = engine.autonomous_produce(
-    spec="Build a todo list app with web API and SQLite storage",
-    project_name="todo_app",
-    architecture="clean",
-    output_dir="./projects/todo_app"
-)
-
-print(f"Files: {result.files_created}")
-print(f"Tests: {result.tests_passed} passed, {result.tests_failed} failed")
-print(f"Duration: {result.duration:.1f}s")
-```
-
-### Architecture Templates
-
-| Pattern | Use Case | Structure |
-|---------|----------|-----------|
-| **MVC** | GUI applications | Models, Views, Controllers |
-| **Clean** | Enterprise apps | Domain, Adapters, Infrastructure (Hexagonal) |
-| **Layered** | Traditional apps | Presentation, Service, Repository, Domain |
-| **CLI** | Command-line tools | Commands, Core, Utils |
-| **Web API** | RESTful services | API, Controllers, Models, Services |
-| **Desktop GUI** | PyQt6 applications | UI, Models, Controllers, Resources |
-| **Microservices** | Distributed systems | Gateway, Services, Shared |
-
-### Persistent Workspace
-
-The autonomous agent maintains persistent memory across sessions (OpenClaw style):
-
-```
-.autonomous/
-├── IDENTITY.md          # Agent identity and capabilities
-├── MEMORY.md            # Cross-session memory and lessons learned
-├── PROJECT.md           # Current project context
-├── TASKS.md             # Task queue and history
-├── STANDING_INSTRUCTIONS.md  # Code standards and preferences
-├── REASONING.md         # Chain-of-thought archive and coherence history
-├── REQUIREMENTS.md      # Analyzed requirements
-└── ARCHITECTURE.md      # Architecture design decisions
-```
-
-### Skill System
-
-Composable skills that the autonomous agent can use:
-
-| Skill | Description | Tools |
-|-------|-------------|-------|
-| **code-generator** | Production-ready code generation | write_file, read_file, execute_shell |
-| **architect** | System architecture design | write_file, read_file |
-| **tester** | Comprehensive test creation | write_file, execute_shell, read_file |
-| **debugger** | Autonomous bug fixing | read_file, write_file, execute_shell |
-| **documenter** | Documentation generation | write_file, read_file |
-| **refactorer** | Code quality improvement | read_file, write_file, execute_shell |
-
-### GUI Usage
-
-1. Click **AUTONOMOUS** button in toolbar or press **Ctrl+A**
-2. Enter specification in natural language
-3. Select architecture pattern
-4. Click **PRODUCE**
-5. Monitor real-time progress
-
-## Intent Detection
-
-The engine automatically detects user intent:
-
-| Intent | Keywords | Agent |
-|--------|----------|-------|
-| CODE | write, create, generate | Coder |
-| DEBUG | fix, bug, error | Reviewer |
-| REVIEW | review, analyze | Reviewer |
-| BUILD | build, plan, design | Architect |
-| EXECUTE | run, execute | Executor |
-| SEARCH | search, find, grep | Searcher |
-| HELP | help, assist | Supervisor |
-| CHAT | other | Coder |
-
----
-
-## Image Paste & Drop
-
-- **Paste images**: `Ctrl+V` in editor
-- **Drop images**: Drag & drop PNG/JPG/GIF/BMP
-- Images processed through vision model (llava)
-
----
-
-## Parallel Processor
-
-```python
-from src.parallel_processor import (
-    ParallelExecutor, PipelineProcessor, UnifiedCoordinator,
-    ExecutionMode, create_task, batch_create_tasks
-)
-
-# Parallel execution
-executor = ParallelExecutor(max_workers=4, mode=ExecutionMode.PARALLEL)
-executor.start()
-task_ids = executor.submit_batch(tasks)
-results = executor.wait_for(task_ids)
-executor.stop()
-
-# Pipeline processing
-pipeline = PipelineProcessor()
-pipeline.add_stage("stage1", lambda x: x * 2)
-pipeline.add_stage("stage2", lambda x: x + 1)
-result = pipeline.execute(5)  # 11
-
-# Unified resolution
-coordinator = UnifiedCoordinator(max_workers=3)
-coordinator.start()
-task_id = coordinator.submit_resolution_task("test", [func1, func2, func3])
-resolution = coordinator.resolve(task_id)
-```
-
----
-
-## Unified Voice Engine (v2.6.9)
-
-SOTA Speech-to-Text and Text-to-Speech with multi-backend fallback.
-
-```python
-from src.voice_engine import UnifiedVoiceEngine, VoiceConfig
-
-engine = UnifiedVoiceEngine(VoiceConfig(
-    stt_model_size="base",
-    tts_backend="pyttsx3",
-    tts_rate=175
-))
-engine.initialize()
-
-# Listen and transcribe
-result = engine.listen(duration=5.0)
-print(result.text)
-
-# Speak with automatic backend fallback
-engine.speak("Hello from CrackedCode")
-
-# Voice commands with fuzzy matching
-cmd = engine.processor.parse("write a function in app.py")
-print(cmd.command_type.value)  # "write"
-print(cmd.params)  # {"filename": "app.py", "type": "function"}
-```
-
-### Backends (Priority Order)
-
-| Backend | Type | Quality | Requires |
-|---------|------|---------|----------|
-| pyttsx3 | Local | Good | Windows SAPI5 / nsss / espeak |
-| edge-tts | Online | Excellent | Internet (free Azure Edge) |
-| fallback | Console | Basic | Nothing |
-
-### Voice Commands
-
-| Command | Example | Action |
-|---------|---------|--------|
-| write | "write a python function" | Write code |
-| execute | "run the code" | Execute |
-| debug | "fix the bug" | Debug |
-| save | "save this file" | Save |
-| search | "search for todo" | Search |
-| open | "open app.py" | Open file |
-| clear | "clear terminal" | Clear |
-| stop | "stop everything" | Stop |
-| plan | "plan the architecture" | Plan mode |
-| build | "build the project" | Build mode |
-
----
-
-## Git Integration (v2.6.9)
-
-Full Git sidebar panel in the GUI:
-
-- **Branch Status**: Current branch with ahead/behind indicators
-- **File Tree**: Color-coded by status (staged/modified/untracked/conflicts)
-- **Diff Viewer**: Double-click any file to view syntax-highlighted diff
-- **Context Menu**: Right-click to stage/unstage/view diff
-- **AI Commit Messages**: Generate commit messages from staged changes
-- **Quick Actions**: Pull, Push, Refresh buttons
-- **Auto-Refresh**: Updates every 3 seconds
-
----
-
-## File Watcher + Auto-Save (v2.6.9)
-
-Automatic file monitoring and saving:
-
-- **External Change Detection**: Detects when files change outside the IDE
-- **Auto-Save**: Saves editor content after configurable idle period (default 3s)
-- **Conflict Detection**: Warns when externally modified files are open
-- **Auto-Refresh**: File tree updates when files are created/deleted
-
----
-
-## Unified Orchestrator (v2.6.9)
-
-Production-grade task orchestration replacing 4 disconnected systems:
-
-```python
-from src.orchestrator import UnifiedOrchestrator, TaskPriority
-
-orch = UnifiedOrchestrator(engine=my_engine, max_workers=4)
-
-# Create prioritized task
-task = orch.create_task(
-    prompt="write a function",
-    intent="code",
-    priority=TaskPriority.HIGH
-)
-
-# Submit for execution
-orch.submit(task)
-
-# Check status
-status = orch.get_queue_status()
-print(f"Queued: {status['queued']}, Running: {status['running']}")
-```
-
-### Task Lifecycle
-
-```
-PENDING → QUEUED → RUNNING → VERIFYING → COMPLETED
-                              ↓
-                           FAILED → RETRYING (with backoff)
-                              ↓
-                           CANCELLED
-```
-
-### Features
-
-- **Priority Queue**: LOW, NORMAL, HIGH, CRITICAL
-- **Dependency Resolution**: Tasks wait for dependencies to complete
-- **Agent Pool**: 9 roles with capability matching
-- **Retry Logic**: Configurable with exponential backoff
-- **Sub-Task Delegation**: Parent/child relationships
-- **Blackboard**: Shared state for agent collaboration
-- **Pipeline Builder**: Multi-step dependent workflows
-- **Task Cancellation**: Anytime with status tracking
-- **Timeouts**: Per-task configurable
-
----
-
-## Unified Intelligence Mode
-
-Combine all 3 Ollama models into a single brain:
-
-| Mode | Description |
-|------|-------------|
-| **UNIFIED** | Combines all models for comprehensive responses |
-| **SINGLE** | Uses specialized models for specific tasks |
-
-### Model Roles
-
-| Model | Role | Strength |
-|-------|------|----------|
-| qwen3:8b-gpu | General/Code | Reasoning, coding, planning |
-| dolphin-llama3:8b-gpu | Creative | Conversation, writing |
-| llava:13b-gpu | Vision | Image analysis, OCR |
-
----
-
-## Logging
-
-Structured logging with colored console output, rotating file handlers, and optional JSON format.
-
-```python
-from src.logger_config import get_logger, setup_logging
-
-# Get a logger with centralized configuration
-logger = get_logger("MyModule")
-logger.info("Application started")
-logger.debug("Debug info: %s", data)
-
-# Custom configuration
-setup_logging({
-    "log_level": "DEBUG",
-    "log_dir": "logs",
-    "use_colored_logs": True,
-    "use_json_logs": False,
-    "console_logging": True,
-})
-```
-
-### Log Files
-
-| File | Description |
-|------|-------------|
-| `logs/crackedcode.log` | All log levels with rotation (5MB × 5 files) |
-| `logs/crackedcode_errors.log` | Errors only with rotation |
-
-### Features
-
-- **Colored console output**: ANSI color codes per log level
-- **Rotating file handlers**: Automatic rotation at 5MB, keeps 5 backups
-- **Structured JSON**: Optional JSON format for log aggregation
-- **Runtime level changes**: Adjust log level without restart
-- **Separate error log**: Errors automatically written to dedicated file
-
-### Configuration
-
-```json
-{
-  "logging": {
-    "log_level": "INFO",
-    "log_dir": "logs",
-    "max_log_bytes": 5000000,
-    "log_backup_count": 5,
-    "use_colored_logs": true,
-    "use_json_logs": false,
-    "console_logging": true
-  }
-}
-```
-
----
-
-## Settings Dialog (v2.6.9)
-
-GUI preferences editor (`Ctrl+,`):
-
-- **General**: Model selection with Ollama discovery, behavior toggles, context limits
-- **Voice**: TTS backend, voice, rate slider, STT model, hotword
-- **Appearance**: Theme selection, font size, auto-save, line numbers
-- **Autonomous**: Workspace path, max corrections, debate rounds
-- **Shortcuts**: Full keyboard shortcut reference
-
----
-
-## Code Syntax Highlighting (v2.6.9)
-
-Automatic syntax highlighting in the code editor:
-
-### Supported Languages
-
-| Language | Extensions | Highlighted Elements |
-|----------|-----------|---------------------|
-| **Python** | `.py` | Keywords, builtins, strings, comments, numbers, decorators, function/class definitions, self/cls |
-| **JSON** | `.json` | Keys, strings, numbers, booleans, null |
-
-### Color Scheme (Atlantean Theme)
-
-| Element | Color | Style |
-|---------|-------|-------|
-| Keywords | `#9D00FF` (Purple) | Bold |
-| Builtins | `#00FFFF` (Cyan) | Normal |
-| Strings | `#00FF41` (Green) | Normal |
-| Comments | `#555555` (Gray) | Italic |
-| Numbers | `#FFD700` (Gold) | Normal |
-| Functions/Classes | `#FF8C00` (Orange) | Bold |
-| Decorators | `#0080FF` (Blue) | Normal |
-| self/cls | `#FF3333` (Red) | Italic |
-
-### Extending
-
-Add new languages by creating a highlighter class and registering it in `src/gui_syntax.py`:
-
-```python
-# Add to HIGHLIGHTERS dict
-HIGHLIGHTERS[".js"] = JavaScriptHighlighter
-```
-
----
-
-## Agent Reasoning Engine (v2.6.9)
-
-Full chain-of-thought reasoning for all agent decisions:
-
-### Architecture
-
-```
-ReasoningStep -> ThoughtChain -> AgentReasoning -> CoherenceTracker -> ReasoningEngine
-```
-
-### Reasoning Types
-
-| Type | Purpose | Example |
-|------|---------|---------|
-| **Observation** | Record what the agent sees | "User wants to build a web API" |
-| **Analysis** | Evaluate options | "Web API needs REST endpoints" |
-| **Hypothesis** | Form educated guesses | "FastAPI would be suitable" |
-| **Decision** | Make a choice | "Selected WEB_API architecture" |
-| **Action** | Execute a step | "Executing task with coder agent" |
-| **Reflection** | Review outcomes | "Task completed successfully" |
-| **Correction** | Fix errors | "Tests failed, retrying with fixes" |
-| **Inference** | Draw conclusions | "Based on keywords, intent is CODE" |
-
-### Confidence Scoring
-
-Every reasoning step includes a confidence score (0.0-1.0):
-- **0.0-0.3**: Low confidence - requires verification
-- **0.3-0.6**: Medium confidence - proceed with caution
-- **0.6-0.8**: High confidence - likely correct
-- **0.8-1.0**: Very high confidence - reliable
-
-### Coherence Tracking
-
-Measures how well agents' reasoning aligns:
-- **Internal coherence**: Logical flow within a single agent's thought chain
-- **Cross-agent coherence**: Agreement between multiple agents
-- **Conflict detection**: Identifies when agents disagree strongly
-- **Consensus building**: Records points of agreement
-
-### Integration Points
-
-- **Orchestrator**: Agent selection, priority assignment, dependency resolution, retry decisions
-- **Engine**: Intent parsing (why each intent was scored), model selection, execution path
-- **Autonomous**: Architecture selection, phase transitions, self-correction rationale
-
-### Accessing Reasoning
-
-Tasks include `reasoning_log` and `reasoning_chain_id`:
-```python
-task = orch.create_task("Write a function", intent="code")
-for step in task.reasoning_log:
-    print(f"[{step['type']}] {step['content']} (confidence: {step['confidence']})")
-```
-
----
-
-## Configuration
-
-```json
-{
-  "model": "qwen3:8b-gpu",
-  "temperature": 0.1,
-  "max_tokens": 4096,
-  "ollama_host": "http://127.0.0.1:11434",
-  "unified_mode": false,
-  "streaming_enabled": true,
-  "cache_enabled": true,
-  "max_context": 20,
-  "max_retries": 2,
-  "auto_save": true,
-  "auto_save_delay_ms": 3000,
-  "voice_enabled": true,
-  "tts_backend": "pyttsx3",
-  "tts_rate": 175
-}
-```
-
-### Models
-
-| Model | Purpose |
-|-------|---------|
-| qwen3:8b-gpu | Code generation |
-| dolphin-llama3:8b-gpu | Conversation |
-| llava:13b-gpu | Vision |
-
----
-
-## Testing
-
-```bash
-python test_system.py
-```
-
-### Test Coverage (72 tests)
-
-- Module imports, Config loading, Engine initialization
-- Ollama Bridge, Intent parsing (8 types), Code Executor
-- GUI components, Voice engine, File Watcher, Git Integration
-- Parallel Executor, Pipeline Processor, Task properties
-- Code Generation, Save and Execute, CLI integration
-- Autonomous imports, Workspace, Skills, Heartbeat, Production
-- Architecture selection, Templates, Tree generation
-- Orchestrator imports, Task lifecycle, Retry logic, Blackboard
-- Priority queue, Dependencies, Cancellation
-- Engine orchestrator integration
-- Git panel imports, Widget, Repo detection, Diff viewer
-- Settings dialog imports
-- File watcher integration
-- GUI file watcher methods
-- Female TTS voice selection
-- Syntax highlighter imports and registration
-- Reasoning Engine (singleton, thought chains, coherence)
-- Reasoning + Orchestrator integration
-- Reasoning + Engine integration
-- Reasoning + Autonomous integration
-- Reasoning coherence scoring
-- GUI Reasoning Panel (live agent thought chains, coherence bar, event stream)
-- Reasoning persistence (JSON log + REASONING.md workspace archive)
-- LLM meta-reasoning (Ollama-powered coherence analysis)
-- Codebase RAG (semantic search with local embeddings, context-aware generation)
-- RAG + Engine integration (context injection for CODE/DEBUG/REVIEW intents)
-- RAG + Autonomous integration (existing codebase awareness)
-- GUI semantic search dialog (Ctrl+Shift+F)
-
----
-
-## Codebase RAG (v2.6.9)
-
-100% local semantic search over your codebase using Ollama embeddings or TF-IDF fallback:
-
-```python
-from src.codebase_rag import get_codebase_indexer
-
-indexer = get_codebase_indexer("./my_project")
-indexer.index()  # Index all code files
-
-# Semantic search - finds relevant code even without keyword matches
-results = indexer.search("Where is user authentication handled?", top_k=5)
-for r in results:
-    print(f"{r.chunk.file_path} (score: {r.score:.2f})")
-    print(r.reasoning)  # Why this result is relevant
-
-# Get formatted context for LLM prompting
-context = indexer.get_context_for_prompt("How do I add a new endpoint?")
-```
-
-### Features
-
-- **Semantic Chunking**: Functions, classes, and modules split intelligently by language
-- **Local Embeddings**: Uses Ollama `/api/embeddings` (no cloud)
-- **TF-IDF Fallback**: Works even without embedding endpoint
-- **Multi-language**: Python, JavaScript, Go, Rust, Java, C/C++, and more
-- **Confidence Scoring**: Every result includes relevance score and reasoning
-- **Context Injection**: Automatically injected into CODE/DEBUG/REVIEW prompts
-
-### GUI Usage
-
-1. Open a project
-2. Press `Ctrl+Shift+F` or select **Search Codebase** from command palette
-3. Enter natural language query (e.g., "Find database connection logic")
-4. View ranked results with file paths, relevance scores, and code snippets
-
----
-
-## Tool Calling Framework (v2.6.9)
-
-ReAct-style agent action system with 16 built-in tools across 8 categories:
-
-```python
-from src.tool_framework import get_tool_registry, ToolPermission
-
-registry = get_tool_registry()
-
-# Execute a tool
-result = registry.execute("read_file", path="src/main.py", limit_lines=50)
-print(result.observation)  # Human-readable result summary
-
-# Get tool schemas for LLM tool calling
-schemas = registry.get_schemas()
-
-# Enable dangerous tools (requires user approval)
-registry.set_permission("run_shell", True)
-```
-
-### Built-in Tools
-
-| Tool | Category | Permission | Description |
-|------|----------|-----------|-------------|
-| `read_file` | filesystem | READ | Read file contents |
-| `write_file` | filesystem | WRITE | Write content to file |
-| `list_directory` | filesystem | READ | List files and directories |
-| `grep_files` | filesystem | READ | Search files by pattern |
-| `get_signature` | code | READ | Extract function/class signature |
-| `run_tests` | shell | EXECUTE | Run pytest tests |
-| `run_linter` | shell | EXECUTE | Run ruff linter |
-| `run_shell` | shell | DANGEROUS | Execute shell command (filtered) |
-| `git_status` | git | READ | Get git status |
-| `git_diff` | git | READ | Get git diff |
-| `search_codebase` | rag | READ | Semantic codebase search |
-| `get_context` | rag | READ | Get LLM context from codebase |
-| `log_observation` | reasoning | READ | Log observation to reasoning engine |
-| `log_decision` | reasoning | READ | Log decision to reasoning engine |
-| `get_tool_stats` | system | READ | Registry statistics |
-| `list_tools` | system | READ | List all tools with schemas |
-
-### ReAct Loop
-
-The `ReActLoop` runs the full reasoning → action → observation cycle:
-
-```python
-from src.tool_framework import ReActLoop
-
-react = ReActLoop(agent_id="coder", max_iterations=10)
-result = react.run(
-    task_description="Find all authentication-related code and run tests",
-    llm_callback=lambda prompt: engine.ollama.chat(prompt).text,
-)
-```
-
-### Safety
-
-- **DANGEROUS tools blocked by default** (e.g., `run_shell`)
-- **Shell command filtering** blocks rm, del, format, fdisk, mkfs, dd
-- **Execution log** tracks all tool calls with timestamps
-- **Per-tool permissions** can be toggled at runtime
-
-### Integration
-
-- **Engine**: `process_with_tools()` auto-enabled for debug/review/build/search intents
-- **Orchestrator**: AgentWorker uses ReAct loop for complex tasks
-- **Autonomous**: Producer uses tools for file ops, testing, git during pipeline
-
----
-
-## Plugin System (v2.6.9)
-
-Extensible hook-based plugin architecture for custom agent behavior:
-
-```python
-from src.plugin_system import plugin, HookPoint
-
-@plugin(name="my_plugin", version="1.0.0", description="Does something")
-class MyPlugin:
-    def on_system_startup(self):
-        return "Plugin loaded!"
-    
-    def on_engine_pre_process(self, prompt):
-        print(f"About to process: {prompt}")
-    
-    def on_orchestrator_task_completed(self, task):
-        print(f"Task {task.id} done!")
-```
-
-### Hook Points
-
-| Hook Point | Fires When |
-|-----------|-----------|
-| `engine.pre_process` | Before engine processes a prompt |
-| `engine.post_process` | After engine returns a response |
-| `engine.intent_parsed` | After intent is detected |
-| `orchestrator.task_created` | When a task is created |
-| `orchestrator.task_completed` | When a task completes |
-| `orchestrator.task_failed` | When a task fails |
-| `gui.menu_ready` | When GUI menu bar is built |
-| `gui.command_palette` | When command palette is populated |
-| `system.startup` | When app starts |
-| `system.shutdown` | When app closes |
-| `tool.pre_execute` | Before a tool runs |
-| `tool.post_execute` | After a tool runs |
-
-### GUI Integration
-
-- **Plugins Menu**: Reload plugins, manage enable/disable state
-- **Hot-reload**: Modify plugin files and reload without restarting
-- **Plugin Manager Dialog**: Toggle individual plugins on/off
-
-### Example Plugins
-
-- `plugins/hello_world.py` — Logs at every system event
-- `plugins/auto_commit.py` — Auto-commits after autonomous production
-- `plugins/discord_webhook.py` — Sends notifications to Discord
-
----
-
-## DevOps Agent (v2.6.9)
-
-10th agent role with dedicated DevOps capabilities:
-
-```python
-from src.orchestrator import AgentRole, get_orchestrator
-
-orch = get_orchestrator()
-# Deploy tasks automatically route to the DevOps agent
-task = orch.create_task("Deploy to production", intent="deploy")
-```
-
-### DevOps Tools
-
-| Tool | Permission | Description |
-|------|-----------|-------------|
-| `docker_build` | DANGEROUS | Build Docker image from Dockerfile |
-| `docker_run` | DANGEROUS | Run Docker container with ports/env/volumes |
-| `docker_logs` | READ | Get container logs with tail/grep |
-| `deploy_to_server` | DANGEROUS | Deploy via rsync over SSH with pre-commands |
-| `monitor_logs` | READ | Monitor log files for patterns |
-| `run_ci_pipeline` | DANGEROUS | Run local script, GitHub Actions, or GitLab CI |
-
-### Intent Mapping
-
-- `deploy` → DevOps agent
-- `docker` → DevOps agent
-- `monitor` → DevOps agent
-- `ci` → DevOps agent
-- `infra` → DevOps agent
-
----
-
-## Screen Capture / Vision Analysis (v2.6.9)
-
-AI-powered screen understanding using the vision model (llava:13b-gpu):
-
-```
-User: "What's on my screen?"
-  → Intent: VISION → Capture screenshot → llava analyzes → describes UI/errors
-```
-
-### Usage
-
-```python
-from src.screen_capture import VisionAnalyzer
-
-analyzer = VisionAnalyzer(engine=engine)
-result = analyzer.analyze_screen("Describe this error dialog")
-print(result["analysis"])
-```
-
-### Tools
-
-| Tool | Permission | Description |
-|------|-----------|-------------|
-| `screen_capture` | READ | Capture fullscreen screenshot |
-| `analyze_screen` | READ | Capture + analyze with vision model |
-| `detect_screen_errors` | READ | Specialized error detection prompt |
-| `ocr_screen` | READ | Extract all visible text |
-
-### GUI
-
-- **View → Analyze Screen** (Ctrl+Shift+S)
-- Captures screenshot, sends to vision model, displays analysis in terminal
-
-### Intent Detection
-
-Natural language triggers:
-- "What's on my screen?"
-- "Describe what you see"
-- "Read this screen"
-- "What errors do you see?"
-- "Capture screen"
-
----
-
-## MCP Integration (v2.6.9)
-
-Connect to external services via the Model Context Protocol (MCP) — the open standard for AI tool interoperability.
-
-### What is MCP?
-
-MCP lets CrackedCode use tools from external servers (filesystem, web search, databases, GitHub, Slack, etc.) as if they were built-in tools.
-
-```
-User: "Search the web for Python best practices"
-  → MCP fetch server → web search → results injected into context
-```
-
-### Configuration
-
-Add MCP server configs to `mcp_servers/` as JSON files:
-
-```json
-// mcp_servers/filesystem.json
-{
-  "name": "filesystem",
-  "transport": "stdio",
-  "command": "npx",
-  "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
-  "enabled": true,
-  "timeout": 30
-}
-```
-
-### Supported Transports
-
-| Transport | Description | Requirements |
-|-----------|-------------|--------------|
-| `stdio` | Spawn local process, communicate via stdin/stdout | `command` + `args` |
-| `sse` | HTTP Server-Sent Events | `url` + `httpx` |
-
-### Example Servers
-
-- **filesystem** — Read/write files beyond project root
-- **fetch** — Web search and HTTP requests
-- **sqlite** — Query SQLite databases
-
-### Tool Integration
-
-MCP tools are automatically synced into the ToolRegistry on engine startup:
-- Named as `server_name/tool_name`
-- Permission level: EXECUTE
-- Appear in tool listings alongside built-in tools
-- Callable via `ToolRegistry.execute()` and ReAct loops
-
-### Engine Status
-
-```python
-engine = CrackedCodeEngine()
-status = engine.get_status()
-print(status["mcp"])  # {"enabled": True, "servers": 2, "tools": 15}
-```
-
----
-
-## Security Agent (v2.6.9)
-
-AI-powered security auditing with dedicated agent role:
-
-```
-User: "Audit this code for vulnerabilities"
-  → Intent: security → AgentRole.SECURITY → runs 4 security tools
-```
-
-### Security Tools
-
-| Tool | Permission | Description |
-|------|-----------|-------------|
-| `scan_dependencies` | READ | Scan requirements.txt for known CVEs |
-| `audit_secrets` | READ | Find hardcoded secrets, API keys, passwords |
-| `check_permissions` | READ | Check for overly permissive file modes |
-| `analyze_vulnerabilities` | READ | Detect SQL injection, XSS, eval usage, etc. |
-
-### Usage
-
-```python
-# Via natural language
-"Check for secrets in my code"
-"Scan dependencies for vulnerabilities"
-"Audit file permissions"
-
-# Via tools directly
-from src.tool_framework import get_tool_registry
-registry = get_tool_registry()
-registry.execute("audit_secrets")
-registry.execute("analyze_vulnerabilities", file_path="src/main.py")
-```
+| `Ctrl+Shift+P` | Command Palette |
+| `Ctrl+Shift+F` | Semantic Search |
+| `Ctrl+Shift+S` | Analyze Screen (Vision) |
+| `Ctrl+M` | Toggle Matrix Rain |
+| `Ctrl+A` | Autonomous Production |
+| `F11` | Toggle Fullscreen |
+| `F12` | Dev Console |
 
 ---
 
@@ -1181,10 +112,10 @@ CrackedCode automatically routes each request to the best model based on intent:
 | BROWSE | qwen3:8b-gpu | Web content analysis |
 
 ```
-User: "Write a Python function"        → qwen3:8b-gpu
-User: "Tell me a joke"                 → dolphin-llama3:8b-gpu
-User: "What's on my screen?"           → llava:13b-gpu
-User: "Review this code"               → dolphin-llama3:8b-gpu
+User: "Write a Python function"        -> qwen3:8b-gpu
+User: "Tell me a joke"                 -> dolphin-llama3:8b-gpu
+User: "What's on my screen?"           -> llava:13b-gpu
+User: "Review this code"               -> dolphin-llama3:8b-gpu
 ```
 
 ### Configuration
@@ -1199,60 +130,204 @@ Set models in `config.json`:
 }
 ```
 
-Fallback chain: preferred model → primary model → any available → default.
-
 ---
 
-## Persistent Long-Term Memory (v2.6.9)
+## Agent Reasoning Engine (v2.6.9)
 
-CrackedCode remembers everything — conversations, decisions, errors, fixes:
+Every agent decision is transparent, measurable, and coherent:
 
 ```
-User: "Fix the auth bug"
-  → Memory: "Fixed SQL injection in auth.py 3 days ago"
-  → LLM gets past experience as context
+Observation -> Analysis -> Decision -> Action -> Reflection
 ```
 
 ### Features
 
-- **Automatic storage**: Every conversation and error saved to `.crackedcode/memory/`
-- **Semantic search**: Find relevant past experiences via vector similarity
-- **Context injection**: Automatically prepends relevant memories to LLM prompts
-- **Type tracking**: conversation, decision, error, fix, pattern, insight
+- **ThoughtChain**: Complete reasoning chains with confidence scores
+- **CoherenceTracker**: Cross-agent alignment measurement
+- **Persistent Memory**: JSON + REASONING.md logs
+- **LLM Meta-Reasoning**: Feeds coherence reports to Ollama for insights
+- **GUI Panel**: Live thought chains, coherence bar, event stream
+
+---
+
+## Codebase RAG (v2.6.9)
+
+Semantic search with local embeddings gives every agent full codebase awareness:
+
+```python
+from src.codebase_rag import get_codebase_indexer
+
+indexer = get_codebase_indexer(".")
+indexer.index()
+results = indexer.search("authentication middleware", top_k=5)
+```
+
+### Features
+
+- **CodeChunker**: Semantic chunking for 15+ languages
+- **EmbeddingProvider**: Ollama embeddings with TF-IDF fallback
+- **VectorStore**: NumPy-based cosine similarity
+- **Auto-Context**: Injected into CODE/DEBUG/REVIEW/SECURITY intents
+- **GUI**: Semantic search dialog (`Ctrl+Shift+F`)
+
+---
+
+## Tool Calling Framework (v2.6.9)
+
+36+ tools with ReAct-style reasoning:
+
+### Filesystem Tools
+| Tool | Permission | Description |
+|------|-----------|-------------|
+| `read_file` | READ | Read file contents |
+| `write_file` | WRITE | Write file contents |
+| `list_directory` | READ | List directory contents |
+| `grep_files` | READ | Search file contents |
+
+### Code Tools
+| Tool | Permission | Description |
+|------|-----------|-------------|
+| `run_tests` | EXECUTE | Run pytest on project |
+| `run_linter` | EXECUTE | Run ruff linter |
+
+### Shell Tools
+| Tool | Permission | Description |
+|------|-----------|-------------|
+| `run_shell` | DANGEROUS | Execute shell commands |
+
+### Git Tools
+| Tool | Permission | Description |
+|------|-----------|-------------|
+| `git_status` | READ | Git status |
+| `git_diff` | READ | Git diff |
+
+### RAG Tools
+| Tool | Permission | Description |
+|------|-----------|-------------|
+| `search_codebase` | READ | Semantic search |
+| `get_context` | READ | Get context for prompt |
+
+### DevOps Tools
+| Tool | Permission | Description |
+|------|-----------|-------------|
+| `docker_build` | DANGEROUS | Build Docker image |
+| `docker_run` | DANGEROUS | Run Docker container |
+| `docker_logs` | READ | Get container logs |
+| `deploy_to_server` | DANGEROUS | Deploy via SSH/rsync |
+| `monitor_logs` | READ | Monitor log files |
+| `run_ci_pipeline` | DANGEROUS | Run CI pipeline |
+
+### Security Tools
+| Tool | Permission | Description |
+|------|-----------|-------------|
+| `scan_dependencies` | READ | Scan for CVEs |
+| `audit_secrets` | READ | Find hardcoded secrets |
+| `check_permissions` | READ | Check file permissions |
+| `analyze_vulnerabilities` | READ | Detect SQLi, XSS, etc. |
+
+### Vision Tools
+| Tool | Permission | Description |
+|------|-----------|-------------|
+| `screen_capture` | READ | Capture screenshot |
+| `analyze_screen` | READ | Analyze with vision model |
+| `detect_screen_errors` | READ | Detect UI errors |
+| `ocr_screen` | READ | Extract screen text |
+
+### Browser Tools
+| Tool | Permission | Description |
+|------|-----------|-------------|
+| `browse_url` | EXECUTE | Navigate to URL |
+| `click_element` | EXECUTE | Click by CSS selector |
+| `fill_form` | EXECUTE | Fill form field |
+| `screenshot_page` | READ | Screenshot page |
+| `extract_page_text` | READ | Extract page text |
+| `scroll_page` | READ | Scroll page |
+
+---
+
+## Plugin System (v2.6.9)
+
+Extensible hooks with hot-reload:
+
+```python
+# plugins/hello_world.py
+from src.plugin_system import plugin, HookPoint
+
+@plugin(name="hello", version="1.0.0", description="Example plugin")
+class HelloPlugin:
+    def on_system_startup(self):
+        return "Hello from plugin!"
+```
+
+### Hook Points
+
+- `engine.pre_process` / `engine.post_process`
+- `engine.intent_parsed`
+- `orchestrator.task_created` / `task_completed` / `task_failed`
+- `gui.menu_ready` / `command_palette`
+- `system.startup` / `system.shutdown`
+- `tool.pre_execute` / `tool.post_execute`
+
+---
+
+## DevOps Agent (v2.6.9)
+
+```
+User: "Deploy the API to production"
+  -> Intent: deploy -> AgentRole.DEVOPS
+    -> Tool: deploy_to_server(host, path)
+```
+
+### Capabilities
+
+- **docker**: Build, run, inspect containers
+- **deploy**: Remote deployment via SSH/rsync
+- **ci**: GitHub Actions, GitLab CI, local pipelines
+- **monitor**: Watch log files for errors
+- **infra**: Infrastructure operations
+
+---
+
+## Security Agent (v2.6.9)
+
+```
+User: "Audit this code for vulnerabilities"
+  -> Intent: security -> AgentRole.SECURITY
+    -> Runs: audit_secrets + check_permissions + analyze_vulnerabilities + scan_dependencies
+    -> LLM generates security report
+```
+
+### Capabilities
+
+- **scan**: Dependency vulnerability scanning
+- **audit**: Secret and key detection
+- **check**: File permission auditing
+- **secure**: Code vulnerability analysis
+
+---
+
+## Screen Capture / Vision Analysis (v2.6.9)
+
+AI-powered screen understanding:
+
+```
+User: "What's on my screen?"
+  -> Intent: VISION -> Capture screenshot -> llava:13b-gpu analyzes
+```
 
 ### Usage
 
-```python
-from src.long_term_memory import get_long_term_memory
-
-memory = get_long_term_memory()
-memory.remember("Fixed race condition in threading.py", memory_type="fix", tags=["threading", "concurrency"])
-
-# Recall relevant memories
-results = memory.recall("threading bug")
-```
+- **View -> Analyze Screen** (`Ctrl+Shift+S`)
+- Natural language: "Describe what you see", "What errors do you see?"
 
 ---
 
 ## Browser Automation (v2.6.9)
 
-Let the agent browse the web, click elements, fill forms, and take screenshots:
-
 ```
 User: "Go to https://example.com and tell me what's wrong"
-  → Intent: browse → BrowserAgent navigates → screenshots → analyzes
+  -> Intent: BROWSE -> BrowserAgent navigates -> screenshots -> analyzes
 ```
-
-### Browser Tools
-
-| Tool | Permission | Description |
-|------|-----------|-------------|
-| `browse_url` | EXECUTE | Navigate to a URL |
-| `click_element` | EXECUTE | Click by CSS selector |
-| `fill_form` | EXECUTE | Fill a form field |
-| `screenshot_page` | READ | Capture screenshot |
-| `extract_page_text` | READ | Extract page text |
-| `scroll_page` | READ | Scroll the page |
 
 ### Usage
 
@@ -1269,35 +344,109 @@ agent.close()
 
 ---
 
+## Persistent Long-Term Memory (v2.6.9)
+
+CrackedCode remembers everything:
+
+```python
+from src.long_term_memory import get_long_term_memory
+
+memory = get_long_term_memory()
+memory.remember("Fixed race condition in threading.py", memory_type="fix")
+results = memory.recall("threading bug")
+```
+
+- **Auto-storage**: Every conversation saved to `.crackedcode/memory/`
+- **Semantic search**: Find relevant past experiences
+- **Context injection**: Automatically prepends memories to LLM prompts
+
+---
+
+## MCP Integration (v2.6.9)
+
+Connect to external services via Model Context Protocol:
+
+```json
+// mcp_servers/filesystem.json
+{
+  "name": "filesystem",
+  "transport": "stdio",
+  "command": "npx",
+  "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+  "enabled": true
+}
+```
+
+MCP tools auto-sync into ToolRegistry as `server_name/tool_name`.
+
+---
+
 ## A2A Protocol (v2.6.9)
 
-Agent-to-Agent communication via Google's A2A protocol. Let CrackedCode talk to other agents:
-
-```
-CrackedCode (Coder) → A2A → External Agent (Reviewer)
-  ← Results ←
-```
-
-### Features
-
-- **Agent Discovery**: Discover capabilities via `/.well-known/agent.json`
-- **Task Delegation**: Send tasks to external agents
-- **Local Server**: Host your own A2A endpoint for other agents
-- **Registry**: Manage multiple agent connections
-
-### Usage
+Agent-to-Agent communication:
 
 ```python
 from src.a2a_protocol import A2AAgentCard, get_a2a_registry
 
-# Register an external agent
 registry = get_a2a_registry()
-card = A2AAgentCard(name="reviewer", capabilities=["review", "audit"], endpoint="http://localhost:8000")
+card = A2AAgentCard(name="reviewer", capabilities=["review"], endpoint="http://localhost:8000")
 registry.register(card)
 
-# Send a task
 client = registry.get_client("reviewer")
-task = client.send_task("Review this code for bugs")
+task = client.send_task("Review this code")
+```
+
+---
+
+## Autonomous Application Production
+
+OpenClaw-style 7-phase pipeline:
+
+```
+Specification -> Analyze -> Architect -> Scaffold -> Code -> Test -> Correct -> Deliver
+```
+
+### Architecture Templates
+
+- **MVC**: Model-View-Controller
+- **Clean**: Clean Architecture
+- **Layered**: N-tier architecture
+- **CLI**: Command-line tool
+- **Web API**: RESTful services
+- **Desktop GUI**: PyQt6 application
+- **Microservices**: Distributed services
+
+### Usage
+
+```bash
+python src/main.py autonomous -p "Build a todo app with web API"
+```
+
+---
+
+## Voice I/O
+
+### Voice Commands (17 types)
+
+| Command | Example |
+|---------|---------|
+| save | "Save file" |
+| open | "Open main.py" |
+| run | "Run tests" |
+| build | "Build project" |
+| search | "Search for function" |
+| clear | "Clear terminal" |
+| help | "Show help" |
+| exit | "Exit application" |
+
+### Configuration
+
+```json
+{
+  "voice_enabled": true,
+  "tts_backend": "pyttsx3",
+  "tts_gender": "female"
+}
 ```
 
 ---
@@ -1307,43 +456,84 @@ task = client.send_task("Review this code for bugs")
 ```
 crackedcode/
 ├── src/
-│   ├── main.py              # CLI application with AgentSwarm
-│   ├── gui.py               # PyQt6 Desktop GUI (primary interface)
-│   ├── gui_enhancements.py  # UX widgets: Toast, Command Palette, Welcome
-│   ├── gui_git_panel.py     # Git sidebar with diff viewer and AI commits
-│   ├── gui_settings.py      # Preferences dialog with Ollama discovery
-│   ├── gui_syntax.py        # Code syntax highlighting (Python, JSON)
-│   ├── reasoning.py         # Agent Reasoning Engine - thought chains, coherence
-│   ├── codebase_rag.py      # Semantic search with local embeddings
-│   ├── tool_framework.py    # Tool Calling Framework - ReAct, 16 built-in tools
-│   ├── plugin_system.py     # Plugin System - extensible hooks
-│   ├── engine.py            # CrackedCodeEngine - core logic
-│   ├── orchestrator.py      # UnifiedOrchestrator - task lifecycle, priorities
-│   ├── autonomous.py        # AutonomousAppProducer - OpenClaw-style agent
-│   ├── voice_engine.py      # UnifiedVoiceEngine - STT/TTS/VAD/commands
-│   ├── voice_typing.py      # Backward compatibility wrapper
-│   ├── atlan_ui.py          # Sci-Fi UI effects (Matrix, Glitch, etc.)
-│   ├── parallel_processor.py # ParallelExecutor, PipelineProcessor
-│   ├── file_watcher.py      # File system monitoring with auto-save
+│   ├── main.py              # CLI application
+│   ├── gui.py               # PyQt6 Desktop GUI
+│   ├── gui_enhancements.py  # UX widgets
+│   ├── gui_git_panel.py     # Git sidebar
+│   ├── gui_settings.py      # Preferences dialog
+│   ├── gui_syntax.py        # Syntax highlighting
+│   ├── engine.py            # Core logic
+│   ├── orchestrator.py      # Task lifecycle, 11 agents
+│   ├── autonomous.py        # Autonomous production
+│   ├── reasoning.py         # Agent Reasoning Engine
+│   ├── codebase_rag.py      # Semantic search
+│   ├── tool_framework.py    # 36+ tools, ReAct loop
+│   ├── plugin_system.py     # Plugin hooks
+│   ├── voice_engine.py      # STT/TTS/VAD
+│   ├── screen_capture.py    # Vision analysis
+│   ├── browser_agent.py     # Web automation
+│   ├── mcp_client.py        # MCP protocol
+│   ├── a2a_protocol.py      # A2A protocol
+│   ├── long_term_memory.py  # Persistent memory
+│   ├── atlan_ui.py          # Sci-Fi effects
+│   ├── parallel_processor.py # Parallel execution
+│   ├── file_watcher.py      # File monitoring
 │   ├── git_integration.py   # Git operations
-│   └── logger_config.py     # Centralized logging
-├── plugins/                 # Plugin directory (hot-reload)
-│   ├── hello_world.py       # Example plugin
-│   ├── auto_commit.py       # Auto-commit after production
-│   └── discord_webhook.py   # Discord notifications
-├── test_system.py           # Comprehensive E2E test suite (77 tests)
-├── config.json              # Configuration file
-├── README.md                # User documentation
+│   └── logger_config.py     # Logging
+├── assets/
+│   ├── avatar.png           # Raven mascot
+│   ├── favicon.png          # Favicon
+│   └── banner.png           # Logo banner
+├── mcp_servers/             # MCP server configs
+│   ├── filesystem.json
+│   ├── fetch.json
+│   └── sqlite.json
+├── plugins/                 # Plugin directory
+├── test_system.py           # 86 E2E tests
+├── config.json              # Configuration
+├── README.md                # This file
 ├── AGENTS.md                # Developer guide
 └── WHITE_PAPER.md           # Technical white paper
 ```
 
 ---
 
-## License
+## Models
 
-MIT
+| Model | Role | Best For |
+|-------|------|----------|
+| qwen3:8b-gpu | General/Code | Reasoning, coding, planning |
+| dolphin-llama3:8b-gpu | Creative | Conversation, writing |
+| llava:13b-gpu | Vision | Image analysis, OCR |
 
 ---
 
-**CrackedCode v2.6.9** - Autonomous AI Coding Agent with Agent Reasoning Engine, Codebase RAG, Tool Calling Framework, and SOTA Architecture Production
+## Dependencies
+
+- PyQt6 >= 6.6.0
+- ollama (Python client)
+- faster-whisper (for voice)
+- pyperclip, psutil, gitpython
+- httpx, requests
+- playwright (for browser automation)
+
+---
+
+## Environment
+
+- Python 3.10+
+- Ollama running locally on port 11434
+- CUDA for GPU acceleration (optional but recommended)
+- Windows / macOS / Linux
+
+---
+
+## License
+
+MIT License - See LICENSE file for details.
+
+---
+
+<p align="center">
+  <strong>CrackedCode v2.6.9</strong> — Neural Coding Interface
+</p>
