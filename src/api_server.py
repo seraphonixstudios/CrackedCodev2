@@ -115,6 +115,40 @@ class ConversationInfo(BaseModel):
     tags: List[str] = []
 
 
+class GitHubReviewRequest(BaseModel):
+    repo: str
+    pr_number: int
+    post_comment: bool = False
+
+
+class GitHubIssueRequest(BaseModel):
+    repo: str
+    issue_number: int
+
+
+class GitHubReviewResponse(BaseModel):
+    repo: str
+    pr_number: int
+    title: str
+    author: str
+    files_changed: int
+    security_issues_count: int
+    code_issues_count: int
+    summary: str
+    verdict: str
+    confidence: float
+
+
+class GitHubIssueResponse(BaseModel):
+    repo: str
+    issue_number: int
+    title: str
+    summary: str
+    suggested_fix: str
+    related_files: List[str]
+    confidence: float
+
+
 # ── API Server ─────────────────────────────────────────────────────────────
 
 class CrackedCodeAPI:
@@ -137,7 +171,7 @@ class CrackedCodeAPI:
         self._app = FastAPI(
             title="CrackedCode API",
             description="REST API for the CrackedCode local AI coding assistant",
-            version="2.7.8",
+            version="2.7.9",
         )
         
         # CORS
@@ -178,7 +212,7 @@ class CrackedCodeAPI:
         async def root():
             return {
                 "name": "CrackedCode API",
-                "version": "2.7.8",
+                "version": "2.7.9",
                 "docs": "/docs",
                 "auth_required": bool(self.api_key),
                 "endpoints": [
@@ -191,6 +225,9 @@ class CrackedCodeAPI:
                     "/conversations",
                     "/models",
                     "/metrics",
+                    "/github/review-pr",
+                    "/github/analyze-issue",
+                    "/github/repos",
                 ],
             }
         
@@ -316,7 +353,7 @@ class CrackedCodeAPI:
         async def status():
             """Get system status."""
             if not self.engine:
-                return StatusResponse(version="2.7.8")
+                return StatusResponse(version="2.7.9")
             
             try:
                 status_data = self.engine.get_status()
@@ -335,7 +372,7 @@ class CrackedCodeAPI:
                     conv_count = self.engine.conversation_manager.get_stats().get('total_conversations', 0)
                 
                 return StatusResponse(
-                    version=status_data.get('version', '2.7.8'),
+                    version=status_data.get('version', '2.7.9'),
                     model=status_data.get('model', ''),
                     vision_model=status_data.get('vision_model', ''),
                     secondary_model=status_data.get('secondary_model', ''),
@@ -487,6 +524,97 @@ class CrackedCodeAPI:
                 logger.error(f"API metrics error: {e}")
                 raise HTTPException(status_code=500, detail=str(e))
         
+        @self._app.post("/github/review-pr", response_model=GitHubReviewResponse, dependencies=[Depends(self._verify_api_key)])
+        async def github_review_pr(request: GitHubReviewRequest):
+            """Review a GitHub pull request using AI analysis."""
+            try:
+                from src.github_integration import create_github_client
+                
+                token = None
+                if self.engine and hasattr(self.engine, 'config'):
+                    token = self.engine.config.get("github", {}).get("token")
+                
+                gh = create_github_client(token=token)
+                review = gh.review_pr(
+                    repo=request.repo,
+                    pr_number=request.pr_number,
+                    engine=self.engine,
+                    post_comment=request.post_comment,
+                )
+                
+                return GitHubReviewResponse(
+                    repo=review.repo,
+                    pr_number=review.pr_number,
+                    title=review.title,
+                    author=review.author,
+                    files_changed=review.files_changed,
+                    security_issues_count=len(review.security_issues),
+                    code_issues_count=len(review.code_issues),
+                    summary=review.summary,
+                    verdict=review.overall_verdict,
+                    confidence=review.confidence,
+                )
+            except ValueError as e:
+                raise HTTPException(status_code=400, detail=str(e))
+            except Exception as e:
+                logger.error(f"GitHub review error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.post("/github/analyze-issue", response_model=GitHubIssueResponse, dependencies=[Depends(self._verify_api_key)])
+        async def github_analyze_issue(request: GitHubIssueRequest):
+            """Analyze a GitHub issue and suggest fixes."""
+            try:
+                from src.github_integration import create_github_client
+                
+                token = None
+                if self.engine and hasattr(self.engine, 'config'):
+                    token = self.engine.config.get("github", {}).get("token")
+                
+                gh = create_github_client(token=token)
+                analysis = gh.analyze_issue(
+                    repo=request.repo,
+                    issue_number=request.issue_number,
+                    engine=self.engine,
+                )
+                
+                return GitHubIssueResponse(
+                    repo=analysis.repo,
+                    issue_number=analysis.issue_number,
+                    title=analysis.title,
+                    summary=analysis.summary,
+                    suggested_fix=analysis.suggested_fix,
+                    related_files=analysis.related_files,
+                    confidence=analysis.confidence,
+                )
+            except ValueError as e:
+                raise HTTPException(status_code=400, detail=str(e))
+            except Exception as e:
+                logger.error(f"GitHub issue analysis error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.get("/github/repos", dependencies=[Depends(self._verify_api_key)])
+        async def github_repos(username: str):
+            """List repositories for a GitHub user."""
+            try:
+                from src.github_integration import create_github_client
+                
+                token = None
+                if self.engine and hasattr(self.engine, 'config'):
+                    token = self.engine.config.get("github", {}).get("token")
+                
+                gh = create_github_client(token=token)
+                repos = gh.list_repos(username)
+                
+                return {
+                    "username": username,
+                    "repos": [{"name": r.get("name"), "url": r.get("html_url")} for r in repos],
+                }
+            except ValueError as e:
+                raise HTTPException(status_code=400, detail=str(e))
+            except Exception as e:
+                logger.error(f"GitHub repos error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
         @self._app.websocket("/ws")
         async def websocket_endpoint(websocket: WebSocket):
             """Bidirectional WebSocket for real-time AI chat."""
@@ -622,7 +750,7 @@ if __name__ == "__main__":
     api_key = engine.config.get("api_key") if hasattr(engine, 'config') else None
     api = create_api_server(engine=engine, api_key=api_key)
     
-    print(f"Starting CrackedCode API Server v2.7.8")
+    print(f"Starting CrackedCode API Server v2.7.9")
     print(f"URL: {api.url}")
     print(f"Docs: {api.url}/docs")
     if api.api_key:

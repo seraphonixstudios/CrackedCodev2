@@ -81,7 +81,7 @@ class AtlanteanTheme:
 
 
 class MatrixUI:
-    VERSION = "2.7.8"
+    VERSION = "2.7.9"
     
     CHARSETS = {
         "binary": "01",

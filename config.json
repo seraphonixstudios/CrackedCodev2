@@ -1,6 +1,6 @@
 {
   "name": "CrackedCode",
-  "version": "2.7.8",
+  "version": "2.7.9",
   "description": "Autonomous AI Coding Agent with Multi-Agent Swarm, Voice I/O, and Production-Ready App Generation",
   "model": "qwen3:8b-gpu",
   "vision_model": "llava:13b-gpu",
@@ -166,5 +166,11 @@
     "ollama_host_env": "OLLAMA_HOST",
     "default_ollama_host": "http://ollama:11434",
     "health_check_interval": 30
+  },
+  "github": {
+    "enabled": false,
+    "token": null,
+    "auto_review_prs": false,
+    "review_comment_template": "🤖 CrackedCode AI Review\n\n**Verdict:** {verdict}\n\n{summary}\n\n---\n*Reviewed by CrackedCode*"
   }
 }

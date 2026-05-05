@@ -1,4 +1,4 @@
-"""Notification System v2.7.8 - Multi-backend alerts for CrackedCode.
+"""Notification System v2.7.9 - Multi-backend alerts for CrackedCode.
 
 Backends:
   - Email (SMTP)

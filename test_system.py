@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CRACKEDCODE v2.7.8 - Comprehensive End-to-End Test Suite
+CRACKEDCODE v2.7.9 - Comprehensive End-to-End Test Suite
 Full coverage with real operations, no placeholders
 """
 
@@ -595,11 +595,11 @@ def test_version_info() -> bool:
         PASS(f"Engine version: {status.get('version', 'unknown')}")
         
         version_checks = 0
-        if CrackedCode.VERSION == "2.7.8":
+        if CrackedCode.VERSION == "2.7.9":
             version_checks += 1
-        if MatrixUI.VERSION == "2.7.8":
+        if MatrixUI.VERSION == "2.7.9":
             version_checks += 1
-        if status.get("version") == "2.7.8":
+        if status.get("version") == "2.7.9":
             version_checks += 1
         
         PASS(f"Version consistency: {version_checks}/3")
@@ -709,10 +709,10 @@ def test_cli_integration_e2e() -> bool:
             version = result.stdout.strip()
             PASS(f"CLI import: version {version}")
             
-            if version == "2.7.8":
+            if version == "2.7.9":
                 PASS("CLI version correct")
             else:
-                FAIL("CLI version", f"Expected 2.7.8, got {version}")
+                FAIL("CLI version", f"Expected 2.7.9, got {version}")
                 return False
         else:
             FAIL("CLI import", result.stderr[:50])
@@ -1663,7 +1663,7 @@ def test_voice_hotword_detection() -> bool:
 
 
 def main() -> int:
-    print(f"\n{'='*60}\n  CRACKEDCODE v2.7.8 - E2E TEST SUITE\n{'='*60}\n")
+    print(f"\n{'='*60}\n  CRACKEDCODE v2.7.9 - E2E TEST SUITE\n{'='*60}\n")
     
     tests = [
         ("Modules", test_modules),
@@ -1760,6 +1760,7 @@ def main() -> int:
         ("Notification System", test_notification_system),
         ("Metrics System", test_metrics_system),
         ("Docker Support", test_docker_support),
+        ("GitHub Integration", test_github_integration),
     ]
     
     results: list[tuple[str, bool]] = []
@@ -4144,6 +4145,94 @@ def test_docker_support() -> bool:
         import traceback
         traceback.print_exc()
         return FAIL("Docker support", str(e)[:50])
+
+
+def test_github_integration() -> bool:
+    print_header("GITHUB INTEGRATION")
+    try:
+        from src.github_integration import GitHubClient, create_github_client, PRReview, IssueAnalysis
+        
+        # Test client creation without token
+        gh = create_github_client()
+        if gh is not None and gh.token is None:
+            PASS("Client created without token")
+        else:
+            return FAIL("Client creation failed")
+        
+        # Test client creation with token
+        gh_auth = create_github_client(token="ghp_test123")
+        if gh_auth.token == "ghp_test123":
+            PASS("Client created with token")
+        else:
+            return FAIL("Token not stored")
+        
+        # Test PRReview dataclass
+        review = PRReview(
+            repo="test/repo",
+            pr_number=1,
+            title="Test PR",
+            author="user",
+            additions=10,
+            deletions=5,
+            files_changed=2,
+            security_issues=[{"severity": "high", "description": "SQL injection"}],
+            code_issues=[{"severity": "medium", "description": "Long function"}],
+            summary="Good PR",
+            overall_verdict="APPROVE",
+            confidence=0.9,
+        )
+        if review.repo == "test/repo" and review.pr_number == 1:
+            PASS("PRReview dataclass")
+        else:
+            return FAIL("PRReview dataclass failed")
+        
+        # Test IssueAnalysis dataclass
+        issue = IssueAnalysis(
+            repo="test/repo",
+            issue_number=42,
+            title="Bug",
+            summary="A bug",
+            suggested_fix="Fix it",
+            related_files=["main.py"],
+            confidence=0.8,
+        )
+        if issue.issue_number == 42 and issue.related_files == ["main.py"]:
+            PASS("IssueAnalysis dataclass")
+        else:
+            return FAIL("IssueAnalysis dataclass failed")
+        
+        # Test _format_pr_review method
+        formatted = gh._format_pr_review(review)
+        if "APPROVE" in formatted and "SQL injection" in formatted:
+            PASS("Review formatting works")
+        else:
+            return FAIL("Review formatting failed")
+        
+        # Test config has github section
+        import json
+        with open("config.json", "r") as f:
+            cfg = json.load(f)
+        if "github" in cfg:
+            PASS("Config has github section")
+        else:
+            return FAIL("Config missing github section")
+        
+        # Test API server has GitHub routes
+        from src.api_server import create_api_server
+        api = create_api_server()
+        routes = [route.path for route in api._app.routes]
+        github_routes = ["/github/review-pr", "/github/analyze-issue", "/github/repos"]
+        missing = [r for r in github_routes if r not in routes]
+        if not missing:
+            PASS("All GitHub API routes registered")
+        else:
+            return FAIL(f"Missing GitHub routes: {missing}")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("GitHub integration", str(e)[:50])
 
 
 if __name__ == "__main__":
