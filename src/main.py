@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 CrackedCode - Local AI Coding Assistant
-Version: 2.7.9
+Version: 2.8.0
 """
 
 import os
@@ -1903,7 +1903,7 @@ class AgentSwarm:
 
 
 class CrackedCode:
-    VERSION = "2.7.9"
+    VERSION = "2.8.0"
     BANNER = """
 ============================================================
   CRACKEDCODE v{version} - Local AI Coding Assistant
@@ -2184,7 +2184,7 @@ def main():
             api_key=api_key,
         )
         
-        print(f"Starting CrackedCode API Server v2.7.9")
+        print(f"Starting CrackedCode API Server v2.8.0")
         print(f"URL: {api.url}")
         print(f"Docs: {api.url}/docs")
         if api.api_key:

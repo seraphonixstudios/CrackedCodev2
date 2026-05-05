@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CRACKEDCODE v2.7.9 - Comprehensive End-to-End Test Suite
+CRACKEDCODE v2.8.0 - Comprehensive End-to-End Test Suite
 Full coverage with real operations, no placeholders
 """
 
@@ -595,11 +595,11 @@ def test_version_info() -> bool:
         PASS(f"Engine version: {status.get('version', 'unknown')}")
         
         version_checks = 0
-        if CrackedCode.VERSION == "2.7.9":
+        if CrackedCode.VERSION == "2.8.0":
             version_checks += 1
-        if MatrixUI.VERSION == "2.7.9":
+        if MatrixUI.VERSION == "2.8.0":
             version_checks += 1
-        if status.get("version") == "2.7.9":
+        if status.get("version") == "2.8.0":
             version_checks += 1
         
         PASS(f"Version consistency: {version_checks}/3")
@@ -709,10 +709,10 @@ def test_cli_integration_e2e() -> bool:
             version = result.stdout.strip()
             PASS(f"CLI import: version {version}")
             
-            if version == "2.7.9":
+            if version == "2.8.0":
                 PASS("CLI version correct")
             else:
-                FAIL("CLI version", f"Expected 2.7.9, got {version}")
+                FAIL("CLI version", f"Expected 2.8.0, got {version}")
                 return False
         else:
             FAIL("CLI import", result.stderr[:50])
@@ -1663,7 +1663,7 @@ def test_voice_hotword_detection() -> bool:
 
 
 def main() -> int:
-    print(f"\n{'='*60}\n  CRACKEDCODE v2.7.9 - E2E TEST SUITE\n{'='*60}\n")
+    print(f"\n{'='*60}\n  CRACKEDCODE v2.8.0 - E2E TEST SUITE\n{'='*60}\n")
     
     tests = [
         ("Modules", test_modules),
@@ -1761,6 +1761,7 @@ def main() -> int:
         ("Metrics System", test_metrics_system),
         ("Docker Support", test_docker_support),
         ("GitHub Integration", test_github_integration),
+        ("GitHub Actions", test_github_actions),
     ]
     
     results: list[tuple[str, bool]] = []
@@ -4233,6 +4234,100 @@ def test_github_integration() -> bool:
         import traceback
         traceback.print_exc()
         return FAIL("GitHub integration", str(e)[:50])
+
+
+def test_github_actions() -> bool:
+    print_header("GITHUB ACTIONS")
+    try:
+        from pathlib import Path
+        import json
+        
+        # Test workflow file exists
+        workflow = Path(".github/workflows/crackedcode-review.yml")
+        if workflow.exists():
+            PASS("Workflow file exists")
+        else:
+            return FAIL("Workflow file missing")
+        
+        # Test workflow content
+        content = workflow.read_text(encoding="utf-8")
+        if "pull_request" in content:
+            PASS("Workflow triggers on PR")
+        else:
+            return FAIL("Workflow missing PR trigger")
+        
+        if "crackedcode-review" in content or "AI Code Review" in content:
+            PASS("Workflow has job name")
+        else:
+            return FAIL("Workflow missing job")
+        
+        if "CRACKEDCODE_API_URL" in content:
+            PASS("Workflow uses API URL")
+        else:
+            return FAIL("Workflow missing API URL")
+        
+        if "CRACKEDCODE_API_KEY" in content:
+            PASS("Workflow uses API key")
+        else:
+            return FAIL("Workflow missing API key")
+        
+        if "GITHUB_TOKEN" in content:
+            PASS("Workflow uses GitHub token")
+        else:
+            return FAIL("Workflow missing GitHub token")
+        
+        if "post comment" in content.lower() or "issues/" in content:
+            PASS("Workflow posts comments")
+        else:
+            return FAIL("Workflow missing comment posting")
+        
+        # Test action runner script exists
+        action = Path("src/github_action.py")
+        if action.exists():
+            PASS("Action runner script exists")
+        else:
+            return FAIL("Action runner missing")
+        
+        # Test action runner imports
+        action_content = action.read_text(encoding="utf-8")
+        if "run_review" in action_content:
+            PASS("Action has run_review function")
+        else:
+            return FAIL("Action missing run_review")
+        
+        if "format_review_comment" in action_content:
+            PASS("Action has formatting function")
+        else:
+            return FAIL("Action missing formatter")
+        
+        if "argparse" in action_content:
+            PASS("Action supports CLI args")
+        else:
+            return FAIL("Action missing CLI support")
+        
+        if "GITHUB_OUTPUT" in action_content:
+            PASS("Action sets GitHub outputs")
+        else:
+            return FAIL("Action missing outputs")
+        
+        # Test .github directory structure
+        github_dir = Path(".github")
+        if github_dir.exists() and github_dir.is_dir():
+            PASS(".github directory exists")
+        else:
+            return FAIL(".github directory missing")
+        
+        workflows_dir = Path(".github/workflows")
+        if workflows_dir.exists():
+            PASS("workflows directory exists")
+        else:
+            return FAIL("workflows directory missing")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("GitHub Actions", str(e)[:50])
 
 
 if __name__ == "__main__":
