@@ -87,6 +87,7 @@ class AgentRole(Enum):
     DEBUGGER = "debugger"
     DOCUMENTER = "documenter"
     DEVOPS = "devops"
+    SECURITY = "security"
 
 
 AGENT_CAPABILITIES = {
@@ -100,6 +101,7 @@ AGENT_CAPABILITIES = {
     AgentRole.DEBUGGER: ["debug", "fix", "trace", "diagnose"],
     AgentRole.DOCUMENTER: ["document", "explain", "comment", "readme"],
     AgentRole.DEVOPS: ["docker", "deploy", "ci", "monitor", "infra", "ssh"],
+    AgentRole.SECURITY: ["scan", "audit", "check", "secure", "vulnerability", "pentest"],
 }
 
 
@@ -117,6 +119,12 @@ INTENT_TO_AGENT = {
     "monitor": AgentRole.DEVOPS,
     "ci": AgentRole.DEVOPS,
     "infra": AgentRole.DEVOPS,
+    "security": AgentRole.SECURITY,
+    "audit": AgentRole.SECURITY,
+    "scan": AgentRole.SECURITY,
+    "vulnerability": AgentRole.SECURITY,
+    "pentest": AgentRole.SECURITY,
+    "secure": AgentRole.SECURITY,
 }
 
 

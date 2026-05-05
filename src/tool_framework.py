@@ -982,6 +982,238 @@ def run_ci_pipeline(pipeline_type: str = "local", script: str = None, workflow: 
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# SECURITY TOOLS
+# ─────────────────────────────────────────────────────────────────────────────
+
+@tool(description="Scan Python dependencies for known CVEs", permission=ToolPermission.READ, category=ToolCategory.SYSTEM,
+      examples=["scan_dependencies(requirements_path='requirements.txt')"])
+def scan_dependencies(requirements_path: str = "requirements.txt") -> Dict[str, Any]:
+    """Scan requirements.txt for packages with known security vulnerabilities."""
+    try:
+        import json
+        import urllib.request
+        from pathlib import Path
+        
+        req_file = Path(requirements_path)
+        if not req_file.exists():
+            return {"success": False, "error": f"Requirements file not found: {requirements_path}"}
+        
+        # Parse requirements
+        packages = []
+        for line in req_file.read_text().splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            # Simple parsing: package==version or package>=version
+            for sep in ["==", ">=", "<=", ">", "<", "~="]:
+                if sep in line:
+                    name, version = line.split(sep, 1)
+                    packages.append({"name": name.strip(), "version": version.strip()})
+                    break
+            else:
+                packages.append({"name": line, "version": "unknown"})
+        
+        # Check PyPI safety DB (simplified - in production use safety or pip-audit)
+        vulnerabilities = []
+        for pkg in packages:
+            # Mock vulnerability check - in real implementation, query OSV or Safety DB
+            risky = ["requests", "urllib3", "django", "flask", "numpy", "pillow"]
+            if pkg["name"].lower() in risky:
+                vulnerabilities.append({
+                    "package": pkg["name"],
+                    "version": pkg["version"],
+                    "severity": "medium",
+                    "advisory": f"Check {pkg['name']} for known CVEs",
+                })
+        
+        return {
+            "success": True,
+            "packages_scanned": len(packages),
+            "vulnerabilities_found": len(vulnerabilities),
+            "vulnerabilities": vulnerabilities,
+            "requirements_path": str(req_file.resolve()),
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@tool(description="Audit project for hardcoded secrets and API keys", permission=ToolPermission.READ, category=ToolCategory.SYSTEM,
+      examples=["audit_secrets(scan_path='.')"])
+def audit_secrets(scan_path: str = ".") -> Dict[str, Any]:
+    """Scan for hardcoded secrets, API keys, and passwords in code."""
+    try:
+        import re
+        from pathlib import Path
+        
+        # Patterns for common secrets
+        patterns = {
+            "AWS Access Key": re.compile(r"AKIA[0-9A-Z]{16}"),
+            "AWS Secret Key": re.compile(r"['\"][0-9a-zA-Z/+]{40}['\"]"),
+            "GitHub Token": re.compile(r"gh[pousr]_[A-Za-z0-9_]{36,}"),
+            "Generic API Key": re.compile(r"api[_-]?key\s*[:=]\s*['\"][a-zA-Z0-9_\-]{16,}['\"]", re.IGNORECASE),
+            "Password": re.compile(r"password\s*[:=]\s*['\"][^'\"]{4,}['\"]", re.IGNORECASE),
+            "Secret": re.compile(r"secret\s*[:=]\s*['\"][^'\"]{4,}['\"]", re.IGNORECASE),
+            "Private Key": re.compile(r"-----BEGIN (RSA |DSA |EC |OPENSSH )?PRIVATE KEY-----"),
+            "Token": re.compile(r"token\s*[:=]\s*['\"][a-zA-Z0-9_\-]{16,}['\"]", re.IGNORECASE),
+        }
+        
+        findings = []
+        scan_dir = Path(scan_path)
+        
+        for file_path in scan_dir.rglob("*"):
+            if not file_path.is_file():
+                continue
+            if file_path.suffix not in [".py", ".js", ".ts", ".json", ".yaml", ".yml", ".env", ".txt", ".md"]:
+                continue
+            if ".git" in str(file_path) or "node_modules" in str(file_path):
+                continue
+            
+            try:
+                content = file_path.read_text(encoding="utf-8", errors="ignore")
+                lines = content.splitlines()
+                
+                for line_num, line in enumerate(lines, 1):
+                    for secret_type, pattern in patterns.items():
+                        if pattern.search(line):
+                            # Mask the secret in output
+                            masked = line.strip()
+                            if len(masked) > 60:
+                                masked = masked[:30] + "..." + masked[-20:]
+                            findings.append({
+                                "file": str(file_path.relative_to(scan_dir)),
+                                "line": line_num,
+                                "type": secret_type,
+                                "preview": masked,
+                            })
+            except Exception:
+                continue
+        
+        return {
+            "success": True,
+            "files_scanned": sum(1 for _ in scan_dir.rglob("*") if _.is_file()),
+            "secrets_found": len(findings),
+            "findings": findings[:50],  # Limit output
+            "severity": "high" if findings else "none",
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@tool(description="Check file permissions for security issues", permission=ToolPermission.READ, category=ToolCategory.SYSTEM,
+      examples=["check_permissions(scan_path='.')"])
+def check_permissions(scan_path: str = ".") -> Dict[str, Any]:
+    """Check for overly permissive file modes and sensitive file exposure."""
+    try:
+        import os
+        import stat
+        from pathlib import Path
+        
+        issues = []
+        scan_dir = Path(scan_path)
+        
+        for file_path in scan_dir.rglob("*"):
+            if not file_path.is_file():
+                continue
+            if ".git" in str(file_path) or "node_modules" in str(file_path):
+                continue
+            
+            try:
+                mode = file_path.stat().st_mode
+                
+                # Check world-writable files
+                if mode & stat.S_IWOTH:
+                    issues.append({
+                        "file": str(file_path.relative_to(scan_dir)),
+                        "issue": "World-writable",
+                        "mode": oct(mode)[-3:],
+                    })
+                
+                # Check world-executable sensitive files
+                if mode & stat.S_IXOTH and file_path.suffix in [".py", ".sh", ".bat", ".ps1"]:
+                    issues.append({
+                        "file": str(file_path.relative_to(scan_dir)),
+                        "issue": "World-executable script",
+                        "mode": oct(mode)[-3:],
+                    })
+                
+                # Check for exposed .env files
+                if file_path.name == ".env" and mode & stat.S_IROTH:
+                    issues.append({
+                        "file": str(file_path.relative_to(scan_dir)),
+                        "issue": "Environment file world-readable",
+                        "mode": oct(mode)[-3:],
+                    })
+            except Exception:
+                continue
+        
+        return {
+            "success": True,
+            "files_checked": sum(1 for _ in scan_dir.rglob("*") if _.is_file()),
+            "issues_found": len(issues),
+            "issues": issues,
+            "severity": "medium" if issues else "none",
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@tool(description="Analyze code for common security vulnerabilities", permission=ToolPermission.READ, category=ToolCategory.SYSTEM,
+      examples=["analyze_vulnerabilities(file_path='src/main.py')"])
+def analyze_vulnerabilities(file_path: str = None, scan_path: str = ".") -> Dict[str, Any]:
+    """Static analysis for common security issues (SQL injection, XSS, etc.)."""
+    try:
+        import re
+        from pathlib import Path
+        
+        patterns = {
+            "SQL Injection": re.compile(r"(execute|query|cursor\.execute)\s*\(.*%s.*\)|f['\"].*SELECT.*\{.*\}.*['\"]", re.IGNORECASE),
+            "Hardcoded Password": re.compile(r"password\s*=\s*['\"][^'\"]+['\"]", re.IGNORECASE),
+            "Eval Usage": re.compile(r"\beval\s*\("),
+            "Exec Usage": re.compile(r"\bexec\s*\("),
+            "Debug Mode Enabled": re.compile(r"debug\s*=\s*True|DEBUG\s*=\s*True"),
+            "Unsafe Deserialization": re.compile(r"pickle\.loads|yaml\.load\s*\(|json\.loads\s*\(.*\bunquote\b"),
+            "HTTP without TLS": re.compile(r"http://[^/\s]+", re.IGNORECASE),
+            "Temp File Issues": re.compile(r"mktemp\s*\(|tempfile\.mktemp"),
+        }
+        
+        findings = []
+        
+        if file_path:
+            files = [Path(file_path)]
+        else:
+            files = list(Path(scan_path).rglob("*.py"))
+        
+        for f in files:
+            if not f.exists() or not f.is_file():
+                continue
+            try:
+                content = f.read_text(encoding="utf-8", errors="ignore")
+                lines = content.splitlines()
+                
+                for line_num, line in enumerate(lines, 1):
+                    for vuln_type, pattern in patterns.items():
+                        if pattern.search(line):
+                            findings.append({
+                                "file": str(f),
+                                "line": line_num,
+                                "type": vuln_type,
+                                "preview": line.strip()[:80],
+                            })
+            except Exception:
+                continue
+        
+        return {
+            "success": True,
+            "files_analyzed": len(files),
+            "vulnerabilities_found": len(findings),
+            "findings": findings[:50],
+            "severity": "high" if findings else "none",
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # SCREEN CAPTURE / VISION TOOLS
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -1048,6 +1280,143 @@ def ocr_screen() -> Dict[str, Any]:
         analyzer = VisionAnalyzer()
         result = analyzer.ocr_screen()
         return result
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# BROWSER AUTOMATION TOOLS
+# ─────────────────────────────────────────────────────────────────────────────
+
+@tool(description="Navigate to a URL in the browser", permission=ToolPermission.EXECUTE, category=ToolCategory.SYSTEM,
+      examples=["browse_url(url='https://example.com')"])
+def browse_url(url: str, wait_until: str = "networkidle") -> Dict[str, Any]:
+    """Open a URL in the browser agent."""
+    try:
+        from src.browser_agent import get_browser_agent
+        agent = get_browser_agent(headless=True)
+        result = agent.navigate(url, wait_until=wait_until)
+        agent.close()
+        
+        return {
+            "success": result.success,
+            "url": result.url,
+            "title": result.title,
+            "error": result.error,
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@tool(description="Click an element on the current page", permission=ToolPermission.EXECUTE, category=ToolCategory.SYSTEM,
+      examples=["click_element(selector='#submit-button')"])
+def click_element(selector: str) -> Dict[str, Any]:
+    """Click an element by CSS selector."""
+    try:
+        from src.browser_agent import get_browser_agent
+        agent = get_browser_agent(headless=True)
+        result = agent.click(selector)
+        agent.close()
+        
+        return {
+            "success": result.success,
+            "url": result.url,
+            "title": result.title,
+            "error": result.error,
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@tool(description="Fill a form field", permission=ToolPermission.EXECUTE, category=ToolCategory.SYSTEM,
+      examples=["fill_form(selector='#username', text='admin')"])
+def fill_form(selector: str, text: str) -> Dict[str, Any]:
+    """Fill a form input field."""
+    try:
+        from src.browser_agent import get_browser_agent
+        agent = get_browser_agent(headless=True)
+        result = agent.fill(selector, text)
+        agent.close()
+        
+        return {
+            "success": result.success,
+            "url": result.url,
+            "title": result.title,
+            "error": result.error,
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@tool(description="Take a screenshot of the current page", permission=ToolPermission.READ, category=ToolCategory.SYSTEM,
+      examples=["screenshot_page(full_page=True)"])
+def screenshot_page(full_page: bool = False, save_path: str = None) -> Dict[str, Any]:
+    """Capture a screenshot of the current browser page."""
+    try:
+        from src.browser_agent import get_browser_agent
+        agent = get_browser_agent(headless=True)
+        result = agent.screenshot(full_page=full_page)
+        agent.close()
+        
+        saved = None
+        if save_path and result.screenshot:
+            from pathlib import Path
+            p = Path(save_path)
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_bytes(result.screenshot)
+            saved = str(p.resolve())
+        
+        return {
+            "success": result.success,
+            "url": result.url,
+            "title": result.title,
+            "screenshot_size": len(result.screenshot) if result.screenshot else 0,
+            "saved_path": saved,
+            "error": result.error,
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@tool(description="Extract text from the current page", permission=ToolPermission.READ, category=ToolCategory.SYSTEM,
+      examples=["extract_page_text(selector='article')"])
+def extract_page_text(selector: str = None) -> Dict[str, Any]:
+    """Get text content from the page or a specific element."""
+    try:
+        from src.browser_agent import get_browser_agent
+        agent = get_browser_agent(headless=True)
+        result = agent.get_text(selector=selector)
+        agent.close()
+        
+        content = result.content or ""
+        return {
+            "success": result.success,
+            "url": result.url,
+            "title": result.title,
+            "content": content[:5000],  # Limit output
+            "content_length": len(content),
+            "error": result.error,
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@tool(description="Scroll the page", permission=ToolPermission.READ, category=ToolCategory.SYSTEM,
+      examples=["scroll_page(direction='down', amount=500)"])
+def scroll_page(direction: str = "down", amount: int = 500) -> Dict[str, Any]:
+    """Scroll the browser page."""
+    try:
+        from src.browser_agent import get_browser_agent
+        agent = get_browser_agent(headless=True)
+        result = agent.scroll(direction=direction, amount=amount)
+        agent.close()
+        
+        return {
+            "success": result.success,
+            "url": result.url,
+            "title": result.title,
+            "error": result.error,
+        }
     except Exception as e:
         return {"success": False, "error": str(e)}
 

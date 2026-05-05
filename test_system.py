@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CRACKEDCODE v2.6.7 - Comprehensive End-to-End Test Suite
+CRACKEDCODE v2.6.8 - Comprehensive End-to-End Test Suite
 Full coverage with real operations, no placeholders
 """
 
@@ -595,11 +595,11 @@ def test_version_info() -> bool:
         PASS(f"Engine version: {status.get('version', 'unknown')}")
         
         version_checks = 0
-        if CrackedCode.VERSION == "2.6.7":
+        if CrackedCode.VERSION == "2.6.8":
             version_checks += 1
-        if MatrixUI.VERSION == "2.6.7":
+        if MatrixUI.VERSION == "2.6.8":
             version_checks += 1
-        if status.get("version") == "2.6.7":
+        if status.get("version") == "2.6.8":
             version_checks += 1
         
         PASS(f"Version consistency: {version_checks}/3")
@@ -709,10 +709,10 @@ def test_cli_integration_e2e() -> bool:
             version = result.stdout.strip()
             PASS(f"CLI import: version {version}")
             
-            if version == "2.6.7":
+            if version == "2.6.8":
                 PASS("CLI version correct")
             else:
-                FAIL("CLI version", f"Expected 2.6.7, got {version}")
+                FAIL("CLI version", f"Expected 2.6.8, got {version}")
                 return False
         else:
             FAIL("CLI import", result.stderr[:50])
@@ -1663,7 +1663,7 @@ def test_voice_hotword_detection() -> bool:
 
 
 def main() -> int:
-    print(f"\n{'='*60}\n  CRACKEDCODE v2.6.7 - E2E TEST SUITE\n{'='*60}\n")
+    print(f"\n{'='*60}\n  CRACKEDCODE v2.6.8 - E2E TEST SUITE\n{'='*60}\n")
     
     tests = [
         ("Modules", test_modules),
@@ -1746,6 +1746,10 @@ def main() -> int:
         ("DevOps Agent", test_devops_agent),
         ("Screen Capture", test_screen_capture),
         ("MCP Client", test_mcp_client),
+        ("Security Agent", test_security_agent),
+        ("Long-Term Memory", test_long_term_memory),
+        ("Browser Automation", test_browser_automation),
+        ("A2A Protocol", test_a2a_protocol),
     ]
     
     results: list[tuple[str, bool]] = []
@@ -3022,6 +3026,210 @@ def test_mcp_client() -> bool:
         import traceback
         traceback.print_exc()
         return FAIL("MCP client", str(e)[:50])
+
+
+def test_security_agent() -> bool:
+    print_header("SECURITY AGENT")
+    try:
+        from src.orchestrator import AgentRole, AGENT_CAPABILITIES, INTENT_TO_AGENT
+        from src.engine import Intent
+        from src.tool_framework import get_tool_registry
+        
+        # Test AgentRole.SECURITY exists
+        if hasattr(AgentRole, 'SECURITY'):
+            PASS("AgentRole.SECURITY exists")
+        else:
+            return FAIL("AgentRole.SECURITY missing")
+        
+        # Test capabilities
+        caps = AGENT_CAPABILITIES.get(AgentRole.SECURITY, [])
+        if "scan" in caps and "audit" in caps:
+            PASS(f"Security capabilities: {caps}")
+        else:
+            return FAIL("Security capabilities incomplete")
+        
+        # Test intent mapping
+        if INTENT_TO_AGENT.get("security") == AgentRole.SECURITY:
+            PASS("'security' intent maps to SECURITY")
+        else:
+            return FAIL("'security' intent mapping wrong")
+        
+        # Test security tools registered
+        registry = get_tool_registry()
+        security_tools = ["scan_dependencies", "audit_secrets", "check_permissions", "analyze_vulnerabilities"]
+        for tool_name in security_tools:
+            if registry.get(tool_name):
+                PASS(f"{tool_name} tool registered")
+            else:
+                return FAIL(f"{tool_name} tool missing")
+        
+        # Test Intent.SECURITY exists
+        if hasattr(Intent, 'SECURITY'):
+            PASS("Intent.SECURITY exists")
+        else:
+            return FAIL("Intent.SECURITY missing")
+        
+        # Test Intent.BROWSE exists
+        if hasattr(Intent, 'BROWSE'):
+            PASS("Intent.BROWSE exists")
+        else:
+            return FAIL("Intent.BROWSE missing")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Security agent", str(e)[:50])
+
+
+def test_long_term_memory() -> bool:
+    print_header("LONG-TERM MEMORY")
+    try:
+        from src.long_term_memory import LongTermMemory, MemoryEntry, get_long_term_memory
+        import tempfile
+        import os
+        
+        # Reset singleton
+        import src.long_term_memory as ltm_module
+        ltm_module._memory_instance = None
+        
+        # Test LongTermMemory creation
+        with tempfile.TemporaryDirectory() as tmpdir:
+            memory = LongTermMemory(storage_path=os.path.join(tmpdir, "memory"), model="qwen3:8b-gpu")
+            PASS("LongTermMemory created")
+            
+            # Test remember
+            entry = memory.remember(
+                content="Fixed SQL injection in auth.py",
+                memory_type="fix",
+                tags=["security", "sql"],
+                source="test",
+                confidence=0.9,
+            )
+            if entry.id and entry.content == "Fixed SQL injection in auth.py":
+                PASS("Memory stored with ID")
+            else:
+                return FAIL("Memory storage failed")
+            
+            # Test recall (keyword fallback since no embeddings in test)
+            results = memory.recall("SQL injection", top_k=5)
+            if len(results) > 0:
+                PASS(f"Memory recall returned {len(results)} results")
+            else:
+                return FAIL("Memory recall returned no results")
+            
+            # Test stats
+            stats = memory.get_stats()
+            if stats["total_memories"] == 1:
+                PASS("Stats show 1 memory")
+            else:
+                return FAIL(f"Stats wrong: {stats['total_memories']}")
+            
+            # Test engine integration
+            from src.engine import CrackedCodeEngine
+            engine = CrackedCodeEngine()
+            if hasattr(engine, 'long_term_memory'):
+                PASS("Engine has long_term_memory property")
+            else:
+                return FAIL("Engine missing long_term_memory")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Long-term memory", str(e)[:50])
+
+
+def test_browser_automation() -> bool:
+    print_header("BROWSER AUTOMATION")
+    try:
+        from src.browser_agent import BrowserAgent, BrowserActionResult
+        from src.engine import Intent
+        from src.tool_framework import get_tool_registry
+        
+        PASS("Browser agent classes imported")
+        
+        # Test BrowserAgent creation
+        agent = BrowserAgent(headless=True)
+        PASS("BrowserAgent created")
+        
+        # Test Intent.BROWSE exists
+        if hasattr(Intent, 'BROWSE'):
+            PASS("Intent.BROWSE exists")
+        else:
+            return FAIL("Intent.BROWSE missing")
+        
+        # Test browser tools registered
+        registry = get_tool_registry()
+        browser_tools = ["browse_url", "click_element", "fill_form", "screenshot_page", "extract_page_text", "scroll_page"]
+        for tool_name in browser_tools:
+            if registry.get(tool_name):
+                PASS(f"{tool_name} tool registered")
+            else:
+                return FAIL(f"{tool_name} tool missing")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Browser automation", str(e)[:50])
+
+
+def test_a2a_protocol() -> bool:
+    print_header("A2A PROTOCOL")
+    try:
+        from src.a2a_protocol import (
+            A2AClient, A2AServer, A2ARegistry, A2AAgentCard,
+            A2ATask, A2ATaskState, A2AMessage,
+            get_a2a_registry,
+        )
+        
+        PASS("All A2A classes imported")
+        
+        # Test AgentCard creation
+        card = A2AAgentCard(
+            name="test_agent",
+            description="A test agent",
+            version="1.0",
+            capabilities=["code", "review"],
+            endpoint="http://localhost:8000",
+        )
+        if card.name == "test_agent":
+            PASS("A2AAgentCard created")
+        else:
+            return FAIL("A2AAgentCard creation failed")
+        
+        # Test A2ARegistry
+        registry = A2ARegistry()
+        PASS("A2ARegistry created")
+        
+        registry.register(card)
+        if "test_agent" in registry.list_agents():
+            PASS("Agent registered")
+        else:
+            return FAIL("Agent registration failed")
+        
+        # Test get_a2a_registry singleton
+        global_reg = get_a2a_registry()
+        global_reg2 = get_a2a_registry()
+        if global_reg is global_reg2:
+            PASS("get_a2a_registry singleton works")
+        else:
+            return FAIL("A2A registry singleton broken")
+        
+        # Test A2ATask
+        task = A2ATask()
+        task.messages.append(A2AMessage(role="user", parts=[{"type": "text", "text": "hello"}]))
+        if task.state == A2ATaskState.SUBMITTED:
+            PASS("A2ATask created with correct state")
+        else:
+            return FAIL("A2ATask state wrong")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("A2A protocol", str(e)[:50])
 
 
 if __name__ == "__main__":

@@ -3,7 +3,7 @@
 Local AI Coding Assistant with Sci-Fi Neural Interface
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.6.7-blue?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Version-2.6.8-blue?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License">
   <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-orange?style=for-the-badge" alt="Platform">
   <img src="https://img.shields.io/badge/Python-3.10%2B-yellow?style=for-the-badge" alt="Python">
@@ -34,8 +34,8 @@ python test_system.py
 
 | Version | Features |
 |---------|----------|
-| 2.6.7 | **Codebase RAG** - Semantic search with local embeddings, context-aware code generation, autonomous existing codebase awareness |
-| 2.6.7 | **Agent Reasoning Engine**, GUI Reasoning Panel, persistent reasoning memory, LLM meta-reasoning, autonomous production, unified orchestrator, SOTA voice engine, Git sidebar, file watcher, settings dialog, syntax highlighting, command palette |
+| 2.6.8 | **Codebase RAG** - Semantic search with local embeddings, context-aware code generation, autonomous existing codebase awareness |
+| 2.6.8 | **Agent Reasoning Engine**, GUI Reasoning Panel, persistent reasoning memory, LLM meta-reasoning, autonomous production, unified orchestrator, SOTA voice engine, Git sidebar, file watcher, settings dialog, syntax highlighting, command palette |
 | 2.5.0 | UI/UX overhaul, toast notifications, searchable terminal, command history, tab management, pulse indicators |
 | 2.4.0 | Streaming responses, response caching, context management, retry logic, tabbed editor |
 | 2.3.9 | Task queue, Agent orchestration, Accessibility |
@@ -43,7 +43,7 @@ python test_system.py
 
 ---
 
-## Desktop GUI (v2.6.7)
+## Desktop GUI (v2.6.8)
 
 ```bash
 python src/gui.py
@@ -323,7 +323,7 @@ result = engine.execute_generated_code("print('Hello!')")
 
 ---
 
-## Autonomous Application Production (v2.6.7)
+## Autonomous Application Production (v2.6.8)
 
 OpenClaw-style autonomous agent that takes a high-level specification and autonomously designs, codes, tests, and delivers complete applications.
 
@@ -467,7 +467,7 @@ resolution = coordinator.resolve(task_id)
 
 ---
 
-## Unified Voice Engine (v2.6.7)
+## Unified Voice Engine (v2.6.8)
 
 SOTA Speech-to-Text and Text-to-Speech with multi-backend fallback.
 
@@ -519,7 +519,7 @@ print(cmd.params)  # {"filename": "app.py", "type": "function"}
 
 ---
 
-## Git Integration (v2.6.7)
+## Git Integration (v2.6.8)
 
 Full Git sidebar panel in the GUI:
 
@@ -533,7 +533,7 @@ Full Git sidebar panel in the GUI:
 
 ---
 
-## File Watcher + Auto-Save (v2.6.7)
+## File Watcher + Auto-Save (v2.6.8)
 
 Automatic file monitoring and saving:
 
@@ -544,7 +544,7 @@ Automatic file monitoring and saving:
 
 ---
 
-## Unified Orchestrator (v2.6.7)
+## Unified Orchestrator (v2.6.8)
 
 Production-grade task orchestration replacing 4 disconnected systems:
 
@@ -666,7 +666,7 @@ setup_logging({
 
 ---
 
-## Settings Dialog (v2.6.7)
+## Settings Dialog (v2.6.8)
 
 GUI preferences editor (`Ctrl+,`):
 
@@ -678,7 +678,7 @@ GUI preferences editor (`Ctrl+,`):
 
 ---
 
-## Code Syntax Highlighting (v2.6.7)
+## Code Syntax Highlighting (v2.6.8)
 
 Automatic syntax highlighting in the code editor:
 
@@ -713,7 +713,7 @@ HIGHLIGHTERS[".js"] = JavaScriptHighlighter
 
 ---
 
-## Agent Reasoning Engine (v2.6.7)
+## Agent Reasoning Engine (v2.6.8)
 
 Full chain-of-thought reasoning for all agent decisions:
 
@@ -839,7 +839,7 @@ python test_system.py
 
 ---
 
-## Codebase RAG (v2.6.7)
+## Codebase RAG (v2.6.8)
 
 100% local semantic search over your codebase using Ollama embeddings or TF-IDF fallback:
 
@@ -877,7 +877,7 @@ context = indexer.get_context_for_prompt("How do I add a new endpoint?")
 
 ---
 
-## Tool Calling Framework (v2.6.7)
+## Tool Calling Framework (v2.6.8)
 
 ReAct-style agent action system with 16 built-in tools across 8 categories:
 
@@ -947,7 +947,7 @@ result = react.run(
 
 ---
 
-## Plugin System (v2.6.7)
+## Plugin System (v2.6.8)
 
 Extensible hook-based plugin architecture for custom agent behavior:
 
@@ -997,7 +997,7 @@ class MyPlugin:
 
 ---
 
-## DevOps Agent (v2.6.7)
+## DevOps Agent (v2.6.8)
 
 10th agent role with dedicated DevOps capabilities:
 
@@ -1030,7 +1030,7 @@ task = orch.create_task("Deploy to production", intent="deploy")
 
 ---
 
-## Screen Capture / Vision Analysis (v2.6.7)
+## Screen Capture / Vision Analysis (v2.6.8)
 
 AI-powered screen understanding using the vision model (llava:13b-gpu):
 
@@ -1074,7 +1074,7 @@ Natural language triggers:
 
 ---
 
-## MCP Integration (v2.6.7)
+## MCP Integration (v2.6.8)
 
 Connect to external services via the Model Context Protocol (MCP) — the open standard for AI tool interoperability.
 
@@ -1134,6 +1134,140 @@ print(status["mcp"])  # {"enabled": True, "servers": 2, "tools": 15}
 
 ---
 
+## Security Agent (v2.6.8)
+
+AI-powered security auditing with dedicated agent role:
+
+```
+User: "Audit this code for vulnerabilities"
+  → Intent: security → AgentRole.SECURITY → runs 4 security tools
+```
+
+### Security Tools
+
+| Tool | Permission | Description |
+|------|-----------|-------------|
+| `scan_dependencies` | READ | Scan requirements.txt for known CVEs |
+| `audit_secrets` | READ | Find hardcoded secrets, API keys, passwords |
+| `check_permissions` | READ | Check for overly permissive file modes |
+| `analyze_vulnerabilities` | READ | Detect SQL injection, XSS, eval usage, etc. |
+
+### Usage
+
+```python
+# Via natural language
+"Check for secrets in my code"
+"Scan dependencies for vulnerabilities"
+"Audit file permissions"
+
+# Via tools directly
+from src.tool_framework import get_tool_registry
+registry = get_tool_registry()
+registry.execute("audit_secrets")
+registry.execute("analyze_vulnerabilities", file_path="src/main.py")
+```
+
+---
+
+## Persistent Long-Term Memory (v2.6.8)
+
+CrackedCode remembers everything — conversations, decisions, errors, fixes:
+
+```
+User: "Fix the auth bug"
+  → Memory: "Fixed SQL injection in auth.py 3 days ago"
+  → LLM gets past experience as context
+```
+
+### Features
+
+- **Automatic storage**: Every conversation and error saved to `.crackedcode/memory/`
+- **Semantic search**: Find relevant past experiences via vector similarity
+- **Context injection**: Automatically prepends relevant memories to LLM prompts
+- **Type tracking**: conversation, decision, error, fix, pattern, insight
+
+### Usage
+
+```python
+from src.long_term_memory import get_long_term_memory
+
+memory = get_long_term_memory()
+memory.remember("Fixed race condition in threading.py", memory_type="fix", tags=["threading", "concurrency"])
+
+# Recall relevant memories
+results = memory.recall("threading bug")
+```
+
+---
+
+## Browser Automation (v2.6.8)
+
+Let the agent browse the web, click elements, fill forms, and take screenshots:
+
+```
+User: "Go to https://example.com and tell me what's wrong"
+  → Intent: browse → BrowserAgent navigates → screenshots → analyzes
+```
+
+### Browser Tools
+
+| Tool | Permission | Description |
+|------|-----------|-------------|
+| `browse_url` | EXECUTE | Navigate to a URL |
+| `click_element` | EXECUTE | Click by CSS selector |
+| `fill_form` | EXECUTE | Fill a form field |
+| `screenshot_page` | READ | Capture screenshot |
+| `extract_page_text` | READ | Extract page text |
+| `scroll_page` | READ | Scroll the page |
+
+### Usage
+
+```python
+from src.browser_agent import get_browser_agent
+
+agent = get_browser_agent()
+agent.navigate("https://example.com")
+agent.click("#submit")
+agent.fill("#username", "admin")
+result = agent.screenshot()
+agent.close()
+```
+
+---
+
+## A2A Protocol (v2.6.8)
+
+Agent-to-Agent communication via Google's A2A protocol. Let CrackedCode talk to other agents:
+
+```
+CrackedCode (Coder) → A2A → External Agent (Reviewer)
+  ← Results ←
+```
+
+### Features
+
+- **Agent Discovery**: Discover capabilities via `/.well-known/agent.json`
+- **Task Delegation**: Send tasks to external agents
+- **Local Server**: Host your own A2A endpoint for other agents
+- **Registry**: Manage multiple agent connections
+
+### Usage
+
+```python
+from src.a2a_protocol import A2AAgentCard, get_a2a_registry
+
+# Register an external agent
+registry = get_a2a_registry()
+card = A2AAgentCard(name="reviewer", capabilities=["review", "audit"], endpoint="http://localhost:8000")
+registry.register(card)
+
+# Send a task
+client = registry.get_client("reviewer")
+task = client.send_task("Review this code for bugs")
+```
+
+---
+
 ## File Structure
 
 ```
@@ -1178,4 +1312,4 @@ MIT
 
 ---
 
-**CrackedCode v2.6.7** - Autonomous AI Coding Agent with Agent Reasoning Engine, Codebase RAG, Tool Calling Framework, and SOTA Architecture Production
+**CrackedCode v2.6.8** - Autonomous AI Coding Agent with Agent Reasoning Engine, Codebase RAG, Tool Calling Framework, and SOTA Architecture Production

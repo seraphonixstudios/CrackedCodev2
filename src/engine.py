@@ -74,6 +74,8 @@ class Intent(Enum):
     BUILD = "build"
     HELP = "help"
     VISION = "vision"
+    SECURITY = "security"
+    BROWSE = "browse"
 
 
 @dataclass
@@ -460,6 +462,28 @@ Be specific about:
 
 Question: {prompt}
 """,
+        Intent.SECURITY: """Perform a security analysis for this task.
+
+Check for:
+1. Hardcoded secrets, API keys, passwords
+2. SQL injection, XSS, CSRF vulnerabilities
+3. Unsafe deserialization or eval/exec usage
+4. Missing input validation or sanitization
+5. Insecure file permissions or configurations
+6. Dependency vulnerabilities
+7. Insecure communication (HTTP vs HTTPS)
+
+Provide specific findings with file paths, line numbers, and remediation steps.
+
+Task: {prompt}
+""",
+        Intent.BROWSE: """Analyze the following web page content and answer the user's question.
+
+Content from {url}:
+{content}
+
+Question: {prompt}
+""",
     }
     
     DEBUG_KEYWORDS = {
@@ -497,6 +521,16 @@ Question: {prompt}
         "phrases": ["what's on my screen", "what is on my screen", "describe the screen", "analyze the screen", "capture screen", "take a screenshot", "what do you see", "read the screen", "extract text from", "detect errors on screen"],
         "negative": ["code", "write", "build", "create"],
     }
+    SECURITY_KEYWORDS = {
+        "direct": ["security", "secure", "audit", "scan", "vulnerability", "pentest", "cve", "exploit", "password", "secret", "token", "key", "leak", "sanitize", "escape", "inject", "xss", "csrf", "ssl", "tls", "auth", "encrypt", "hash", "salt"],
+        "phrases": ["security audit", "scan for vulnerabilities", "check for secrets", "security review", "penetration test", "security scan", "audit code", "check permissions", "find vulnerabilities", "security check", "audit dependencies", "check for leaks", "secure this code"],
+        "negative": ["feature", "build", "create", "write", "design"],
+    }
+    BROWSE_KEYWORDS = {
+        "direct": ["browse", "web", "website", "site", "page", "url", "internet", "online", "click", "scroll", "navigate", "surf", "visit", "open link", "check site"],
+        "phrases": ["go to website", "open this url", "browse to", "visit website", "check this site", "look at this page", "web page", "screenshot of", "what's on this website", "extract from page", "scrape this"],
+        "negative": ["code", "write", "build", "create", "local"],
+    }
 
     def __init__(self, config: Dict = None):
         self.config = config or {}
@@ -514,7 +548,9 @@ Question: {prompt}
         self._autonomous_producer = None
         self._codebase_indexer = None
         self._mcp_client = None
+        self._long_term_memory = None
         self._init_mcp()
+        self._init_long_term_memory()
         self._check()
         logger.info("CrackedCodeEngine initialized")
 
@@ -565,6 +601,25 @@ Question: {prompt}
             logger.warning(f"MCP initialization failed: {e}")
             self._mcp_client = None
 
+    def _init_long_term_memory(self):
+        """Initialize long-term memory for persistent agent experiences."""
+        try:
+            from src.long_term_memory import get_long_term_memory
+            self._long_term_memory = get_long_term_memory(
+                storage_path=Path(self.project_root) / ".crackedcode" / "memory",
+                model=self.model,
+            )
+            stats = self._long_term_memory.get_stats()
+            logger.info(f"Long-term memory initialized: {stats['total_memories']} memories")
+        except Exception as e:
+            logger.warning(f"Long-term memory initialization failed: {e}")
+            self._long_term_memory = None
+
+    @property
+    def long_term_memory(self):
+        """Get the long-term memory instance."""
+        return self._long_term_memory
+
     def _check(self):
         status = self.ollama.detect()
         logger.info(f"Ollama: {status['available']}, Models: {status['models']}")
@@ -590,7 +645,7 @@ Question: {prompt}
                 pass
         
         return {
-            "version": "2.6.7",
+            "version": "2.6.8",
             "model": self.model,
             "unified_mode": self.unified_mode,
             "plan": self.plan_enabled,
@@ -618,6 +673,8 @@ Question: {prompt}
             Intent.EXECUTE: self.EXECUTE_KEYWORDS,
             Intent.SEARCH: self.SEARCH_KEYWORDS,
             Intent.VISION: self.VISION_KEYWORDS,
+            Intent.SECURITY: self.SECURITY_KEYWORDS,
+            Intent.BROWSE: self.BROWSE_KEYWORDS,
         }
         
         intent_scores = {}
@@ -653,6 +710,7 @@ Question: {prompt}
         top_intents = [i for i, s in intent_scores.items() if s == max_score]
         
         tiebreaker_priority = [
+            Intent.SECURITY,
             Intent.VISION,
             Intent.DEBUG,
             Intent.EXECUTE,
@@ -933,19 +991,185 @@ Question: {prompt}
             response.reasoning_log = execution_reasoning + request.reasoning_log
             return response
         
+        # Security processing path
+        if request.intent == Intent.SECURITY:
+            execution_reasoning.append({"type": "decision", "content": "Routing to security analysis handler", "confidence": 0.9})
+            try:
+                from src.tool_framework import get_tool_registry
+                registry = get_tool_registry()
+                
+                security_results = []
+                
+                # Run security tools
+                tools_to_run = [
+                    ("audit_secrets", {}),
+                    ("check_permissions", {}),
+                    ("analyze_vulnerabilities", {}),
+                ]
+                
+                # Check if requirements.txt exists for dependency scan
+                req_path = Path(self.project_root) / "requirements.txt"
+                if req_path.exists():
+                    tools_to_run.append(("scan_dependencies", {"requirements_path": str(req_path)}))
+                
+                for tool_name, params in tools_to_run:
+                    try:
+                        result = registry.execute(tool_name, **params)
+                        if result.success and result.result:
+                            security_results.append({"tool": tool_name, "result": result.result})
+                    except Exception as e:
+                        security_results.append({"tool": tool_name, "error": str(e)})
+                
+                # Build security report
+                report_lines = ["**Security Analysis Report**\n"]
+                total_issues = 0
+                
+                for item in security_results:
+                    tool_name = item["tool"]
+                    result = item.get("result", {})
+                    
+                    if "error" in item:
+                        report_lines.append(f"\n*{tool_name}*: Error - {item['error']}")
+                        continue
+                    
+                    if result.get("success"):
+                        findings = result.get("findings", result.get("vulnerabilities", result.get("issues", [])))
+                        count = result.get("secrets_found", result.get("vulnerabilities_found", result.get("issues_found", 0)))
+                        total_issues += count
+                        
+                        report_lines.append(f"\n*{tool_name}*: {count} issues found")
+                        for finding in findings[:10]:  # Limit to 10 per tool
+                            if isinstance(finding, dict):
+                                preview = finding.get("preview", finding.get("type", str(finding)))
+                                file_info = finding.get("file", "")
+                                line_info = f":{finding.get('line', '')}" if finding.get('line') else ""
+                                report_lines.append(f"  - {file_info}{line_info}: {preview}")
+                            else:
+                                report_lines.append(f"  - {finding}")
+                
+                report_lines.append(f"\n**Total Issues Found: {total_issues}**")
+                
+                # Also get LLM analysis with security context
+                template = self.PROMPT_TEMPLATES.get(Intent.SECURITY, "{prompt}")
+                formatted_prompt = template.format(prompt=request.text)
+                
+                # Prepend security scan results
+                security_context = "\n".join(report_lines)
+                full_prompt = f"{security_context}\n\n{formatted_prompt}"
+                
+                response = self.ollama.chat(full_prompt)
+                response.processing_path = "security_analysis"
+                response.model_used = self.model
+                
+            except Exception as e:
+                response = AgentResponse(
+                    success=False,
+                    text="",
+                    error=str(e),
+                    processing_path="security_analysis",
+                )
+            
+            response.reasoning_log = execution_reasoning + request.reasoning_log
+            return response
+        
+        # Browser processing path
+        if request.intent == Intent.BROWSE:
+            execution_reasoning.append({"type": "decision", "content": "Routing to browser automation handler", "confidence": 0.9})
+            try:
+                from src.browser_agent import get_browser_agent
+                from src.tool_framework import get_tool_registry
+                
+                # Extract URL from prompt using simple regex
+                import re
+                url_match = re.search(r'https?://[^\s<>"{}|\\^`\[\]]+', request.text)
+                url = url_match.group(0) if url_match else None
+                
+                if not url:
+                    response = AgentResponse(
+                        success=False,
+                        text="",
+                        error="No URL found in prompt. Please include a valid URL (e.g., https://example.com)",
+                        processing_path="browser_automation",
+                    )
+                else:
+                    agent = get_browser_agent(headless=True)
+                    nav_result = agent.navigate(url)
+                    
+                    if not nav_result.success:
+                        response = AgentResponse(
+                            success=False,
+                            text="",
+                            error=f"Failed to navigate to {url}: {nav_result.error}",
+                            processing_path="browser_automation",
+                        )
+                    else:
+                        # Extract page text
+                        text_result = agent.get_text()
+                        content = text_result.content[:4000] if text_result.content else ""
+                        
+                        # Take screenshot
+                        screenshot_result = agent.screenshot()
+                        
+                        agent.close()
+                        
+                        # Build response
+                        report = f"**Browser Analysis: {nav_result.title}**\n"
+                        report += f"URL: {nav_result.url}\n\n"
+                        report += f"**Page Content (excerpt):**\n{content[:2000]}...\n\n"
+                        if screenshot_result.screenshot:
+                            report += f"Screenshot captured: {len(screenshot_result.screenshot)} bytes\n"
+                        
+                        # Ask LLM to analyze
+                        template = self.PROMPT_TEMPLATES.get(Intent.BROWSE, "{prompt}")
+                        formatted = template.format(prompt=request.text, url=nav_result.url, content=content[:3000])
+                        llm_response = self.ollama.chat(formatted)
+                        
+                        if llm_response.success:
+                            report += f"\n**AI Analysis:**\n{llm_response.text}"
+                        
+                        response = AgentResponse(
+                            success=True,
+                            text=report,
+                            execution_time=0.0,
+                            processing_path="browser_automation",
+                            model_used=self.model,
+                        )
+            except Exception as e:
+                response = AgentResponse(
+                    success=False,
+                    text="",
+                    error=str(e),
+                    processing_path="browser_automation",
+                )
+            
+            response.reasoning_log = execution_reasoning + request.reasoning_log
+            return response
+        
         # LLM processing path with codebase context for relevant intents
         template = self.PROMPT_TEMPLATES.get(request.intent, "{prompt}")
         
         # Inject semantic context for code-related intents
         context_block = ""
-        if request.intent in (Intent.CODE, Intent.DEBUG, Intent.REVIEW, Intent.BUILD):
+        if request.intent in (Intent.CODE, Intent.DEBUG, Intent.REVIEW, Intent.BUILD, Intent.SECURITY):
             context_block = self.get_codebase_context(request.text, top_k=3)
             if context_block:
                 execution_reasoning.append({"type": "observation", "content": f"Retrieved {len(context_block)} chars of codebase context via semantic search", "confidence": 0.85})
         
+        # Inject long-term memory context
+        memory_block = ""
+        if self._long_term_memory:
+            try:
+                memory_block = self._long_term_memory.get_context_for_prompt(request.text, top_k=3)
+                if memory_block:
+                    execution_reasoning.append({"type": "observation", "content": "Retrieved relevant past experiences from long-term memory", "confidence": 0.75})
+            except Exception as e:
+                logger.warning(f"Memory retrieval failed: {e}")
+        
         formatted_prompt = template.format(prompt=request.text)
         if context_block:
             formatted_prompt = context_block + "\n\n" + formatted_prompt
+        if memory_block:
+            formatted_prompt = memory_block + "\n" + formatted_prompt
         
         # Model selection reasoning
         if self.unified_mode:
@@ -970,8 +1194,34 @@ Question: {prompt}
         if response.success:
             execution_reasoning.append({"type": "reflection", "content": f"LLM responded successfully via {response.processing_path}", "confidence": 0.9})
             self.session.add_turn(request, response)
+            
+            # Store in long-term memory
+            if self._long_term_memory:
+                try:
+                    self._long_term_memory.remember(
+                        content=f"User: {request.text}\nAssistant: {response.text[:500]}",
+                        memory_type="conversation",
+                        tags=[request.intent.value, "auto"],
+                        source="engine.process",
+                        confidence=0.7,
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to store memory: {e}")
         else:
             execution_reasoning.append({"type": "correction", "content": f"LLM failed: {response.error}", "confidence": 0.3})
+            
+            # Store error in long-term memory
+            if self._long_term_memory:
+                try:
+                    self._long_term_memory.remember(
+                        content=f"Error in {request.intent.value}: {response.error}",
+                        memory_type="error",
+                        tags=[request.intent.value, "error", "auto"],
+                        source="engine.process",
+                        confidence=0.8,
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to store error memory: {e}")
         
         # Plugin post-process hook
         if _plugins_available:
