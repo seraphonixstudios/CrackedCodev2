@@ -343,6 +343,73 @@ class ToolRegistry:
             "successful_executions": successful,
             "success_rate": round(successful / total_exec, 3) if total_exec > 0 else 1.0,
         }
+    
+    # ─────────────────────────────────────────────────────────────────────────
+    # MCP INTEGRATION
+    # ─────────────────────────────────────────────────────────────────────────
+    
+    def sync_mcp_tools(self, mcp_client=None) -> int:
+        """Sync MCP tools into the registry.
+        
+        Args:
+            mcp_client: Optional MCPClient instance. Uses global if None.
+            
+        Returns:
+            Number of tools synced.
+        """
+        try:
+            from src.mcp_client import get_mcp_client, MCPTool
+            
+            client = mcp_client or get_mcp_client()
+            mcp_tools = client.list_tools()
+            
+            synced = 0
+            for mcp_tool in mcp_tools:
+                # Skip if already registered
+                if mcp_tool.name in self._tools:
+                    continue
+                
+                # Build parameter schema from inputSchema
+                params = mcp_tool.input_schema.get("properties", {})
+                required = mcp_tool.input_schema.get("required", [])
+                
+                parameters = {
+                    "type": "object",
+                    "properties": params,
+                    "required": required,
+                }
+                
+                # Create wrapper function
+                def make_wrapper(tool_name):
+                    def wrapper(**kwargs):
+                        return client.call_tool(tool_name, kwargs)
+                    return wrapper
+                
+                tool = Tool(
+                    name=mcp_tool.name,
+                    description=f"[MCP {mcp_tool.server_name}] {mcp_tool.description}",
+                    parameters=parameters,
+                    handler=make_wrapper(mcp_tool.name),
+                    permission=ToolPermission.EXECUTE,
+                    category=ToolCategory.SYSTEM,
+                )
+                
+                self.register(tool)
+                synced += 1
+            
+            logger.info(f"Synced {synced} MCP tools into registry")
+            return synced
+        except Exception as e:
+            logger.error(f"MCP sync failed: {e}")
+            return 0
+    
+    def get_mcp_stats(self) -> Dict[str, Any]:
+        """Get MCP-related statistics."""
+        mcp_tools = [t for t in self._tools.values() if t.name.startswith("mcp-") or "/" in t.name]
+        return {
+            "mcp_tools": len(mcp_tools),
+            "mcp_tool_names": [t.name for t in mcp_tools],
+        }
 
 
 # ─────────────────────────────────────────────────────────────────────────────

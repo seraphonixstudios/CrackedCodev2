@@ -513,6 +513,8 @@ Question: {prompt}
         self.build_enabled = True
         self._autonomous_producer = None
         self._codebase_indexer = None
+        self._mcp_client = None
+        self._init_mcp()
         self._check()
         logger.info("CrackedCodeEngine initialized")
 
@@ -532,6 +534,37 @@ Question: {prompt}
                 logger.warning(f"Failed to create codebase indexer: {e}")
         return self._codebase_indexer
 
+    @property
+    def mcp_client(self):
+        """Get the MCP client for external tool connections."""
+        return self._mcp_client
+
+    def _init_mcp(self):
+        """Initialize MCP client and connect configured servers."""
+        try:
+            from src.mcp_client import MCPConfigManager, get_mcp_client
+            
+            self._mcp_client = get_mcp_client()
+            config_manager = MCPConfigManager()
+            
+            configs = config_manager.load_all()
+            connected = 0
+            for config in configs:
+                if self._mcp_client.add_server(config):
+                    connected += 1
+            
+            if connected > 0:
+                # Sync MCP tools into tool registry
+                from src.tool_framework import get_tool_registry
+                registry = get_tool_registry()
+                synced = registry.sync_mcp_tools(self._mcp_client)
+                logger.info(f"MCP initialized: {connected} servers, {synced} tools synced")
+            else:
+                logger.info("MCP: No servers configured or enabled")
+        except Exception as e:
+            logger.warning(f"MCP initialization failed: {e}")
+            self._mcp_client = None
+
     def _check(self):
         status = self.ollama.detect()
         logger.info(f"Ollama: {status['available']}, Models: {status['models']}")
@@ -544,8 +577,20 @@ Question: {prompt}
     def get_status(self) -> Dict:
         ollama = self.ollama.detect()
         cache_stats = self.ollama.get_cache_stats()
+        
+        mcp_status = {"enabled": False, "servers": 0, "tools": 0}
+        if self._mcp_client:
+            try:
+                mcp_status = {
+                    "enabled": True,
+                    "servers": len(self._mcp_client.list_servers()),
+                    "tools": len(self._mcp_client.list_tools()),
+                }
+            except Exception:
+                pass
+        
         return {
-            "version": "2.6.6",
+            "version": "2.6.7",
             "model": self.model,
             "unified_mode": self.unified_mode,
             "plan": self.plan_enabled,
@@ -556,6 +601,7 @@ Question: {prompt}
             "model_roles": self.ollama.models,
             "cache_size": cache_stats["size"],
             "context_length": cache_stats["context_length"],
+            "mcp": mcp_status,
         }
 
     def parse_intent(self, prompt: str, confidence_threshold: float = 0.3) -> PromptRequest:

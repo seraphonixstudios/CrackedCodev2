@@ -3,7 +3,7 @@
 Local AI Coding Assistant with Sci-Fi Neural Interface
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.6.6-blue?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Version-2.6.7-blue?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License">
   <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-orange?style=for-the-badge" alt="Platform">
   <img src="https://img.shields.io/badge/Python-3.10%2B-yellow?style=for-the-badge" alt="Python">
@@ -34,8 +34,8 @@ python test_system.py
 
 | Version | Features |
 |---------|----------|
-| 2.6.6 | **Codebase RAG** - Semantic search with local embeddings, context-aware code generation, autonomous existing codebase awareness |
-| 2.6.6 | **Agent Reasoning Engine**, GUI Reasoning Panel, persistent reasoning memory, LLM meta-reasoning, autonomous production, unified orchestrator, SOTA voice engine, Git sidebar, file watcher, settings dialog, syntax highlighting, command palette |
+| 2.6.7 | **Codebase RAG** - Semantic search with local embeddings, context-aware code generation, autonomous existing codebase awareness |
+| 2.6.7 | **Agent Reasoning Engine**, GUI Reasoning Panel, persistent reasoning memory, LLM meta-reasoning, autonomous production, unified orchestrator, SOTA voice engine, Git sidebar, file watcher, settings dialog, syntax highlighting, command palette |
 | 2.5.0 | UI/UX overhaul, toast notifications, searchable terminal, command history, tab management, pulse indicators |
 | 2.4.0 | Streaming responses, response caching, context management, retry logic, tabbed editor |
 | 2.3.9 | Task queue, Agent orchestration, Accessibility |
@@ -43,7 +43,7 @@ python test_system.py
 
 ---
 
-## Desktop GUI (v2.6.6)
+## Desktop GUI (v2.6.7)
 
 ```bash
 python src/gui.py
@@ -323,7 +323,7 @@ result = engine.execute_generated_code("print('Hello!')")
 
 ---
 
-## Autonomous Application Production (v2.6.6)
+## Autonomous Application Production (v2.6.7)
 
 OpenClaw-style autonomous agent that takes a high-level specification and autonomously designs, codes, tests, and delivers complete applications.
 
@@ -467,7 +467,7 @@ resolution = coordinator.resolve(task_id)
 
 ---
 
-## Unified Voice Engine (v2.6.6)
+## Unified Voice Engine (v2.6.7)
 
 SOTA Speech-to-Text and Text-to-Speech with multi-backend fallback.
 
@@ -519,7 +519,7 @@ print(cmd.params)  # {"filename": "app.py", "type": "function"}
 
 ---
 
-## Git Integration (v2.6.6)
+## Git Integration (v2.6.7)
 
 Full Git sidebar panel in the GUI:
 
@@ -533,7 +533,7 @@ Full Git sidebar panel in the GUI:
 
 ---
 
-## File Watcher + Auto-Save (v2.6.6)
+## File Watcher + Auto-Save (v2.6.7)
 
 Automatic file monitoring and saving:
 
@@ -544,7 +544,7 @@ Automatic file monitoring and saving:
 
 ---
 
-## Unified Orchestrator (v2.6.6)
+## Unified Orchestrator (v2.6.7)
 
 Production-grade task orchestration replacing 4 disconnected systems:
 
@@ -666,7 +666,7 @@ setup_logging({
 
 ---
 
-## Settings Dialog (v2.6.6)
+## Settings Dialog (v2.6.7)
 
 GUI preferences editor (`Ctrl+,`):
 
@@ -678,7 +678,7 @@ GUI preferences editor (`Ctrl+,`):
 
 ---
 
-## Code Syntax Highlighting (v2.6.6)
+## Code Syntax Highlighting (v2.6.7)
 
 Automatic syntax highlighting in the code editor:
 
@@ -713,7 +713,7 @@ HIGHLIGHTERS[".js"] = JavaScriptHighlighter
 
 ---
 
-## Agent Reasoning Engine (v2.6.6)
+## Agent Reasoning Engine (v2.6.7)
 
 Full chain-of-thought reasoning for all agent decisions:
 
@@ -839,7 +839,7 @@ python test_system.py
 
 ---
 
-## Codebase RAG (v2.6.6)
+## Codebase RAG (v2.6.7)
 
 100% local semantic search over your codebase using Ollama embeddings or TF-IDF fallback:
 
@@ -877,7 +877,7 @@ context = indexer.get_context_for_prompt("How do I add a new endpoint?")
 
 ---
 
-## Tool Calling Framework (v2.6.6)
+## Tool Calling Framework (v2.6.7)
 
 ReAct-style agent action system with 16 built-in tools across 8 categories:
 
@@ -947,7 +947,7 @@ result = react.run(
 
 ---
 
-## Plugin System (v2.6.6)
+## Plugin System (v2.6.7)
 
 Extensible hook-based plugin architecture for custom agent behavior:
 
@@ -997,7 +997,7 @@ class MyPlugin:
 
 ---
 
-## DevOps Agent (v2.6.6)
+## DevOps Agent (v2.6.7)
 
 10th agent role with dedicated DevOps capabilities:
 
@@ -1030,7 +1030,7 @@ task = orch.create_task("Deploy to production", intent="deploy")
 
 ---
 
-## Screen Capture / Vision Analysis (v2.6.6)
+## Screen Capture / Vision Analysis (v2.6.7)
 
 AI-powered screen understanding using the vision model (llava:13b-gpu):
 
@@ -1071,6 +1071,66 @@ Natural language triggers:
 - "Read this screen"
 - "What errors do you see?"
 - "Capture screen"
+
+---
+
+## MCP Integration (v2.6.7)
+
+Connect to external services via the Model Context Protocol (MCP) — the open standard for AI tool interoperability.
+
+### What is MCP?
+
+MCP lets CrackedCode use tools from external servers (filesystem, web search, databases, GitHub, Slack, etc.) as if they were built-in tools.
+
+```
+User: "Search the web for Python best practices"
+  → MCP fetch server → web search → results injected into context
+```
+
+### Configuration
+
+Add MCP server configs to `mcp_servers/` as JSON files:
+
+```json
+// mcp_servers/filesystem.json
+{
+  "name": "filesystem",
+  "transport": "stdio",
+  "command": "npx",
+  "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+  "enabled": true,
+  "timeout": 30
+}
+```
+
+### Supported Transports
+
+| Transport | Description | Requirements |
+|-----------|-------------|--------------|
+| `stdio` | Spawn local process, communicate via stdin/stdout | `command` + `args` |
+| `sse` | HTTP Server-Sent Events | `url` + `httpx` |
+
+### Example Servers
+
+- **filesystem** — Read/write files beyond project root
+- **fetch** — Web search and HTTP requests
+- **sqlite** — Query SQLite databases
+
+### Tool Integration
+
+MCP tools are automatically synced into the ToolRegistry on engine startup:
+- Named as `server_name/tool_name`
+- Permission level: EXECUTE
+- Appear in tool listings alongside built-in tools
+- Callable via `ToolRegistry.execute()` and ReAct loops
+
+### Engine Status
+
+```python
+engine = CrackedCodeEngine()
+status = engine.get_status()
+print(status["mcp"])  # {"enabled": True, "servers": 2, "tools": 15}
+```
 
 ---
 
@@ -1118,4 +1178,4 @@ MIT
 
 ---
 
-**CrackedCode v2.6.6** - Autonomous AI Coding Agent with Agent Reasoning Engine, Codebase RAG, Tool Calling Framework, and SOTA Architecture Production
+**CrackedCode v2.6.7** - Autonomous AI Coding Agent with Agent Reasoning Engine, Codebase RAG, Tool Calling Framework, and SOTA Architecture Production

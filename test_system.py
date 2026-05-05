@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CRACKEDCODE v2.6.6 - Comprehensive End-to-End Test Suite
+CRACKEDCODE v2.6.7 - Comprehensive End-to-End Test Suite
 Full coverage with real operations, no placeholders
 """
 
@@ -595,11 +595,11 @@ def test_version_info() -> bool:
         PASS(f"Engine version: {status.get('version', 'unknown')}")
         
         version_checks = 0
-        if CrackedCode.VERSION == "2.6.6":
+        if CrackedCode.VERSION == "2.6.7":
             version_checks += 1
-        if MatrixUI.VERSION == "2.6.6":
+        if MatrixUI.VERSION == "2.6.7":
             version_checks += 1
-        if status.get("version") == "2.6.6":
+        if status.get("version") == "2.6.7":
             version_checks += 1
         
         PASS(f"Version consistency: {version_checks}/3")
@@ -709,10 +709,10 @@ def test_cli_integration_e2e() -> bool:
             version = result.stdout.strip()
             PASS(f"CLI import: version {version}")
             
-            if version == "2.6.6":
+            if version == "2.6.7":
                 PASS("CLI version correct")
             else:
-                FAIL("CLI version", f"Expected 2.6.6, got {version}")
+                FAIL("CLI version", f"Expected 2.6.7, got {version}")
                 return False
         else:
             FAIL("CLI import", result.stderr[:50])
@@ -1663,7 +1663,7 @@ def test_voice_hotword_detection() -> bool:
 
 
 def main() -> int:
-    print(f"\n{'='*60}\n  CRACKEDCODE v2.6.6 - E2E TEST SUITE\n{'='*60}\n")
+    print(f"\n{'='*60}\n  CRACKEDCODE v2.6.7 - E2E TEST SUITE\n{'='*60}\n")
     
     tests = [
         ("Modules", test_modules),
@@ -1745,6 +1745,7 @@ def main() -> int:
         ("Plugin System", test_plugin_system),
         ("DevOps Agent", test_devops_agent),
         ("Screen Capture", test_screen_capture),
+        ("MCP Client", test_mcp_client),
     ]
     
     results: list[tuple[str, bool]] = []
@@ -2933,6 +2934,94 @@ def test_screen_capture() -> bool:
         import traceback
         traceback.print_exc()
         return FAIL("Screen capture", str(e)[:50])
+
+
+def test_mcp_client() -> bool:
+    print_header("MCP CLIENT")
+    try:
+        from src.mcp_client import (
+            MCPClient, MCPTransport, StdioTransport, SSETransport,
+            MCPTool, MCPResource, MCPServerConfig, TransportType,
+            MCPConfigManager, get_mcp_client,
+        )
+        
+        # Reset singleton for clean test
+        if hasattr(get_mcp_client, "_instance"):
+            delattr(get_mcp_client, "_instance")
+        
+        PASS("All MCP classes imported")
+        
+        # Test MCPClient creation
+        client = MCPClient()
+        PASS("MCPClient created")
+        
+        # Test singleton - two calls to get_mcp_client should return same instance
+        singleton1 = get_mcp_client()
+        singleton2 = get_mcp_client()
+        if singleton1 is singleton2:
+            PASS("get_mcp_client singleton works")
+        else:
+            return FAIL("MCPClient singleton broken")
+        
+        # Test config manager
+        config_manager = MCPConfigManager()
+        PASS("MCPConfigManager created")
+        
+        # Test config save/load
+        config = MCPServerConfig(
+            name="test_server",
+            transport=TransportType.STDIO,
+            command="echo",
+            args=["test"],
+            enabled=False,
+        )
+        config_manager.save_config(config)
+        loaded = config_manager.load_config("test_server")
+        if loaded and loaded.name == "test_server":
+            PASS("Config save/load works")
+        else:
+            return FAIL("Config save/load failed")
+        
+        # Clean up test config
+        import os
+        try:
+            os.remove("mcp_servers/test_server.json")
+        except Exception:
+            pass
+        
+        # Test ToolRegistry MCP sync method exists
+        from src.tool_framework import get_tool_registry
+        registry = get_tool_registry()
+        if hasattr(registry, 'sync_mcp_tools'):
+            PASS("ToolRegistry has sync_mcp_tools")
+        else:
+            return FAIL("ToolRegistry missing sync_mcp_tools")
+        
+        if hasattr(registry, 'get_mcp_stats'):
+            PASS("ToolRegistry has get_mcp_stats")
+        else:
+            return FAIL("ToolRegistry missing get_mcp_stats")
+        
+        # Test engine has mcp_client property
+        from src.engine import CrackedCodeEngine
+        engine = CrackedCodeEngine()
+        if hasattr(engine, 'mcp_client'):
+            PASS("Engine has mcp_client property")
+        else:
+            return FAIL("Engine missing mcp_client")
+        
+        # Test engine status includes mcp
+        status = engine.get_status()
+        if "mcp" in status:
+            PASS("Engine status includes MCP info")
+        else:
+            return FAIL("Engine status missing MCP info")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("MCP client", str(e)[:50])
 
 
 if __name__ == "__main__":

@@ -1,0 +1,8 @@
+{
+  "name": "sqlite",
+  "transport": "stdio",
+  "command": "uvx",
+  "args": ["mcp-server-sqlite", "--db-path", "data.db"],
+  "enabled": false,
+  "timeout": 30
+}

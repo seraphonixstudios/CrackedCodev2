@@ -4,7 +4,7 @@
 
 CrackedCode is a 100% local AI coding assistant featuring autonomous application production (OpenClaw-style), multi-agent orchestration, voice I/O, and a sci-fi neural interface.
 
-**Current Version:** 2.6.6
+**Current Version:** 2.6.7
 **Branch:** main
 **License:** MIT
 
@@ -20,7 +20,7 @@ crackedcode/
 │   ├── gui_settings.py      # Preferences dialog with Ollama discovery
 │   ├── gui_syntax.py        # Code syntax highlighting (Python, JSON)
 │   ├── reasoning.py         # Agent Reasoning Engine - thought chains, coherence
-│   ├── codebase_rag.py      # Semantic search with local embeddings (v2.6.6)
+│   ├── codebase_rag.py      # Semantic search with local embeddings (v2.6.7)
 │   ├── engine.py            # CrackedCodeEngine - core logic
 │   ├── orchestrator.py      # UnifiedOrchestrator - task lifecycle, priorities
 │   ├── autonomous.py        # AutonomousAppProducer - OpenClaw-style agent
@@ -83,7 +83,7 @@ crackedcode/
 - **Persistent memory**: `save_reasoning_log()` / `load_reasoning_log()` JSON + REASONING.md
 - **LLM meta-reasoning**: `analyze_with_llm()` feeds coherence report to Ollama for insights
 
-### Codebase RAG (src/codebase_rag.py) (v2.6.6)
+### Codebase RAG (src/codebase_rag.py) (v2.6.7)
 - CodeChunker: Semantic chunking by function/class/module for 15+ languages
 - EmbeddingProvider: Ollama embeddings with TF-IDF fallback, 100% local
 - VectorStore: NumPy-based cosine similarity search
@@ -93,7 +93,7 @@ crackedcode/
 - **Autonomous integration**: Existing codebase awareness before generating new code
 - **GUI integration**: Semantic search dialog (Ctrl+Shift+F) with ranked results
 
-### Tool Calling Framework (src/tool_framework.py) (v2.6.6)
+### Tool Calling Framework (src/tool_framework.py) (v2.6.7)
 - `@tool` decorator: Auto-register functions with JSON schema from type hints
 - ToolRegistry: Central registry with permission levels (READ/WRITE/EXECUTE/DANGEROUS)
 - ReActLoop: Full reasoning → action → observation cycle with max iterations
@@ -104,7 +104,7 @@ crackedcode/
 - **Orchestrator integration**: AgentWorker auto-enables tools for complex tasks
 - **Autonomous integration**: Producer uses tools for file ops, testing, git
 
-### Plugin System (src/plugin_system.py) (v2.6.6)
+### Plugin System (src/plugin_system.py) (v2.6.7)
 - `@plugin` decorator: Auto-register classes/functions as plugins
 - PluginRegistry: Central registry with enable/disable, hot-reload
 - HookManager: Named hook points across engine/orchestrator/GUI/lifecycle
@@ -115,7 +115,7 @@ crackedcode/
 - **GUI integration**: Plugins menu, reload/manage dialogs, command_palette hook
 - **Tool framework integration**: pre/post execute hooks
 
-### DevOps Agent (src/orchestrator.py) (v2.6.6)
+### DevOps Agent (src/orchestrator.py) (v2.6.7)
 - `AgentRole.DEVOPS`: 10th agent role with docker/deploy/ci/monitor/infra/ssh capabilities
 - **Intent mapping**: deploy, docker, monitor, ci, infra → DEVOPS agent
 - **Tools**: docker_build, docker_run, docker_logs, deploy_to_server, monitor_logs, run_ci_pipeline
@@ -281,12 +281,22 @@ Key settings in `config.json`:
 4. Wrap in try/except so plugin failures don't break your component
 5. Add tests in `test_system.py`
 
+### Adding an MCP Server
+1. Create a JSON config in `mcp_servers/` directory (e.g., `mcp_servers/myserver.json`)
+2. Set `"name"`, `"transport"` (`stdio` or `sse`), and connection details
+3. For stdio: `"command"` + `"args"` (e.g., `["npx", "-y", "@modelcontextprotocol/server-filesystem", "."]`)
+4. For SSE: `"url"` (e.g., `"http://localhost:3000/sse"`)
+5. Set `"enabled": true` to auto-connect on engine startup
+6. MCP tools are auto-synced into ToolRegistry as `server_name/tool_name`
+7. Add test in `test_system.py`
+8. Update README.md
+
 ## Known Issues
 
 - Git push sometimes times out (requires retries)
 - Version consistency check: ensure all files are updated together
 - Windows path separators may need special handling in tests
-- PyQt6 `QStatusBar.addSeparator()` doesn't exist (removed in v2.6.6)
+- PyQt6 `QStatusBar.addSeparator()` doesn't exist (removed in v2.6.7)
 - `QLocalSocket` stale sockets need `removeServer()` before listen
 
 ## Models

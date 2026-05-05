@@ -1,7 +1,7 @@
 # CrackedCode White Paper
 ## SOTA Local Multi-Agent Coding Swarm with Agent Reasoning Engine
 
-**Version:** 2.6.6  
+**Version:** 2.6.7  
 **Date:** May 2026  
 **Author:** CrackedCode Team  
 **License:** MIT  
@@ -10,9 +10,9 @@
 
 ## Executive Summary
 
-CrackedCode is a production-grade local AI coding assistant that operates 100% offline using Ollama for large language model inference and local speech recognition/synthesis for voice I/O. Version 2.6.6 introduced the **Agent Reasoning Engine** — a full chain-of-thought reasoning system that makes every agent decision transparent, measurable, and coherent across the swarm. Version 2.6.6 added **Codebase RAG** — semantic search with local embeddings that gives every agent full awareness of the existing codebase before acting. Version 2.6.6 introduces the **Tool Calling Framework** — a ReAct-style action system that gives agents a rich, safe action space including file system, git, shell, test runner, and codebase search.
+CrackedCode is a production-grade local AI coding assistant that operates 100% offline using Ollama for large language model inference and local speech recognition/synthesis for voice I/O. Version 2.6.7 introduced the **Agent Reasoning Engine** — a full chain-of-thought reasoning system that makes every agent decision transparent, measurable, and coherent across the swarm. Version 2.6.7 added **Codebase RAG** — semantic search with local embeddings that gives every agent full awareness of the existing codebase before acting. Version 2.6.7 introduces the **Tool Calling Framework** — a ReAct-style action system that gives agents a rich, safe action space including file system, git, shell, test runner, and codebase search.
 
-This white paper details the architecture, implementation, and capabilities of CrackedCode v2.6.6.
+This white paper details the architecture, implementation, and capabilities of CrackedCode v2.6.7.
 
 ---
 
@@ -30,7 +30,7 @@ Current AI coding assistants require cloud API access, raising concerns about:
 
 ### 1.2 Solution
 
-CrackedCode v2.6.6 addresses all这些问题 by:
+CrackedCode v2.6.7 addresses all这些问题 by:
 - Running 100% locally with Ollama
 - No network calls after initial model download
 - Free to operate once models are cached
@@ -56,7 +56,7 @@ CrackedCode v2.6.6 addresses all这些问题 by:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                           CrackedCode v2.6.6                                │
+│                           CrackedCode v2.6.7                                │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  ┌─────────────┐     ┌─────────────┐     ┌─────────────────────────────┐  │
 │  │  Voice I/O  │────▶│  Unified    │────▶│   Agent Reasoning Engine    │  │
@@ -149,7 +149,7 @@ CrackedCode implements a parallel multi-agent swarm with 9 specialized agents co
 
 ### 2.3 Agent Reasoning Engine
 
-The crown jewel of v2.6.6 — every agent decision is transparent:
+The crown jewel of v2.6.7 — every agent decision is transparent:
 
 ```
 ReasoningStep → ThoughtChain → AgentReasoning → CoherenceTracker → ReasoningEngine
@@ -209,7 +209,7 @@ This ensures code quality through adversarial collaboration with full audit trai
 
 ---
 
-## 3. Codebase RAG (v2.6.6)
+## 3. Codebase RAG (v2.6.7)
 
 ### 3.1 Architecture
 
@@ -264,7 +264,7 @@ context = indexer.get_context_for_prompt("Add OAuth support")
 
 ---
 
-## 4. Tool Calling Framework (v2.6.6)
+## 4. Tool Calling Framework (v2.6.7)
 
 ### 4.1 Architecture
 
@@ -364,7 +364,7 @@ stats = registry.get_stats()
 
 ---
 
-## 5. Plugin System (v2.6.6)
+## 5. Plugin System (v2.6.7)
 
 ### 5.1 Architecture
 
@@ -440,7 +440,7 @@ registry.check_hot_reload()  # Call periodically or on demand
 
 ---
 
-## 6. DevOps Agent (v2.6.6)
+## 6. DevOps Agent (v2.6.7)
 
 ### 6.1 Architecture
 
@@ -489,9 +489,72 @@ User: "Deploy the API to production"
 
 ---
 
-## 7. Autonomous Application Production
+## 7. MCP Integration (v2.6.7)
 
-### 3.1 Production Pipeline
+### 7.1 Protocol Overview
+
+CrackedCode implements the Model Context Protocol (MCP), an open standard for connecting AI assistants to external data sources and tools:
+
+```
+User: "Search the web for Python best practices"
+  → MCP fetch server → web search → results → LLM context
+```
+
+### 7.2 Architecture
+
+- **MCPClient**: Singleton managing connections to multiple MCP servers
+- **Transports**: STDIO (subprocess) and SSE (HTTP Server-Sent Events)
+- **Tool Sync**: MCP tools automatically registered in ToolRegistry as `server_name/tool_name`
+- **ConfigManager**: JSON-based server configuration in `mcp_servers/` directory
+
+### 7.3 Supported Transports
+
+| Transport | Use Case | Requirements |
+|-----------|----------|--------------|
+| STDIO | Local CLI-based servers | `command` + `args` |
+| SSE | Remote HTTP servers | `url` + `httpx` |
+
+### 7.4 Tool Integration
+
+MCP tools are first-class citizens in CrackedCode:
+- Same execution interface as built-in tools
+- Permission level: EXECUTE
+- Available in ReAct loops
+- Listed in tool schemas for LLM tool calling
+
+### 7.5 Example Servers
+
+- **filesystem**: Read/write beyond project root
+- **fetch**: Web search and HTTP requests  
+- **sqlite**: Database queries
+- **github**: Issue/PR management
+- **slack**: Channel messages
+
+### 7.6 Configuration
+
+```json
+{
+  "name": "filesystem",
+  "transport": "stdio",
+  "command": "npx",
+  "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+  "enabled": true,
+  "timeout": 30
+}
+```
+
+### 7.7 Safety
+
+- MCP servers disabled by default (`"enabled": false`)
+- No secrets in config files — use environment variables
+- Server failures are isolated — one broken server doesn't affect others
+- Tool permissions apply to MCP tools same as built-in tools
+
+---
+
+## 8. Autonomous Application Production
+
+### 8.1 Production Pipeline
 
 OpenClaw-style 7-phase autonomous pipeline:
 
@@ -538,7 +601,7 @@ Specification → Analyze → Architect → Scaffold → Code → Test → Corre
 
 ---
 
-## 8. Voice I/O
+## 9. Voice I/O
 
 ### 4.1 Speech-to-Text (STT)
 
@@ -594,7 +657,7 @@ engine.speak("CrackedCode is ready")
 
 ---
 
-## 9. Implementation
+## 10. Implementation
 
 ### 5.1 Technology Stack
 
@@ -672,7 +735,7 @@ All agents output valid JSON for reliable parsing:
 
 ---
 
-## 10. Security
+## 11. Security
 
 ### 6.1 Command Whitelist
 
@@ -706,7 +769,7 @@ All operations logged to `logs/crackedcode.log`:
 
 ---
 
-## 11. Performance
+## 12. Performance
 
 ### 7.1 Benchmarks
 
@@ -747,7 +810,7 @@ All operations logged to `logs/crackedcode.log`:
 
 ---
 
-## 12. Usage Scenarios
+## 13. Usage Scenarios
 
 ### 8.1 Voice-First Development
 
@@ -797,7 +860,7 @@ CrackedCode: "Starting autonomous production..."
 
 ---
 
-## 13. Comparison
+## 14. Comparison
 
 ### 9.1 Vs Cloud AI Assistants
 
@@ -825,9 +888,9 @@ CrackedCode: "Starting autonomous production..."
 
 ---
 
-## 14. Future Work
+## 15. Future Work
 
-### 14.1 Planned Features
+### 15.1 Planned Features
 
 - [x] Agent Reasoning Engine with coherence tracking
 - [x] GUI Reasoning Panel with live event stream
@@ -842,12 +905,16 @@ CrackedCode: "Starting autonomous production..."
 - [x] Syntax Highlighting
 - [ ] Web UI (Electron/Tkinter)
 - [x] DevOps agent with Docker, deploy, CI tools
+- [x] Screen Capture / Vision Analysis
+- [x] MCP Integration
+- [ ] A2A (Agent-to-Agent) Protocol
+- [ ] Browser Automation
 - [ ] Security agent
 - [ ] Custom agent definition
 - [ ] Multi-language support
 - [ ] Video I/O for screen analysis
 
-### 14.2 Model Updates
+### 15.2 Model Updates
 
 - [x] Qwen3 8B optimization
 - [x] faster-whisper integration
@@ -858,9 +925,9 @@ CrackedCode: "Starting autonomous production..."
 
 ---
 
-## 15. Conclusion
+## 16. Conclusion
 
-CrackedCode v2.6.6 demonstrates that SOTA AI coding assistance is achievable 100% locally without cloud dependencies. By combining:
+CrackedCode v2.6.7 demonstrates that SOTA AI coding assistance is achievable 100% locally without cloud dependencies. By combining:
 
 - Multi-agent swarm architecture (9 specialized agents)
 - Agent Reasoning Engine with transparent decision-making
@@ -958,7 +1025,7 @@ result = voice.listen(duration=5.0)
 
 ---
 
-**Document Version:** 2.6.6  
+**Document Version:** 2.6.7  
 **Last Updated:** May 2026  
 **Author:** CrackedCode Team  
 **License:** MIT
