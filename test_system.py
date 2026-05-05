@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CRACKEDCODE v2.7.0 - Comprehensive End-to-End Test Suite
+CRACKEDCODE v2.7.1 - Comprehensive End-to-End Test Suite
 Full coverage with real operations, no placeholders
 """
 
@@ -595,11 +595,11 @@ def test_version_info() -> bool:
         PASS(f"Engine version: {status.get('version', 'unknown')}")
         
         version_checks = 0
-        if CrackedCode.VERSION == "2.7.0":
+        if CrackedCode.VERSION == "2.7.1":
             version_checks += 1
-        if MatrixUI.VERSION == "2.7.0":
+        if MatrixUI.VERSION == "2.7.1":
             version_checks += 1
-        if status.get("version") == "2.7.0":
+        if status.get("version") == "2.7.1":
             version_checks += 1
         
         PASS(f"Version consistency: {version_checks}/3")
@@ -709,10 +709,10 @@ def test_cli_integration_e2e() -> bool:
             version = result.stdout.strip()
             PASS(f"CLI import: version {version}")
             
-            if version == "2.7.0":
+            if version == "2.7.1":
                 PASS("CLI version correct")
             else:
-                FAIL("CLI version", f"Expected 2.7.0, got {version}")
+                FAIL("CLI version", f"Expected 2.7.1, got {version}")
                 return False
         else:
             FAIL("CLI import", result.stderr[:50])
@@ -1663,7 +1663,7 @@ def test_voice_hotword_detection() -> bool:
 
 
 def main() -> int:
-    print(f"\n{'='*60}\n  CRACKEDCODE v2.7.0 - E2E TEST SUITE\n{'='*60}\n")
+    print(f"\n{'='*60}\n  CRACKEDCODE v2.7.1 - E2E TEST SUITE\n{'='*60}\n")
     
     tests = [
         ("Modules", test_modules),
@@ -1752,6 +1752,7 @@ def main() -> int:
         ("A2A Protocol", test_a2a_protocol),
         ("Model Routing", test_model_routing),
         ("Conversation Manager", test_conversation_manager),
+        ("Custom Agents", test_custom_agents),
     ]
     
     results: list[tuple[str, bool]] = []
@@ -3373,6 +3374,87 @@ def test_conversation_manager() -> bool:
         import traceback
         traceback.print_exc()
         return FAIL("Conversation manager", str(e)[:50])
+
+
+def test_custom_agents() -> bool:
+    print_header("CUSTOM AGENT DEFINITION")
+    try:
+        from src.custom_agents import (
+            CustomAgentRegistry, CustomAgentDef,
+            get_custom_agent_registry,
+        )
+        import tempfile
+        import os
+        
+        # Reset singleton
+        import src.custom_agents as ca_module
+        ca_module.get_custom_agent_registry._instance = None
+        
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Test registry creation
+            registry = CustomAgentRegistry(config_dir=tmpdir)
+            PASS("CustomAgentRegistry created")
+            
+            # Test save example
+            example_path = registry.save_example("test_agent")
+            if example_path.exists():
+                PASS("Example agent saved")
+            else:
+                return FAIL("Example save failed")
+            
+            # Test reload
+            registry.reload()
+            if len(registry.list_agents()) == 1:
+                PASS("Agent loaded from file")
+            else:
+                return FAIL("Agent not loaded")
+            
+            # Test get
+            agent = registry.get("test_agent")
+            if agent and agent.name == "test_agent":
+                PASS("Get agent by name works")
+            else:
+                return FAIL("Get agent failed")
+            
+            # Test validation
+            errors = agent.validate()
+            if len(errors) == 0:
+                PASS("Agent validation passed")
+            else:
+                return FAIL(f"Validation failed: {errors}")
+            
+            # Test intent map
+            intent_map = registry.get_intent_map()
+            if "quality" in intent_map:
+                PASS("Intent map works")
+            else:
+                return FAIL("Intent map missing intents")
+            
+            # Test list enabled
+            enabled = registry.list_enabled()
+            if len(enabled) == 1:
+                PASS("List enabled works")
+            else:
+                return FAIL("List enabled wrong")
+            
+            # Test custom agent definition creation
+            custom_def = CustomAgentDef(
+                name="pen_tester",
+                role="security",
+                capabilities=["scan", "fuzz"],
+                system_prompt="You are a pen tester",
+                intents=["pentest", "exploit"],
+            )
+            if custom_def.name == "pen_tester":
+                PASS("CustomAgentDef created")
+            else:
+                return FAIL("CustomAgentDef creation failed")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Custom agents", str(e)[:50])
 
 
 if __name__ == "__main__":

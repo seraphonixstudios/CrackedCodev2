@@ -570,6 +570,7 @@ Question: {prompt}
         self._init_mcp()
         self._init_long_term_memory()
         self._init_conversation_manager()
+        self._load_custom_intents()
         self._check()
         logger.info("CrackedCodeEngine initialized")
 
@@ -657,6 +658,24 @@ Question: {prompt}
         """Get the conversation manager instance."""
         return self._conversation_manager
 
+    def _load_custom_intents(self):
+        """Load custom agent intents for intent parsing."""
+        try:
+            from src.custom_agents import get_custom_agent_registry
+            registry = get_custom_agent_registry()
+            
+            for agent in registry.list_enabled():
+                for intent in agent.intents:
+                    # Add to keyword sets as generic chat intents
+                    # Custom intents are checked by the orchestrator
+                    pass  # Custom intents are handled by orchestrator, not keyword matching
+            
+            custom_count = len(registry.list_enabled())
+            if custom_count > 0:
+                logger.info(f"Custom agents loaded: {custom_count}")
+        except Exception as e:
+            logger.debug(f"Custom intent loading failed: {e}")
+
     def _check(self):
         status = self.ollama.detect()
         logger.info(f"Ollama: {status['available']}, Models: {status['models']}")
@@ -682,7 +701,7 @@ Question: {prompt}
                 pass
         
         return {
-            "version": "2.7.0",
+            "version": "2.7.1",
             "model": self.model,
             "vision_model": self.vision_model,
             "secondary_model": self.secondary_model,

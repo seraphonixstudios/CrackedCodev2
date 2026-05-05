@@ -1471,7 +1471,7 @@ class CrackedCodeGUI(QMainWindow):
         self.restore_state()
         self.setup_paste_handler()
         
-        logger.info("CrackedCode GUI v2.7.0 started")
+        logger.info("CrackedCode GUI v2.7.1 started")
 
     def init_orchestrator(self):
         self.orchestrator = AgentOrchestrator(gui_ref=self)
@@ -1636,7 +1636,7 @@ class CrackedCodeGUI(QMainWindow):
             self.config = {"model": "qwen3:8b-gpu", "project_root": "."}
 
     def setup_atlan_theme(self):
-        self.setWindowTitle("CRACKEDCODE v2.7.0 // AUTONOMOUS NEURAL SYSTEM")
+        self.setWindowTitle("CRACKEDCODE v2.7.1 // AUTONOMOUS NEURAL SYSTEM")
         self.setMinimumSize(1400, 900)
         
         self.atlan_font = QFont("Consolas", 11)
@@ -3437,7 +3437,7 @@ class CrackedCodeGUI(QMainWindow):
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
 
-        subtitle = QLabel("AUTONOMOUS NEURAL SYSTEM v2.7.0")
+        subtitle = QLabel("AUTONOMOUS NEURAL SYSTEM v2.7.1")
         subtitle.setStyleSheet(f"font-size: 12px; color: {ATLAN_GOLD}; font-family: Consolas;")
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(subtitle)

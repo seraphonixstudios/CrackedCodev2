@@ -474,6 +474,7 @@ class UnifiedOrchestrator:
     
     def _init_agents(self):
         """Initialize all agent workers and register with reasoning engine."""
+        # Built-in agents
         for role in AgentRole:
             agent = AgentWorker(role, self.engine)
             self._agents[role] = agent
@@ -482,6 +483,39 @@ class UnifiedOrchestrator:
             if _reasoning_available and self._reasoning_engine:
                 reasoning = self._reasoning_engine.register_agent(agent.agent_id, role.value)
                 agent.reasoning = reasoning
+        
+        # Custom agents from YAML/JSON configs
+        try:
+            from src.custom_agents import get_custom_agent_registry
+            custom_registry = get_custom_agent_registry()
+            
+            for custom_def in custom_registry.list_enabled():
+                # Create a dynamic AgentRole for custom agents
+                # We use a special key format: "custom:{name}"
+                custom_role_value = f"custom_{custom_def.name}"
+                
+                # Create AgentWorker with custom capabilities
+                custom_agent = AgentWorker(
+                    role=AgentRole.CODER,  # Base role, overridden by capabilities
+                    engine=self.engine,
+                )
+                custom_agent.agent_id = f"{custom_def.name}_{uuid.uuid4().hex[:6]}"
+                custom_agent.capabilities = custom_def.capabilities
+                custom_agent.system_prompt = custom_def.system_prompt
+                
+                # Store in agents dict with custom key
+                self._agents[custom_role_value] = custom_agent
+                
+                # Register with reasoning engine
+                if _reasoning_available and self._reasoning_engine:
+                    reasoning = self._reasoning_engine.register_agent(
+                        custom_agent.agent_id, custom_def.role
+                    )
+                    custom_agent.reasoning = reasoning
+                
+                logger.info(f"Custom agent registered: {custom_def.name} ({custom_def.role})")
+        except Exception as e:
+            logger.warning(f"Custom agent loading failed: {e}")
     
     def create_task(
         self,
@@ -522,6 +556,54 @@ class UnifiedOrchestrator:
         
         # Auto-select agent based on intent with reasoning
         if agent is None:
+            # Check custom agents first (higher priority)
+            try:
+                from src.custom_agents import get_custom_agent_registry
+                custom_registry = get_custom_agent_registry()
+                custom_intent_map = custom_registry.get_intent_map()
+                
+                if intent.lower() in custom_intent_map:
+                    custom_name = custom_intent_map[intent.lower()]
+                    custom_def = custom_registry.get(custom_name)
+                    if custom_def:
+                        # Use custom agent
+                        agent = f"custom_{custom_name}"
+                        agent_reasoning = f"Selected custom agent '{custom_name}' based on intent '{intent}'"
+                        agent_evidence = [f"intent: {intent}", f"custom_agent: {custom_name}", f"role: {custom_def.role}"]
+                        
+                        if reasoning_chain:
+                            reasoning_chain.add_step("decision", agent_reasoning, 0.9, agent_evidence)
+                        
+                        # Create task with custom agent info
+                        task = Task(
+                            prompt=prompt,
+                            intent=intent,
+                            agent=agent,
+                            priority=priority,
+                            timeout=timeout,
+                            max_retries=max_retries,
+                            depends_on=depends_on or [],
+                            parent_id=parent_id,
+                            context=context or {},
+                            metadata={**(metadata or {}), "custom_agent": custom_name},
+                        )
+                        
+                        if reasoning_chain:
+                            task.reasoning_chain_id = reasoning_chain.id
+                        
+                        self._tasks[task.id] = task
+                        
+                        logger.info(f"Task {task.id} created: {intent} -> custom:{custom_name}")
+                        
+                        # Plugin hook
+                        if _plugins_available:
+                            execute_hook(HookPoint.ORCHESTRATOR_TASK_CREATED, task)
+                        
+                        return task
+            except Exception as e:
+                logger.debug(f"Custom agent intent check failed: {e}")
+            
+            # Fall back to built-in agent mapping
             agent = INTENT_TO_AGENT.get(intent.lower(), AgentRole.CODER)
             
             # Log agent selection reasoning
