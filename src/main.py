@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 CrackedCode - Local AI Coding Assistant
-Version: 2.7.3
+Version: 2.7.4
 """
 
 import os
@@ -1903,7 +1903,7 @@ class AgentSwarm:
 
 
 class CrackedCode:
-    VERSION = "2.7.3"
+    VERSION = "2.7.4"
     BANNER = """
 ============================================================
   CRACKEDCODE v{version} - Local AI Coding Assistant
@@ -2139,6 +2139,7 @@ def main():
     api_parser = subparsers.add_parser("api", help="Start REST API server")
     api_parser.add_argument("--host", default="0.0.0.0", help="API server host (default: 0.0.0.0)")
     api_parser.add_argument("--port", type=int, default=8080, help="API server port (default: 8080)")
+    api_parser.add_argument("--api-key", default=None, help="API key for authentication (overrides config)")
 
     parser.add_argument(
         "-c", "--config",
@@ -2168,12 +2169,28 @@ def main():
         from src.api_server import create_api_server
         from src.engine import CrackedCodeEngine
         
-        engine = CrackedCodeEngine()
-        api = create_api_server(engine=engine, host=getattr(args, 'host', '0.0.0.0'), port=getattr(args, 'port', 8080))
+        config = _load_config_from_path(getattr(args, "config", None))
+        engine = CrackedCodeEngine(config=config)
         
-        print(f"Starting CrackedCode API Server v2.7.3")
+        # API key: CLI arg overrides config
+        api_key = getattr(args, 'api_key', None)
+        if api_key is None and config:
+            api_key = config.get("api_key")
+        
+        api = create_api_server(
+            engine=engine,
+            host=getattr(args, 'host', '0.0.0.0'),
+            port=getattr(args, 'port', 8080),
+            api_key=api_key,
+        )
+        
+        print(f"Starting CrackedCode API Server v2.7.4")
         print(f"URL: {api.url}")
         print(f"Docs: {api.url}/docs")
+        if api.api_key:
+            print("Auth: API key required (X-API-Key header)")
+        else:
+            print("Auth: None (set api_key in config.json to enable)")
         print(f"Press Ctrl+C to stop")
         
         api.start()

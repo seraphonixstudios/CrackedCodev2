@@ -2,6 +2,7 @@
 
 Endpoints:
 - POST /process      - Process a prompt with the engine
+- POST /process/stream - Stream a prompt response via SSE
 - GET  /status       - System status and configuration
 - GET  /agents       - List all agents (built-in + custom)
 - GET  /tools        - List available tools with schemas
@@ -10,11 +11,16 @@ Endpoints:
 - GET  /models       - List available Ollama models
 - GET  /docs         - OpenAPI/Swagger documentation (auto-generated)
 
+Authentication (optional):
+  Set "api_key" in config.json or pass to create_api_server().
+  All endpoints except / and /docs require X-API-Key header.
+
 Usage:
     python src/api_server.py
     
     curl -X POST http://localhost:8080/process \
          -H "Content-Type: application/json" \
+         -H "X-API-Key: your-key" \
          -d '{"prompt": "Write a Python function to add numbers", "intent": "code"}'
 """
 
@@ -28,9 +34,10 @@ from typing import Any, AsyncGenerator, Dict, List, Optional
 from src.logger_config import get_logger
 
 try:
-    from fastapi import FastAPI, HTTPException
+    from fastapi import FastAPI, HTTPException, Depends, Security
     from fastapi.middleware.cors import CORSMiddleware
     from fastapi.responses import StreamingResponse
+    from fastapi.security import APIKeyHeader
     from pydantic import BaseModel
     import uvicorn
     FASTAPI_AVAILABLE = True
@@ -38,6 +45,9 @@ except ImportError:
     FASTAPI_AVAILABLE = False
 
 logger = get_logger("APIServer")
+
+# API key header scheme
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 
 # ── Request/Response Models ────────────────────────────────────────────────
@@ -109,10 +119,11 @@ class ConversationInfo(BaseModel):
 class CrackedCodeAPI:
     """REST API server for CrackedCode."""
     
-    def __init__(self, engine=None, host: str = "0.0.0.0", port: int = 8080):
+    def __init__(self, engine=None, host: str = "0.0.0.0", port: int = 8080, api_key: Optional[str] = None):
         self.engine = engine
         self.host = host
         self.port = port
+        self.api_key = api_key
         self._app: Optional[Any] = None
         self._server_thread: Optional[threading.Thread] = None
         self._running = False
@@ -125,7 +136,7 @@ class CrackedCodeAPI:
         self._app = FastAPI(
             title="CrackedCode API",
             description="REST API for the CrackedCode local AI coding assistant",
-            version="2.7.3",
+            version="2.7.4",
         )
         
         # CORS
@@ -139,6 +150,26 @@ class CrackedCodeAPI:
         
         self._register_routes()
     
+    def _verify_api_key(self, api_key: Optional[str] = Security(api_key_header)):
+        """Verify API key if one is configured."""
+        if not self.api_key:
+            # No API key configured — auth disabled
+            return True
+        
+        if not api_key:
+            raise HTTPException(
+                status_code=401,
+                detail="API key required. Provide X-API-Key header.",
+            )
+        
+        if api_key != self.api_key:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid API key.",
+            )
+        
+        return True
+    
     def _register_routes(self):
         """Register API routes."""
         
@@ -146,8 +177,9 @@ class CrackedCodeAPI:
         async def root():
             return {
                 "name": "CrackedCode API",
-                "version": "2.7.3",
+                "version": "2.7.4",
                 "docs": "/docs",
+                "auth_required": bool(self.api_key),
                 "endpoints": [
                     "/process",
                     "/process/stream",
@@ -159,7 +191,7 @@ class CrackedCodeAPI:
                 ],
             }
         
-        @self._app.post("/process", response_model=ProcessResponse)
+        @self._app.post("/process", response_model=ProcessResponse, dependencies=[Depends(self._verify_api_key)])
         async def process(request: ProcessRequest):
             """Process a prompt with the CrackedCode engine."""
             if not self.engine:
@@ -185,7 +217,7 @@ class CrackedCodeAPI:
                 logger.error(f"API process error: {e}")
                 raise HTTPException(status_code=500, detail=str(e))
         
-        @self._app.post("/process/stream")
+        @self._app.post("/process/stream", dependencies=[Depends(self._verify_api_key)])
         async def process_stream(request: ProcessRequest):
             """Process a prompt with streaming (Server-Sent Events)."""
             if not self.engine:
@@ -277,11 +309,11 @@ class CrackedCodeAPI:
                 },
             )
         
-        @self._app.get("/status", response_model=StatusResponse)
+        @self._app.get("/status", response_model=StatusResponse, dependencies=[Depends(self._verify_api_key)])
         async def status():
             """Get system status."""
             if not self.engine:
-                return StatusResponse(version="2.7.3")
+                return StatusResponse(version="2.7.4")
             
             try:
                 status_data = self.engine.get_status()
@@ -300,7 +332,7 @@ class CrackedCodeAPI:
                     conv_count = self.engine.conversation_manager.get_stats().get('total_conversations', 0)
                 
                 return StatusResponse(
-                    version=status_data.get('version', '2.7.3'),
+                    version=status_data.get('version', '2.7.4'),
                     model=status_data.get('model', ''),
                     vision_model=status_data.get('vision_model', ''),
                     secondary_model=status_data.get('secondary_model', ''),
@@ -314,7 +346,7 @@ class CrackedCodeAPI:
                 logger.error(f"API status error: {e}")
                 raise HTTPException(status_code=500, detail=str(e))
         
-        @self._app.get("/agents", response_model=List[AgentInfo])
+        @self._app.get("/agents", response_model=List[AgentInfo], dependencies=[Depends(self._verify_api_key)])
         async def agents():
             """List all agents."""
             agents_list = []
@@ -350,7 +382,7 @@ class CrackedCodeAPI:
             
             return agents_list
         
-        @self._app.get("/tools", response_model=List[ToolInfo])
+        @self._app.get("/tools", response_model=List[ToolInfo], dependencies=[Depends(self._verify_api_key)])
         async def tools():
             """List available tools."""
             tools_list = []
@@ -370,7 +402,7 @@ class CrackedCodeAPI:
             
             return tools_list
         
-        @self._app.get("/conversations", response_model=List[ConversationInfo])
+        @self._app.get("/conversations", response_model=List[ConversationInfo], dependencies=[Depends(self._verify_api_key)])
         async def conversations():
             """List conversation history."""
             if not self.engine or not hasattr(self.engine, 'conversation_manager') or not self.engine.conversation_manager:
@@ -393,7 +425,7 @@ class CrackedCodeAPI:
                 logger.error(f"API conversations error: {e}")
                 raise HTTPException(status_code=500, detail=str(e))
         
-        @self._app.post("/conversations")
+        @self._app.post("/conversations", dependencies=[Depends(self._verify_api_key)])
         async def create_conversation(name: Optional[str] = None):
             """Create a new conversation."""
             if not self.engine or not hasattr(self.engine, 'conversation_manager') or not self.engine.conversation_manager:
@@ -406,7 +438,7 @@ class CrackedCodeAPI:
                 logger.error(f"API create conversation error: {e}")
                 raise HTTPException(status_code=500, detail=str(e))
         
-        @self._app.get("/models")
+        @self._app.get("/models", dependencies=[Depends(self._verify_api_key)])
         async def models():
             """List available Ollama models."""
             if not self.engine:
@@ -442,6 +474,10 @@ class CrackedCodeAPI:
             self._server_thread.start()
             self._running = True
             logger.info(f"API server started on http://{self.host}:{self.port}")
+            if self.api_key:
+                logger.info("API authentication enabled")
+            else:
+                logger.info("API authentication disabled (no api_key configured)")
             logger.info(f"API docs available at http://{self.host}:{self.port}/docs")
             return True
         except Exception as e:
@@ -466,9 +502,9 @@ class CrackedCodeAPI:
         return f"http://{self.host}:{self.port}"
 
 
-def create_api_server(engine=None, host: str = "0.0.0.0", port: int = 8080) -> CrackedCodeAPI:
+def create_api_server(engine=None, host: str = "0.0.0.0", port: int = 8080, api_key: Optional[str] = None) -> CrackedCodeAPI:
     """Create a CrackedCodeAPI instance."""
-    return CrackedCodeAPI(engine=engine, host=host, port=port)
+    return CrackedCodeAPI(engine=engine, host=host, port=port, api_key=api_key)
 
 
 # ── CLI Entry Point ────────────────────────────────────────────────────────
@@ -477,11 +513,16 @@ if __name__ == "__main__":
     from src.engine import CrackedCodeEngine
     
     engine = CrackedCodeEngine()
-    api = create_api_server(engine=engine)
+    api_key = engine.config.get("api_key") if hasattr(engine, 'config') else None
+    api = create_api_server(engine=engine, api_key=api_key)
     
-    print(f"Starting CrackedCode API Server v2.7.3")
+    print(f"Starting CrackedCode API Server v2.7.4")
     print(f"URL: {api.url}")
     print(f"Docs: {api.url}/docs")
+    if api.api_key:
+        print("Auth: API key required (X-API-Key header)")
+    else:
+        print("Auth: None (set api_key in config.json to enable)")
     print(f"Press Ctrl+C to stop")
     
     api.start()

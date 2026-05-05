@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CRACKEDCODE v2.7.3 - Comprehensive End-to-End Test Suite
+CRACKEDCODE v2.7.4 - Comprehensive End-to-End Test Suite
 Full coverage with real operations, no placeholders
 """
 
@@ -595,11 +595,11 @@ def test_version_info() -> bool:
         PASS(f"Engine version: {status.get('version', 'unknown')}")
         
         version_checks = 0
-        if CrackedCode.VERSION == "2.7.3":
+        if CrackedCode.VERSION == "2.7.4":
             version_checks += 1
-        if MatrixUI.VERSION == "2.7.3":
+        if MatrixUI.VERSION == "2.7.4":
             version_checks += 1
-        if status.get("version") == "2.7.3":
+        if status.get("version") == "2.7.4":
             version_checks += 1
         
         PASS(f"Version consistency: {version_checks}/3")
@@ -709,10 +709,10 @@ def test_cli_integration_e2e() -> bool:
             version = result.stdout.strip()
             PASS(f"CLI import: version {version}")
             
-            if version == "2.7.3":
+            if version == "2.7.4":
                 PASS("CLI version correct")
             else:
-                FAIL("CLI version", f"Expected 2.7.3, got {version}")
+                FAIL("CLI version", f"Expected 2.7.4, got {version}")
                 return False
         else:
             FAIL("CLI import", result.stderr[:50])
@@ -1663,7 +1663,7 @@ def test_voice_hotword_detection() -> bool:
 
 
 def main() -> int:
-    print(f"\n{'='*60}\n  CRACKEDCODE v2.7.3 - E2E TEST SUITE\n{'='*60}\n")
+    print(f"\n{'='*60}\n  CRACKEDCODE v2.7.4 - E2E TEST SUITE\n{'='*60}\n")
     
     tests = [
         ("Modules", test_modules),
@@ -3518,6 +3518,63 @@ def test_api_server() -> bool:
             PASS("Streaming endpoint registered")
         else:
             return FAIL("Streaming endpoint not found")
+        
+        # Test auth disabled by default
+        if api.api_key is None:
+            PASS("Auth disabled by default")
+        else:
+            return FAIL("Auth should be disabled by default")
+        
+        # Test auth enabled
+        api_auth = create_api_server(api_key="test-secret-key")
+        if api_auth.api_key == "test-secret-key":
+            PASS("API key config works")
+        else:
+            return FAIL("API key not stored")
+        
+        # Test root endpoint reports auth status
+        from fastapi.testclient import TestClient
+        client_no_auth = TestClient(api._app)
+        response = client_no_auth.get("/")
+        if response.status_code == 200 and response.json().get("auth_required") == False:
+            PASS("Root reports auth disabled")
+        else:
+            return FAIL("Root auth status wrong")
+        
+        client_auth = TestClient(api_auth._app)
+        response_auth = client_auth.get("/")
+        if response_auth.status_code == 200 and response_auth.json().get("auth_required") == True:
+            PASS("Root reports auth enabled")
+        else:
+            return FAIL("Root auth status wrong for enabled")
+        
+        # Test protected endpoint without key returns 401
+        response_protected = client_auth.get("/status")
+        if response_protected.status_code == 401:
+            PASS("Missing key returns 401")
+        else:
+            return FAIL(f"Expected 401, got {response_protected.status_code}")
+        
+        # Test protected endpoint with wrong key returns 401
+        response_wrong = client_auth.get("/status", headers={"X-API-Key": "wrong-key"})
+        if response_wrong.status_code == 401:
+            PASS("Wrong key returns 401")
+        else:
+            return FAIL(f"Expected 401 for wrong key, got {response_wrong.status_code}")
+        
+        # Test protected endpoint with correct key returns 200
+        response_correct = client_auth.get("/status", headers={"X-API-Key": "test-secret-key"})
+        if response_correct.status_code == 200:
+            PASS("Correct key returns 200")
+        else:
+            return FAIL(f"Expected 200 for correct key, got {response_correct.status_code}")
+        
+        # Test no-auth server allows requests without key
+        response_open = client_no_auth.get("/status")
+        if response_open.status_code == 200:
+            PASS("No-auth server allows open access")
+        else:
+            return FAIL(f"Expected 200 for open access, got {response_open.status_code}")
         
         return True
     except ImportError as e:

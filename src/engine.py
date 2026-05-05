@@ -701,7 +701,7 @@ Question: {prompt}
                 pass
         
         return {
-            "version": "2.7.3",
+            "version": "2.7.4",
             "model": self.model,
             "vision_model": self.vision_model,
             "secondary_model": self.secondary_model,

@@ -1,6 +1,6 @@
 ﻿#!/usr/bin/env python3
 """
-CrackedCode Unified Voice Engine v2.7.3
+CrackedCode Unified Voice Engine v2.7.4
 SOTA Speech-to-Text and Text-to-Speech with multi-backend fallback,
 Voice Activity Detection (VAD), natural language command processing,
 and hands-free voice interaction.
