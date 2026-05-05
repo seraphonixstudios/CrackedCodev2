@@ -4,7 +4,7 @@
 
 CrackedCode is a 100% local AI coding assistant featuring autonomous application production (OpenClaw-style), multi-agent orchestration, voice I/O, and a sci-fi neural interface.
 
-**Current Version:** 2.6.8
+**Current Version:** 2.6.9
 **Branch:** main
 **License:** MIT
 
@@ -20,7 +20,7 @@ crackedcode/
 │   ├── gui_settings.py      # Preferences dialog with Ollama discovery
 │   ├── gui_syntax.py        # Code syntax highlighting (Python, JSON)
 │   ├── reasoning.py         # Agent Reasoning Engine - thought chains, coherence
-│   ├── codebase_rag.py      # Semantic search with local embeddings (v2.6.8)
+│   ├── codebase_rag.py      # Semantic search with local embeddings (v2.6.9)
 │   ├── engine.py            # CrackedCodeEngine - core logic
 │   ├── orchestrator.py      # UnifiedOrchestrator - task lifecycle, priorities
 │   ├── autonomous.py        # AutonomousAppProducer - OpenClaw-style agent
@@ -88,7 +88,7 @@ crackedcode/
 - **Persistent memory**: `save_reasoning_log()` / `load_reasoning_log()` JSON + REASONING.md
 - **LLM meta-reasoning**: `analyze_with_llm()` feeds coherence report to Ollama for insights
 
-### Codebase RAG (src/codebase_rag.py) (v2.6.8)
+### Codebase RAG (src/codebase_rag.py) (v2.6.9)
 - CodeChunker: Semantic chunking by function/class/module for 15+ languages
 - EmbeddingProvider: Ollama embeddings with TF-IDF fallback, 100% local
 - VectorStore: NumPy-based cosine similarity search
@@ -98,7 +98,7 @@ crackedcode/
 - **Autonomous integration**: Existing codebase awareness before generating new code
 - **GUI integration**: Semantic search dialog (Ctrl+Shift+F) with ranked results
 
-### Tool Calling Framework (src/tool_framework.py) (v2.6.8)
+### Tool Calling Framework (src/tool_framework.py) (v2.6.9)
 - `@tool` decorator: Auto-register functions with JSON schema from type hints
 - ToolRegistry: Central registry with permission levels (READ/WRITE/EXECUTE/DANGEROUS)
 - ReActLoop: Full reasoning → action → observation cycle with max iterations
@@ -109,7 +109,7 @@ crackedcode/
 - **Orchestrator integration**: AgentWorker auto-enables tools for complex tasks
 - **Autonomous integration**: Producer uses tools for file ops, testing, git
 
-### Plugin System (src/plugin_system.py) (v2.6.8)
+### Plugin System (src/plugin_system.py) (v2.6.9)
 - `@plugin` decorator: Auto-register classes/functions as plugins
 - PluginRegistry: Central registry with enable/disable, hot-reload
 - HookManager: Named hook points across engine/orchestrator/GUI/lifecycle
@@ -120,47 +120,47 @@ crackedcode/
 - **GUI integration**: Plugins menu, reload/manage dialogs, command_palette hook
 - **Tool framework integration**: pre/post execute hooks
 
-### DevOps Agent (src/orchestrator.py) (v2.6.8)
+### DevOps Agent (src/orchestrator.py) (v2.6.9)
 - `AgentRole.DEVOPS`: 10th agent role with docker/deploy/ci/monitor/infra/ssh capabilities
 - **Intent mapping**: deploy, docker, monitor, ci, infra → DEVOPS agent
 - **Tools**: docker_build, docker_run, docker_logs, deploy_to_server, monitor_logs, run_ci_pipeline
 - **Orchestrator integration**: Auto-created in `_init_agents()` alongside other 9 agents
 - **Safety**: All DevOps tools marked DANGEROUS (blocked by default), except docker_logs and monitor_logs (READ)
 
-### Security Agent (src/orchestrator.py) (v2.6.8)
+### Security Agent (src/orchestrator.py) (v2.6.9)
 - `AgentRole.SECURITY`: 11th agent role with scan/audit/check/secure/vulnerability/pentest capabilities
 - **Intent mapping**: security, audit, scan, vulnerability, pentest, secure → SECURITY agent
 - **Tools**: scan_dependencies, audit_secrets, check_permissions, analyze_vulnerabilities
 - **Orchestrator integration**: Auto-created in `_init_agents()` alongside other 10 agents
 - **Engine integration**: SECURITY intent triggers security analysis with all 4 tools + LLM report
 
-### Screen Capture / Vision Analysis (src/screen_capture.py) (v2.6.8)
+### Screen Capture / Vision Analysis (src/screen_capture.py) (v2.6.9)
 - ScreenCapture: PIL-based fullscreen and region capture
 - VisionAnalyzer: llava:13b-gpu integration for UI description, error detection, OCR
 - **Tools**: screen_capture, analyze_screen, detect_screen_errors, ocr_screen
 - **Engine integration**: VISION intent auto-captures screen and sends to vision model
 - **GUI integration**: View → Analyze Screen (Ctrl+Shift+S)
 
-### Browser Automation (src/browser_agent.py) (v2.6.8)
+### Browser Automation (src/browser_agent.py) (v2.6.9)
 - BrowserAgent: Playwright-based web automation
 - Capabilities: navigate, click, fill forms, screenshot, extract text, scroll
 - **Tools**: browse_url, click_element, fill_form, screenshot_page, extract_page_text, scroll_page
 - **Engine integration**: BROWSE intent extracts URL, navigates, captures content, LLM analyzes
 
-### Persistent Long-Term Memory (src/long_term_memory.py) (v2.6.8)
+### Persistent Long-Term Memory (src/long_term_memory.py) (v2.6.9)
 - LongTermMemory: Vector store of conversations, decisions, errors, fixes
 - Automatic storage on every engine.process() call
 - Semantic search via existing RAG EmbeddingProvider/VectorStore
 - **Engine integration**: Automatic context injection for all code-related intents
 - Storage: `.crackedcode/memory/memories.json`
 
-### MCP Integration (src/mcp_client.py) (v2.6.8)
+### MCP Integration (src/mcp_client.py) (v2.6.9)
 - MCPClient: Connect to external MCP servers via stdio or SSE
 - Auto-discovery: tools/list, initialize handshake, tools/call
 - **Tool Sync**: MCP tools auto-registered in ToolRegistry as `server_name/tool_name`
 - **Config**: JSON-based server configs in `mcp_servers/` directory
 
-### A2A Protocol (src/a2a_protocol.py) (v2.6.8)
+### A2A Protocol (src/a2a_protocol.py) (v2.6.9)
 - A2AClient/Server: Google's Agent-to-Agent protocol implementation
 - Agent discovery via `/.well-known/agent.json`
 - Task delegation between external agents
@@ -340,7 +340,7 @@ Key settings in `config.json`:
 - Git push sometimes times out (requires retries)
 - Version consistency check: ensure all files are updated together
 - Windows path separators may need special handling in tests
-- PyQt6 `QStatusBar.addSeparator()` doesn't exist (removed in v2.6.8)
+- PyQt6 `QStatusBar.addSeparator()` doesn't exist (removed in v2.6.9)
 - `QLocalSocket` stale sockets need `removeServer()` before listen
 
 ## Models

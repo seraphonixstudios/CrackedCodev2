@@ -3,7 +3,7 @@
 Local AI Coding Assistant with Sci-Fi Neural Interface
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.6.8-blue?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Version-2.6.9-blue?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License">
   <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-orange?style=for-the-badge" alt="Platform">
   <img src="https://img.shields.io/badge/Python-3.10%2B-yellow?style=for-the-badge" alt="Python">
@@ -34,8 +34,8 @@ python test_system.py
 
 | Version | Features |
 |---------|----------|
-| 2.6.8 | **Codebase RAG** - Semantic search with local embeddings, context-aware code generation, autonomous existing codebase awareness |
-| 2.6.8 | **Agent Reasoning Engine**, GUI Reasoning Panel, persistent reasoning memory, LLM meta-reasoning, autonomous production, unified orchestrator, SOTA voice engine, Git sidebar, file watcher, settings dialog, syntax highlighting, command palette |
+| 2.6.9 | **Codebase RAG** - Semantic search with local embeddings, context-aware code generation, autonomous existing codebase awareness |
+| 2.6.9 | **Agent Reasoning Engine**, GUI Reasoning Panel, persistent reasoning memory, LLM meta-reasoning, autonomous production, unified orchestrator, SOTA voice engine, Git sidebar, file watcher, settings dialog, syntax highlighting, command palette |
 | 2.5.0 | UI/UX overhaul, toast notifications, searchable terminal, command history, tab management, pulse indicators |
 | 2.4.0 | Streaming responses, response caching, context management, retry logic, tabbed editor |
 | 2.3.9 | Task queue, Agent orchestration, Accessibility |
@@ -43,7 +43,7 @@ python test_system.py
 
 ---
 
-## Desktop GUI (v2.6.8)
+## Desktop GUI (v2.6.9)
 
 ```bash
 python src/gui.py
@@ -323,7 +323,7 @@ result = engine.execute_generated_code("print('Hello!')")
 
 ---
 
-## Autonomous Application Production (v2.6.8)
+## Autonomous Application Production (v2.6.9)
 
 OpenClaw-style autonomous agent that takes a high-level specification and autonomously designs, codes, tests, and delivers complete applications.
 
@@ -467,7 +467,7 @@ resolution = coordinator.resolve(task_id)
 
 ---
 
-## Unified Voice Engine (v2.6.8)
+## Unified Voice Engine (v2.6.9)
 
 SOTA Speech-to-Text and Text-to-Speech with multi-backend fallback.
 
@@ -519,7 +519,7 @@ print(cmd.params)  # {"filename": "app.py", "type": "function"}
 
 ---
 
-## Git Integration (v2.6.8)
+## Git Integration (v2.6.9)
 
 Full Git sidebar panel in the GUI:
 
@@ -533,7 +533,7 @@ Full Git sidebar panel in the GUI:
 
 ---
 
-## File Watcher + Auto-Save (v2.6.8)
+## File Watcher + Auto-Save (v2.6.9)
 
 Automatic file monitoring and saving:
 
@@ -544,7 +544,7 @@ Automatic file monitoring and saving:
 
 ---
 
-## Unified Orchestrator (v2.6.8)
+## Unified Orchestrator (v2.6.9)
 
 Production-grade task orchestration replacing 4 disconnected systems:
 
@@ -666,7 +666,7 @@ setup_logging({
 
 ---
 
-## Settings Dialog (v2.6.8)
+## Settings Dialog (v2.6.9)
 
 GUI preferences editor (`Ctrl+,`):
 
@@ -678,7 +678,7 @@ GUI preferences editor (`Ctrl+,`):
 
 ---
 
-## Code Syntax Highlighting (v2.6.8)
+## Code Syntax Highlighting (v2.6.9)
 
 Automatic syntax highlighting in the code editor:
 
@@ -713,7 +713,7 @@ HIGHLIGHTERS[".js"] = JavaScriptHighlighter
 
 ---
 
-## Agent Reasoning Engine (v2.6.8)
+## Agent Reasoning Engine (v2.6.9)
 
 Full chain-of-thought reasoning for all agent decisions:
 
@@ -839,7 +839,7 @@ python test_system.py
 
 ---
 
-## Codebase RAG (v2.6.8)
+## Codebase RAG (v2.6.9)
 
 100% local semantic search over your codebase using Ollama embeddings or TF-IDF fallback:
 
@@ -877,7 +877,7 @@ context = indexer.get_context_for_prompt("How do I add a new endpoint?")
 
 ---
 
-## Tool Calling Framework (v2.6.8)
+## Tool Calling Framework (v2.6.9)
 
 ReAct-style agent action system with 16 built-in tools across 8 categories:
 
@@ -947,7 +947,7 @@ result = react.run(
 
 ---
 
-## Plugin System (v2.6.8)
+## Plugin System (v2.6.9)
 
 Extensible hook-based plugin architecture for custom agent behavior:
 
@@ -997,7 +997,7 @@ class MyPlugin:
 
 ---
 
-## DevOps Agent (v2.6.8)
+## DevOps Agent (v2.6.9)
 
 10th agent role with dedicated DevOps capabilities:
 
@@ -1030,7 +1030,7 @@ task = orch.create_task("Deploy to production", intent="deploy")
 
 ---
 
-## Screen Capture / Vision Analysis (v2.6.8)
+## Screen Capture / Vision Analysis (v2.6.9)
 
 AI-powered screen understanding using the vision model (llava:13b-gpu):
 
@@ -1074,7 +1074,7 @@ Natural language triggers:
 
 ---
 
-## MCP Integration (v2.6.8)
+## MCP Integration (v2.6.9)
 
 Connect to external services via the Model Context Protocol (MCP) — the open standard for AI tool interoperability.
 
@@ -1134,7 +1134,7 @@ print(status["mcp"])  # {"enabled": True, "servers": 2, "tools": 15}
 
 ---
 
-## Security Agent (v2.6.8)
+## Security Agent (v2.6.9)
 
 AI-powered security auditing with dedicated agent role:
 
@@ -1169,7 +1169,41 @@ registry.execute("analyze_vulnerabilities", file_path="src/main.py")
 
 ---
 
-## Persistent Long-Term Memory (v2.6.8)
+## Multi-Model Auto-Routing (v2.6.9)
+
+CrackedCode automatically routes each request to the best model based on intent:
+
+| Intent | Model | Why |
+|--------|-------|-----|
+| CODE / DEBUG / BUILD / SECURITY | qwen3:8b-gpu | Reasoning, coding, planning |
+| CHAT / HELP / REVIEW | dolphin-llama3:8b-gpu | Conversation, writing, creativity |
+| VISION | llava:13b-gpu | Image analysis, OCR |
+| BROWSE | qwen3:8b-gpu | Web content analysis |
+
+```
+User: "Write a Python function"        → qwen3:8b-gpu
+User: "Tell me a joke"                 → dolphin-llama3:8b-gpu
+User: "What's on my screen?"           → llava:13b-gpu
+User: "Review this code"               → dolphin-llama3:8b-gpu
+```
+
+### Configuration
+
+Set models in `config.json`:
+
+```json
+{
+  "model": "qwen3:8b-gpu",
+  "vision_model": "llava:13b-gpu",
+  "secondary_model": "dolphin-llama3:8b-gpu"
+}
+```
+
+Fallback chain: preferred model → primary model → any available → default.
+
+---
+
+## Persistent Long-Term Memory (v2.6.9)
 
 CrackedCode remembers everything — conversations, decisions, errors, fixes:
 
@@ -1200,7 +1234,7 @@ results = memory.recall("threading bug")
 
 ---
 
-## Browser Automation (v2.6.8)
+## Browser Automation (v2.6.9)
 
 Let the agent browse the web, click elements, fill forms, and take screenshots:
 
@@ -1235,7 +1269,7 @@ agent.close()
 
 ---
 
-## A2A Protocol (v2.6.8)
+## A2A Protocol (v2.6.9)
 
 Agent-to-Agent communication via Google's A2A protocol. Let CrackedCode talk to other agents:
 
@@ -1312,4 +1346,4 @@ MIT
 
 ---
 
-**CrackedCode v2.6.8** - Autonomous AI Coding Agent with Agent Reasoning Engine, Codebase RAG, Tool Calling Framework, and SOTA Architecture Production
+**CrackedCode v2.6.9** - Autonomous AI Coding Agent with Agent Reasoning Engine, Codebase RAG, Tool Calling Framework, and SOTA Architecture Production

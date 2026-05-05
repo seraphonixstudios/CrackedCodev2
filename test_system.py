@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CRACKEDCODE v2.6.8 - Comprehensive End-to-End Test Suite
+CRACKEDCODE v2.6.9 - Comprehensive End-to-End Test Suite
 Full coverage with real operations, no placeholders
 """
 
@@ -595,11 +595,11 @@ def test_version_info() -> bool:
         PASS(f"Engine version: {status.get('version', 'unknown')}")
         
         version_checks = 0
-        if CrackedCode.VERSION == "2.6.8":
+        if CrackedCode.VERSION == "2.6.9":
             version_checks += 1
-        if MatrixUI.VERSION == "2.6.8":
+        if MatrixUI.VERSION == "2.6.9":
             version_checks += 1
-        if status.get("version") == "2.6.8":
+        if status.get("version") == "2.6.9":
             version_checks += 1
         
         PASS(f"Version consistency: {version_checks}/3")
@@ -709,10 +709,10 @@ def test_cli_integration_e2e() -> bool:
             version = result.stdout.strip()
             PASS(f"CLI import: version {version}")
             
-            if version == "2.6.8":
+            if version == "2.6.9":
                 PASS("CLI version correct")
             else:
-                FAIL("CLI version", f"Expected 2.6.8, got {version}")
+                FAIL("CLI version", f"Expected 2.6.9, got {version}")
                 return False
         else:
             FAIL("CLI import", result.stderr[:50])
@@ -1663,7 +1663,7 @@ def test_voice_hotword_detection() -> bool:
 
 
 def main() -> int:
-    print(f"\n{'='*60}\n  CRACKEDCODE v2.6.8 - E2E TEST SUITE\n{'='*60}\n")
+    print(f"\n{'='*60}\n  CRACKEDCODE v2.6.9 - E2E TEST SUITE\n{'='*60}\n")
     
     tests = [
         ("Modules", test_modules),
@@ -1750,6 +1750,7 @@ def main() -> int:
         ("Long-Term Memory", test_long_term_memory),
         ("Browser Automation", test_browser_automation),
         ("A2A Protocol", test_a2a_protocol),
+        ("Model Routing", test_model_routing),
     ]
     
     results: list[tuple[str, bool]] = []
@@ -3230,6 +3231,47 @@ def test_a2a_protocol() -> bool:
         import traceback
         traceback.print_exc()
         return FAIL("A2A protocol", str(e)[:50])
+
+
+def test_model_routing() -> bool:
+    print_header("MODEL AUTO-ROUTING")
+    try:
+        from src.engine import CrackedCodeEngine, Intent
+        
+        engine = CrackedCodeEngine()
+        PASS("Engine created")
+        
+        # Test model selection for different intents
+        test_cases = [
+            (Intent.CODE, "qwen3:8b-gpu"),
+            (Intent.DEBUG, "qwen3:8b-gpu"),
+            (Intent.BUILD, "qwen3:8b-gpu"),
+            (Intent.SECURITY, "qwen3:8b-gpu"),
+            (Intent.VISION, "llava:13b-gpu"),
+            (Intent.CHAT, "dolphin-llama3:8b-gpu"),
+            (Intent.HELP, "dolphin-llama3:8b-gpu"),
+            (Intent.REVIEW, "dolphin-llama3:8b-gpu"),
+        ]
+        
+        for intent, expected_model in test_cases:
+            selected = engine._select_model_for_intent(intent)
+            if selected == expected_model:
+                PASS(f"{intent.value} maps to {selected}")
+            else:
+                return FAIL(f"{intent.value} routed to {selected}, expected {expected_model}")
+        
+        # Test status includes model info
+        status = engine.get_status()
+        if "vision_model" in status and "secondary_model" in status:
+            PASS("Status includes all model configs")
+        else:
+            return FAIL("Status missing model configs")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Model routing", str(e)[:50])
 
 
 if __name__ == "__main__":

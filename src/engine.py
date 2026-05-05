@@ -532,9 +532,26 @@ Question: {prompt}
         "negative": ["code", "write", "build", "create", "local"],
     }
 
+    # Multi-model auto-routing: which model handles which intent best
+    INTENT_TO_MODEL = {
+        Intent.CODE: "model",           # primary model (qwen3) — reasoning, coding
+        Intent.DEBUG: "model",          # primary model
+        Intent.BUILD: "model",          # primary model
+        Intent.REVIEW: "secondary_model",  # dolphin — creative conversation
+        Intent.SECURITY: "model",       # primary model
+        Intent.SEARCH: "model",         # primary model
+        Intent.EXECUTE: "model",        # primary model
+        Intent.VISION: "vision_model",  # llava — image analysis
+        Intent.BROWSE: "model",         # primary model
+        Intent.CHAT: "secondary_model",    # dolphin — conversation
+        Intent.HELP: "secondary_model",    # dolphin — helpful responses
+    }
+
     def __init__(self, config: Dict = None):
         self.config = config or {}
         self.model = self.config.get("model", "qwen3:8b-gpu")
+        self.vision_model = self.config.get("vision_model", "llava:13b-gpu")
+        self.secondary_model = self.config.get("secondary_model", "dolphin-llama3:8b-gpu")
         self.project_root = self.config.get("project_root", ".")
         self.unified_mode = self.config.get("unified_mode", False)
         self.autonomous_enabled = self.config.get("autonomous_enabled", True)
@@ -645,8 +662,10 @@ Question: {prompt}
                 pass
         
         return {
-            "version": "2.6.8",
+            "version": "2.6.9",
             "model": self.model,
+            "vision_model": self.vision_model,
+            "secondary_model": self.secondary_model,
             "unified_mode": self.unified_mode,
             "plan": self.plan_enabled,
             "build": self.build_enabled,
@@ -658,6 +677,34 @@ Question: {prompt}
             "context_length": cache_stats["context_length"],
             "mcp": mcp_status,
         }
+
+    def _select_model_for_intent(self, intent: Intent) -> str:
+        """Select the optimal model for a given intent.
+        
+        Returns the model name to use. Falls back to primary model
+        if the preferred model is not available.
+        """
+        model_key = self.INTENT_TO_MODEL.get(intent, "model")
+        
+        if model_key == "vision_model":
+            preferred = self.vision_model
+        elif model_key == "secondary_model":
+            preferred = self.secondary_model
+        else:
+            preferred = self.model
+        
+        # Check if preferred model is available
+        available = self.ollama.available_models
+        if preferred in available:
+            return preferred
+        
+        # Fallback chain: preferred → primary → any available → default
+        if self.model in available:
+            return self.model
+        if available:
+            return available[0]
+        
+        return preferred  # Last resort, will likely fail but preserves intent
 
     def parse_intent(self, prompt: str, confidence_threshold: float = 0.3) -> PromptRequest:
         """Parse user intent from prompt with robust multi-layer matching."""
@@ -1172,20 +1219,22 @@ Question: {prompt}
             formatted_prompt = memory_block + "\n" + formatted_prompt
         
         # Model selection reasoning
+        selected_model = self._select_model_for_intent(request.intent)
+        
         if self.unified_mode:
             execution_reasoning.append({"type": "decision", "content": "Using unified mode (multi-model ensemble)", "confidence": 0.8})
             response = self.ollama.unified_chat(formatted_prompt)
             response.model_used = "unified_ensemble"
             response.processing_path = "unified_chat"
         elif streaming and callback:
-            execution_reasoning.append({"type": "decision", "content": f"Using streaming mode with {self.model}", "confidence": 0.9})
-            response = self.ollama.chat_stream(formatted_prompt, callback=callback)
-            response.model_used = self.model
+            execution_reasoning.append({"type": "decision", "content": f"Using streaming mode with {selected_model} (intent: {request.intent.value})", "confidence": 0.9})
+            response = self.ollama.chat_stream(formatted_prompt, model=selected_model, callback=callback)
+            response.model_used = selected_model
             response.processing_path = "stream_chat"
         else:
-            execution_reasoning.append({"type": "decision", "content": f"Using standard chat with {self.model}", "confidence": 0.9})
-            response = self.ollama.chat(formatted_prompt)
-            response.model_used = self.model
+            execution_reasoning.append({"type": "decision", "content": f"Using standard chat with {selected_model} (intent: {request.intent.value})", "confidence": 0.9})
+            response = self.ollama.chat(formatted_prompt, model=selected_model)
+            response.model_used = selected_model
             response.processing_path = "standard_chat"
         
         # Combine reasoning logs

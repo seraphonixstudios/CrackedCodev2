@@ -1,7 +1,7 @@
 # CrackedCode White Paper
 ## SOTA Local Multi-Agent Coding Swarm with Agent Reasoning Engine
 
-**Version:** 2.6.8  
+**Version:** 2.6.9  
 **Date:** May 2026  
 **Author:** CrackedCode Team  
 **License:** MIT  
@@ -10,9 +10,9 @@
 
 ## Executive Summary
 
-CrackedCode is a production-grade local AI coding assistant that operates 100% offline using Ollama for large language model inference and local speech recognition/synthesis for voice I/O. Version 2.6.8 introduced the **Agent Reasoning Engine** — a full chain-of-thought reasoning system that makes every agent decision transparent, measurable, and coherent across the swarm. Version 2.6.8 added **Codebase RAG** — semantic search with local embeddings that gives every agent full awareness of the existing codebase before acting. Version 2.6.8 introduces the **Tool Calling Framework** — a ReAct-style action system that gives agents a rich, safe action space including file system, git, shell, test runner, and codebase search.
+CrackedCode is a production-grade local AI coding assistant that operates 100% offline using Ollama for large language model inference and local speech recognition/synthesis for voice I/O. Version 2.6.9 introduced the **Agent Reasoning Engine** — a full chain-of-thought reasoning system that makes every agent decision transparent, measurable, and coherent across the swarm. Version 2.6.9 added **Codebase RAG** — semantic search with local embeddings that gives every agent full awareness of the existing codebase before acting. Version 2.6.9 introduces the **Tool Calling Framework** — a ReAct-style action system that gives agents a rich, safe action space including file system, git, shell, test runner, and codebase search.
 
-This white paper details the architecture, implementation, and capabilities of CrackedCode v2.6.8.
+This white paper details the architecture, implementation, and capabilities of CrackedCode v2.6.9.
 
 ---
 
@@ -30,7 +30,7 @@ Current AI coding assistants require cloud API access, raising concerns about:
 
 ### 1.2 Solution
 
-CrackedCode v2.6.8 addresses all这些问题 by:
+CrackedCode v2.6.9 addresses all这些问题 by:
 - Running 100% locally with Ollama
 - No network calls after initial model download
 - Free to operate once models are cached
@@ -56,7 +56,7 @@ CrackedCode v2.6.8 addresses all这些问题 by:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                           CrackedCode v2.6.8                                │
+│                           CrackedCode v2.6.9                                │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  ┌─────────────┐     ┌─────────────┐     ┌─────────────────────────────┐  │
 │  │  Voice I/O  │────▶│  Unified    │────▶│   Agent Reasoning Engine    │  │
@@ -149,7 +149,7 @@ CrackedCode implements a parallel multi-agent swarm with 9 specialized agents co
 
 ### 2.3 Agent Reasoning Engine
 
-The crown jewel of v2.6.8 — every agent decision is transparent:
+The crown jewel of v2.6.9 — every agent decision is transparent:
 
 ```
 ReasoningStep → ThoughtChain → AgentReasoning → CoherenceTracker → ReasoningEngine
@@ -209,7 +209,7 @@ This ensures code quality through adversarial collaboration with full audit trai
 
 ---
 
-## 3. Codebase RAG (v2.6.8)
+## 3. Codebase RAG (v2.6.9)
 
 ### 3.1 Architecture
 
@@ -264,7 +264,7 @@ context = indexer.get_context_for_prompt("Add OAuth support")
 
 ---
 
-## 4. Tool Calling Framework (v2.6.8)
+## 4. Tool Calling Framework (v2.6.9)
 
 ### 4.1 Architecture
 
@@ -364,7 +364,7 @@ stats = registry.get_stats()
 
 ---
 
-## 5. Plugin System (v2.6.8)
+## 5. Plugin System (v2.6.9)
 
 ### 5.1 Architecture
 
@@ -440,7 +440,7 @@ registry.check_hot_reload()  # Call periodically or on demand
 
 ---
 
-## 6. DevOps Agent (v2.6.8)
+## 6. DevOps Agent (v2.6.9)
 
 ### 6.1 Architecture
 
@@ -489,7 +489,7 @@ User: "Deploy the API to production"
 
 ---
 
-## 7. MCP Integration (v2.6.8)
+## 7. MCP Integration (v2.6.9)
 
 ### 7.1 Protocol Overview
 
@@ -928,7 +928,7 @@ CrackedCode: "Starting autonomous production..."
 
 ## 16. Conclusion
 
-CrackedCode v2.6.8 demonstrates that SOTA AI coding assistance is achievable 100% locally without cloud dependencies. By combining:
+CrackedCode v2.6.9 demonstrates that SOTA AI coding assistance is achievable 100% locally without cloud dependencies. By combining:
 
 - Multi-agent swarm architecture (9 specialized agents)
 - Agent Reasoning Engine with transparent decision-making
@@ -1026,7 +1026,7 @@ result = voice.listen(duration=5.0)
 
 ---
 
-**Document Version:** 2.6.8  
+**Document Version:** 2.6.9  
 **Last Updated:** May 2026  
 **Author:** CrackedCode Team  
 **License:** MIT
