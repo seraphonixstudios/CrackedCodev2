@@ -1,7 +1,7 @@
 # CrackedCode White Paper
 ## SOTA Local Multi-Agent Coding Swarm with Agent Reasoning Engine
 
-**Version:** 2.6.4  
+**Version:** 2.6.5  
 **Date:** May 2026  
 **Author:** CrackedCode Team  
 **License:** MIT  
@@ -10,9 +10,9 @@
 
 ## Executive Summary
 
-CrackedCode is a production-grade local AI coding assistant that operates 100% offline using Ollama for large language model inference and local speech recognition/synthesis for voice I/O. Version 2.6.4 introduced the **Agent Reasoning Engine** — a full chain-of-thought reasoning system that makes every agent decision transparent, measurable, and coherent across the swarm. Version 2.6.4 added **Codebase RAG** — semantic search with local embeddings that gives every agent full awareness of the existing codebase before acting. Version 2.6.4 introduces the **Tool Calling Framework** — a ReAct-style action system that gives agents a rich, safe action space including file system, git, shell, test runner, and codebase search.
+CrackedCode is a production-grade local AI coding assistant that operates 100% offline using Ollama for large language model inference and local speech recognition/synthesis for voice I/O. Version 2.6.5 introduced the **Agent Reasoning Engine** — a full chain-of-thought reasoning system that makes every agent decision transparent, measurable, and coherent across the swarm. Version 2.6.5 added **Codebase RAG** — semantic search with local embeddings that gives every agent full awareness of the existing codebase before acting. Version 2.6.5 introduces the **Tool Calling Framework** — a ReAct-style action system that gives agents a rich, safe action space including file system, git, shell, test runner, and codebase search.
 
-This white paper details the architecture, implementation, and capabilities of CrackedCode v2.6.4.
+This white paper details the architecture, implementation, and capabilities of CrackedCode v2.6.5.
 
 ---
 
@@ -30,7 +30,7 @@ Current AI coding assistants require cloud API access, raising concerns about:
 
 ### 1.2 Solution
 
-CrackedCode v2.6.4 addresses all这些问题 by:
+CrackedCode v2.6.5 addresses all这些问题 by:
 - Running 100% locally with Ollama
 - No network calls after initial model download
 - Free to operate once models are cached
@@ -56,7 +56,7 @@ CrackedCode v2.6.4 addresses all这些问题 by:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                           CrackedCode v2.6.4                                │
+│                           CrackedCode v2.6.5                                │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  ┌─────────────┐     ┌─────────────┐     ┌─────────────────────────────┐  │
 │  │  Voice I/O  │────▶│  Unified    │────▶│   Agent Reasoning Engine    │  │
@@ -149,7 +149,7 @@ CrackedCode implements a parallel multi-agent swarm with 9 specialized agents co
 
 ### 2.3 Agent Reasoning Engine
 
-The crown jewel of v2.6.4 — every agent decision is transparent:
+The crown jewel of v2.6.5 — every agent decision is transparent:
 
 ```
 ReasoningStep → ThoughtChain → AgentReasoning → CoherenceTracker → ReasoningEngine
@@ -209,7 +209,7 @@ This ensures code quality through adversarial collaboration with full audit trai
 
 ---
 
-## 3. Codebase RAG (v2.6.4)
+## 3. Codebase RAG (v2.6.5)
 
 ### 3.1 Architecture
 
@@ -264,7 +264,7 @@ context = indexer.get_context_for_prompt("Add OAuth support")
 
 ---
 
-## 4. Tool Calling Framework (v2.6.4)
+## 4. Tool Calling Framework (v2.6.5)
 
 ### 4.1 Architecture
 
@@ -364,7 +364,7 @@ stats = registry.get_stats()
 
 ---
 
-## 5. Plugin System (v2.6.4)
+## 5. Plugin System (v2.6.5)
 
 ### 5.1 Architecture
 
@@ -440,7 +440,56 @@ registry.check_hot_reload()  # Call periodically or on demand
 
 ---
 
-## 6. Autonomous Application Production
+## 6. DevOps Agent (v2.6.5)
+
+### 6.1 Architecture
+
+The 10th agent role — `AgentRole.DEVOPS` — handles deployment, containerization, infrastructure, and CI/CD operations:
+
+```
+User: "Deploy the API to production"
+  → Intent: deploy → AgentRole.DEVOPS
+    → Tool: deploy_to_server(host, path)
+      → SSH/rsync deployment with pre-commands
+```
+
+### 6.2 Capabilities
+
+- **docker**: Build, run, and inspect containers
+- **deploy**: Remote deployment via SSH/rsync
+- **ci**: Trigger GitHub Actions, GitLab CI, or local pipelines
+- **monitor**: Watch log files for errors and patterns
+- **infra**: Infrastructure operations
+- **ssh**: Remote server management
+
+### 6.3 DevOps Tools
+
+| Tool | Permission | Description |
+|------|-----------|-------------|
+| `docker_build` | DANGEROUS | Build Docker image from Dockerfile |
+| `docker_run` | DANGEROUS | Run container with ports/env/volumes |
+| `docker_logs` | READ | Get container logs with tail/grep |
+| `deploy_to_server` | DANGEROUS | Deploy via rsync over SSH |
+| `monitor_logs` | READ | Monitor log files for patterns |
+| `run_ci_pipeline` | DANGEROUS | Run local script, GitHub Actions, or GitLab CI |
+
+### 6.4 Safety
+
+- All container and deployment tools are DANGEROUS (blocked by default)
+- Log monitoring tools are READ-only (always available)
+- SSH deployment requires explicit key path or agent forwarding
+- CI pipeline tools require authentication tokens
+
+### 6.5 Integration
+
+- **Orchestrator**: Auto-created as the 10th agent in `_init_agents()`
+- **Intent mapping**: `deploy`, `docker`, `monitor`, `ci`, `infra` → DEVOPS
+- **Tool framework**: All 6 tools registered with appropriate permissions
+- **Reasoning**: DevOps agent logs all deployment decisions with confidence scores
+
+---
+
+## 7. Autonomous Application Production
 
 ### 3.1 Production Pipeline
 
@@ -489,7 +538,7 @@ Specification → Analyze → Architect → Scaffold → Code → Test → Corre
 
 ---
 
-## 7. Voice I/O
+## 8. Voice I/O
 
 ### 4.1 Speech-to-Text (STT)
 
@@ -545,7 +594,7 @@ engine.speak("CrackedCode is ready")
 
 ---
 
-## 8. Implementation
+## 9. Implementation
 
 ### 5.1 Technology Stack
 
@@ -623,7 +672,7 @@ All agents output valid JSON for reliable parsing:
 
 ---
 
-## 9. Security
+## 10. Security
 
 ### 6.1 Command Whitelist
 
@@ -657,7 +706,7 @@ All operations logged to `logs/crackedcode.log`:
 
 ---
 
-## 10. Performance
+## 11. Performance
 
 ### 7.1 Benchmarks
 
@@ -698,7 +747,7 @@ All operations logged to `logs/crackedcode.log`:
 
 ---
 
-## 11. Usage Scenarios
+## 12. Usage Scenarios
 
 ### 8.1 Voice-First Development
 
@@ -748,7 +797,7 @@ CrackedCode: "Starting autonomous production..."
 
 ---
 
-## 12. Comparison
+## 13. Comparison
 
 ### 9.1 Vs Cloud AI Assistants
 
@@ -776,9 +825,9 @@ CrackedCode: "Starting autonomous production..."
 
 ---
 
-## 13. Future Work
+## 14. Future Work
 
-### 13.1 Planned Features
+### 14.1 Planned Features
 
 - [x] Agent Reasoning Engine with coherence tracking
 - [x] GUI Reasoning Panel with live event stream
@@ -792,12 +841,13 @@ CrackedCode: "Starting autonomous production..."
 - [x] Settings Dialog
 - [x] Syntax Highlighting
 - [ ] Web UI (Electron/Tkinter)
-- [ ] More agent types (DevOps, Security)
+- [x] DevOps agent with Docker, deploy, CI tools
+- [ ] Security agent
 - [ ] Custom agent definition
 - [ ] Multi-language support
 - [ ] Video I/O for screen analysis
 
-### 13.2 Model Updates
+### 14.2 Model Updates
 
 - [x] Qwen3 8B optimization
 - [x] faster-whisper integration
@@ -808,9 +858,9 @@ CrackedCode: "Starting autonomous production..."
 
 ---
 
-## 14. Conclusion
+## 15. Conclusion
 
-CrackedCode v2.6.4 demonstrates that SOTA AI coding assistance is achievable 100% locally without cloud dependencies. By combining:
+CrackedCode v2.6.5 demonstrates that SOTA AI coding assistance is achievable 100% locally without cloud dependencies. By combining:
 
 - Multi-agent swarm architecture (9 specialized agents)
 - Agent Reasoning Engine with transparent decision-making
@@ -908,7 +958,7 @@ result = voice.listen(duration=5.0)
 
 ---
 
-**Document Version:** 2.6.4  
+**Document Version:** 2.6.5  
 **Last Updated:** May 2026  
 **Author:** CrackedCode Team  
 **License:** MIT

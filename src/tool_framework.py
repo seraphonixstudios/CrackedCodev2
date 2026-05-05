@@ -707,6 +707,214 @@ def list_tools() -> Dict[str, Any]:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# DEVOPS TOOLS
+# ─────────────────────────────────────────────────────────────────────────────
+
+@tool(description="Build a Docker image", permission=ToolPermission.DANGEROUS, category=ToolCategory.SHELL,
+      examples=["docker_build(dockerfile_path='.', tag='myapp:latest')"])
+def docker_build(dockerfile_path: str = ".", tag: str = "latest") -> Dict[str, Any]:
+    """Build a Docker image from a Dockerfile."""
+    try:
+        cmd = ["docker", "build", "-t", tag, dockerfile_path]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        
+        return {
+            "success": result.returncode == 0,
+            "returncode": result.returncode,
+            "output": result.stdout,
+            "stderr": result.stderr,
+            "tag": tag,
+            "command": " ".join(cmd),
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@tool(description="Run a Docker container", permission=ToolPermission.DANGEROUS, category=ToolCategory.SHELL,
+      examples=["docker_run(image='myapp:latest', ports={'8080': '80'})", "docker_run(image='nginx', detach=True)"])
+def docker_run(image: str, ports: Dict[str, str] = None, env: Dict[str, str] = None,
+               detach: bool = False, name: str = None, volumes: Dict[str, str] = None) -> Dict[str, Any]:
+    """Run a Docker container."""
+    try:
+        cmd = ["docker", "run"]
+        if detach:
+            cmd.append("-d")
+        if name:
+            cmd.extend(["--name", name])
+        if ports:
+            for host, container in ports.items():
+                cmd.extend(["-p", f"{host}:{container}"])
+        if env:
+            for key, val in env.items():
+                cmd.extend(["-e", f"{key}={val}"])
+        if volumes:
+            for host, container in volumes.items():
+                cmd.extend(["-v", f"{host}:{container}"])
+        cmd.append(image)
+        
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        
+        return {
+            "success": result.returncode == 0,
+            "returncode": result.returncode,
+            "output": result.stdout,
+            "stderr": result.stderr,
+            "container_id": result.stdout.strip()[:12] if result.returncode == 0 else None,
+            "command": " ".join(cmd),
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@tool(description="Get Docker container logs", permission=ToolPermission.READ, category=ToolCategory.SHELL,
+      examples=["docker_logs(container='myapp', tail=50)"])
+def docker_logs(container: str, tail: int = 100, follow: bool = False) -> Dict[str, Any]:
+    """Get logs from a Docker container."""
+    try:
+        cmd = ["docker", "logs", "--tail", str(tail)]
+        if follow:
+            cmd.append("-f")
+        cmd.append(container)
+        
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        
+        return {
+            "success": result.returncode == 0,
+            "returncode": result.returncode,
+            "output": result.stdout,
+            "stderr": result.stderr,
+            "lines": len(result.stdout.split("\n")),
+            "command": " ".join(cmd),
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@tool(description="Deploy to a remote server via SSH", permission=ToolPermission.DANGEROUS, category=ToolCategory.SHELL,
+      examples=["deploy_to_server(host='192.168.1.100', user='ubuntu', local_path='dist/', remote_path='/var/www/')"])
+def deploy_to_server(host: str, user: str, local_path: str, remote_path: str,
+                     key_path: str = None, port: int = 22, pre_commands: List[str] = None) -> Dict[str, Any]:
+    """Deploy files to a remote server using rsync over SSH."""
+    try:
+        ssh_opts = f"-p {port}"
+        if key_path:
+            ssh_opts += f" -i {key_path}"
+        
+        results = []
+        
+        # Run pre-commands if provided
+        if pre_commands:
+            for pre_cmd in pre_commands:
+                ssh_cmd = ["ssh", ssh_opts, f"{user}@{host}", pre_cmd]
+                r = subprocess.run(ssh_cmd, capture_output=True, text=True, timeout=60)
+                results.append({"cmd": pre_cmd, "success": r.returncode == 0, "output": r.stdout, "stderr": r.stderr})
+        
+        # Deploy via rsync
+        rsync_cmd = ["rsync", "-avz", "--delete", "-e", f"ssh {ssh_opts}", local_path, f"{user}@{host}:{remote_path}"]
+        result = subprocess.run(rsync_cmd, capture_output=True, text=True, timeout=300)
+        
+        return {
+            "success": result.returncode == 0,
+            "returncode": result.returncode,
+            "output": result.stdout,
+            "stderr": result.stderr,
+            "pre_commands": results,
+            "command": " ".join(rsync_cmd),
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@tool(description="Monitor log files for patterns", permission=ToolPermission.READ, category=ToolCategory.SHELL,
+      examples=["monitor_logs(path='/var/log/app.log', pattern='ERROR', tail=50)"])
+def monitor_logs(path: str, pattern: str = None, tail: int = 50) -> Dict[str, Any]:
+    """Monitor a log file and optionally grep for patterns."""
+    try:
+        if not Path(path).exists():
+            return {"success": False, "error": f"Log file not found: {path}"}
+        
+        # Read last N lines
+        result = subprocess.run(["tail", "-n", str(tail), path], capture_output=True, text=True, timeout=10)
+        lines = result.stdout.split("\n")
+        
+        matches = []
+        if pattern:
+            import re
+            matches = [l for l in lines if re.search(pattern, l)]
+        
+        return {
+            "success": True,
+            "path": path,
+            "lines_checked": len(lines),
+            "pattern": pattern,
+            "matches": matches,
+            "match_count": len(matches),
+            "recent_lines": lines[-10:] if len(lines) >= 10 else lines,
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@tool(description="Run a CI pipeline (GitHub Actions, GitLab CI, or local script)", permission=ToolPermission.DANGEROUS, category=ToolCategory.SHELL,
+      examples=["run_ci_pipeline(type='local', script='./run_tests.sh')", "run_ci_pipeline(type='github', workflow='ci.yml')"])
+def run_ci_pipeline(pipeline_type: str = "local", script: str = None, workflow: str = None, branch: str = "main") -> Dict[str, Any]:
+    """Run a CI pipeline - local script, GitHub Actions, or GitLab CI trigger."""
+    try:
+        if pipeline_type == "local":
+            if not script:
+                return {"success": False, "error": "No script provided for local CI"}
+            result = subprocess.run(["bash", script], capture_output=True, text=True, timeout=300)
+            return {
+                "success": result.returncode == 0,
+                "returncode": result.returncode,
+                "output": result.stdout,
+                "stderr": result.stderr,
+                "type": "local",
+            }
+        
+        elif pipeline_type == "github":
+            # Trigger GitHub Actions workflow via gh CLI
+            wf = workflow or "ci.yml"
+            cmd = ["gh", "workflow", "run", wf, "--ref", branch]
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+            return {
+                "success": result.returncode == 0,
+                "returncode": result.returncode,
+                "output": result.stdout,
+                "stderr": result.stderr,
+                "type": "github",
+                "workflow": wf,
+            }
+        
+        elif pipeline_type == "gitlab":
+            # Trigger GitLab CI pipeline via API (requires GITLAB_TOKEN and PROJECT_ID env vars)
+            import os
+            token = os.environ.get("GITLAB_TOKEN")
+            project_id = os.environ.get("GITLAB_PROJECT_ID")
+            if not token or not project_id:
+                return {"success": False, "error": "GITLAB_TOKEN and GITLAB_PROJECT_ID required"}
+            
+            import urllib.request
+            url = f"https://gitlab.com/api/v4/projects/{project_id}/pipeline?ref={branch}"
+            req = urllib.request.Request(url, method="POST")
+            req.add_header("PRIVATE-TOKEN", token)
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                data = json.loads(resp.read().decode())
+                return {
+                    "success": True,
+                    "pipeline_id": data.get("id"),
+                    "status": data.get("status"),
+                    "web_url": data.get("web_url"),
+                    "type": "gitlab",
+                }
+        
+        else:
+            return {"success": False, "error": f"Unknown CI type: {pipeline_type}"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # ReAct LOOP
 # ─────────────────────────────────────────────────────────────────────────────
 

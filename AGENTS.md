@@ -4,7 +4,7 @@
 
 CrackedCode is a 100% local AI coding assistant featuring autonomous application production (OpenClaw-style), multi-agent orchestration, voice I/O, and a sci-fi neural interface.
 
-**Current Version:** 2.6.4
+**Current Version:** 2.6.5
 **Branch:** main
 **License:** MIT
 
@@ -20,7 +20,7 @@ crackedcode/
 │   ├── gui_settings.py      # Preferences dialog with Ollama discovery
 │   ├── gui_syntax.py        # Code syntax highlighting (Python, JSON)
 │   ├── reasoning.py         # Agent Reasoning Engine - thought chains, coherence
-│   ├── codebase_rag.py      # Semantic search with local embeddings (v2.6.4)
+│   ├── codebase_rag.py      # Semantic search with local embeddings (v2.6.5)
 │   ├── engine.py            # CrackedCodeEngine - core logic
 │   ├── orchestrator.py      # UnifiedOrchestrator - task lifecycle, priorities
 │   ├── autonomous.py        # AutonomousAppProducer - OpenClaw-style agent
@@ -83,7 +83,7 @@ crackedcode/
 - **Persistent memory**: `save_reasoning_log()` / `load_reasoning_log()` JSON + REASONING.md
 - **LLM meta-reasoning**: `analyze_with_llm()` feeds coherence report to Ollama for insights
 
-### Codebase RAG (src/codebase_rag.py) (v2.6.4)
+### Codebase RAG (src/codebase_rag.py) (v2.6.5)
 - CodeChunker: Semantic chunking by function/class/module for 15+ languages
 - EmbeddingProvider: Ollama embeddings with TF-IDF fallback, 100% local
 - VectorStore: NumPy-based cosine similarity search
@@ -93,7 +93,7 @@ crackedcode/
 - **Autonomous integration**: Existing codebase awareness before generating new code
 - **GUI integration**: Semantic search dialog (Ctrl+Shift+F) with ranked results
 
-### Tool Calling Framework (src/tool_framework.py) (v2.6.4)
+### Tool Calling Framework (src/tool_framework.py) (v2.6.5)
 - `@tool` decorator: Auto-register functions with JSON schema from type hints
 - ToolRegistry: Central registry with permission levels (READ/WRITE/EXECUTE/DANGEROUS)
 - ReActLoop: Full reasoning → action → observation cycle with max iterations
@@ -104,7 +104,7 @@ crackedcode/
 - **Orchestrator integration**: AgentWorker auto-enables tools for complex tasks
 - **Autonomous integration**: Producer uses tools for file ops, testing, git
 
-### Plugin System (src/plugin_system.py) (v2.6.4)
+### Plugin System (src/plugin_system.py) (v2.6.5)
 - `@plugin` decorator: Auto-register classes/functions as plugins
 - PluginRegistry: Central registry with enable/disable, hot-reload
 - HookManager: Named hook points across engine/orchestrator/GUI/lifecycle
@@ -114,6 +114,13 @@ crackedcode/
 - **Orchestrator integration**: task lifecycle hooks
 - **GUI integration**: Plugins menu, reload/manage dialogs, command_palette hook
 - **Tool framework integration**: pre/post execute hooks
+
+### DevOps Agent (src/orchestrator.py) (v2.6.5)
+- `AgentRole.DEVOPS`: 10th agent role with docker/deploy/ci/monitor/infra/ssh capabilities
+- **Intent mapping**: deploy, docker, monitor, ci, infra → DEVOPS agent
+- **Tools**: docker_build, docker_run, docker_logs, deploy_to_server, monitor_logs, run_ci_pipeline
+- **Orchestrator integration**: Auto-created in `_init_agents()` alongside other 9 agents
+- **Safety**: All DevOps tools marked DANGEROUS (blocked by default), except docker_logs and monitor_logs (READ)
 
 ### GUI (src/gui.py)
 - PyQt6-based with Atlantean theme (#00FF41 on black)
@@ -279,7 +286,7 @@ Key settings in `config.json`:
 - Git push sometimes times out (requires retries)
 - Version consistency check: ensure all files are updated together
 - Windows path separators may need special handling in tests
-- PyQt6 `QStatusBar.addSeparator()` doesn't exist (removed in v2.6.4)
+- PyQt6 `QStatusBar.addSeparator()` doesn't exist (removed in v2.6.5)
 - `QLocalSocket` stale sockets need `removeServer()` before listen
 
 ## Models

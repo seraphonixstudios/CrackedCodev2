@@ -86,6 +86,7 @@ class AgentRole(Enum):
     TESTER = "tester"
     DEBUGGER = "debugger"
     DOCUMENTER = "documenter"
+    DEVOPS = "devops"
 
 
 AGENT_CAPABILITIES = {
@@ -98,6 +99,7 @@ AGENT_CAPABILITIES = {
     AgentRole.TESTER: ["test", "verify", "validate", "check"],
     AgentRole.DEBUGGER: ["debug", "fix", "trace", "diagnose"],
     AgentRole.DOCUMENTER: ["document", "explain", "comment", "readme"],
+    AgentRole.DEVOPS: ["docker", "deploy", "ci", "monitor", "infra", "ssh"],
 }
 
 
@@ -110,6 +112,11 @@ INTENT_TO_AGENT = {
     "search": AgentRole.SEARCHER,
     "chat": AgentRole.CODER,
     "help": AgentRole.SUPERVISOR,
+    "deploy": AgentRole.DEVOPS,
+    "docker": AgentRole.DEVOPS,
+    "monitor": AgentRole.DEVOPS,
+    "ci": AgentRole.DEVOPS,
+    "infra": AgentRole.DEVOPS,
 }
 
 

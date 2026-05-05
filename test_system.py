@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CRACKEDCODE v2.6.4 - Comprehensive End-to-End Test Suite
+CRACKEDCODE v2.6.5 - Comprehensive End-to-End Test Suite
 Full coverage with real operations, no placeholders
 """
 
@@ -595,11 +595,11 @@ def test_version_info() -> bool:
         PASS(f"Engine version: {status.get('version', 'unknown')}")
         
         version_checks = 0
-        if CrackedCode.VERSION == "2.6.4":
+        if CrackedCode.VERSION == "2.6.5":
             version_checks += 1
-        if MatrixUI.VERSION == "2.6.4":
+        if MatrixUI.VERSION == "2.6.5":
             version_checks += 1
-        if status.get("version") == "2.6.4":
+        if status.get("version") == "2.6.5":
             version_checks += 1
         
         PASS(f"Version consistency: {version_checks}/3")
@@ -709,10 +709,10 @@ def test_cli_integration_e2e() -> bool:
             version = result.stdout.strip()
             PASS(f"CLI import: version {version}")
             
-            if version == "2.6.4":
+            if version == "2.6.5":
                 PASS("CLI version correct")
             else:
-                FAIL("CLI version", f"Expected 2.6.4, got {version}")
+                FAIL("CLI version", f"Expected 2.6.5, got {version}")
                 return False
         else:
             FAIL("CLI import", result.stderr[:50])
@@ -1663,7 +1663,7 @@ def test_voice_hotword_detection() -> bool:
 
 
 def main() -> int:
-    print(f"\n{'='*60}\n  CRACKEDCODE v2.6.4 - E2E TEST SUITE\n{'='*60}\n")
+    print(f"\n{'='*60}\n  CRACKEDCODE v2.6.5 - E2E TEST SUITE\n{'='*60}\n")
     
     tests = [
         ("Modules", test_modules),
@@ -1743,6 +1743,7 @@ def main() -> int:
         ("Tool Framework", test_tool_framework),
         ("Tool + ReAct", test_tool_react),
         ("Plugin System", test_plugin_system),
+        ("DevOps Agent", test_devops_agent),
     ]
     
     results: list[tuple[str, bool]] = []
@@ -2713,8 +2714,7 @@ def test_tool_react() -> bool:
             ToolRegistry, ReActLoop, ToolPermission, ToolCategory, tool
         )
         
-        # Reset and register a simple tool
-        ToolRegistry.reset()
+        # Use existing registry (don't reset - built-in tools needed by other tests)
         registry = ToolRegistry.get_instance()
         
         @tool(description="Calculate sum", permission=ToolPermission.READ, category=ToolCategory.SYSTEM)
@@ -2825,6 +2825,66 @@ def test_plugin_system() -> bool:
         import traceback
         traceback.print_exc()
         return FAIL("Plugin system", str(e)[:50])
+
+
+def test_devops_agent() -> bool:
+    print_header("DEVOPS AGENT")
+    try:
+        from src.orchestrator import AgentRole, AGENT_CAPABILITIES, INTENT_TO_AGENT
+        from src.tool_framework import get_tool_registry, ToolCategory
+        
+        # Test AgentRole.DEVOPS exists
+        if hasattr(AgentRole, 'DEVOPS'):
+            PASS("AgentRole.DEVOPS exists")
+        else:
+            return FAIL("AgentRole.DEVOPS missing")
+        
+        # Test capabilities
+        caps = AGENT_CAPABILITIES.get(AgentRole.DEVOPS, [])
+        expected = ["docker", "deploy", "ci", "monitor", "infra", "ssh"]
+        if all(c in caps for c in expected):
+            PASS(f"DevOps capabilities: {caps}")
+        else:
+            return FAIL(f"Missing capabilities. Got: {caps}")
+        
+        # Test intent mapping
+        if INTENT_TO_AGENT.get("deploy") == AgentRole.DEVOPS:
+            PASS("'deploy' intent maps to DEVOPS")
+        else:
+            return FAIL("deploy intent not mapped to DEVOPS")
+        
+        if INTENT_TO_AGENT.get("docker") == AgentRole.DEVOPS:
+            PASS("'docker' intent maps to DEVOPS")
+        else:
+            return FAIL("docker intent not mapped to DEVOPS")
+        
+        if INTENT_TO_AGENT.get("monitor") == AgentRole.DEVOPS:
+            PASS("'monitor' intent maps to DEVOPS")
+        else:
+            return FAIL("monitor intent not mapped to DEVOPS")
+        
+        # Test DevOps tools registered
+        registry = get_tool_registry()
+        devops_tools = ["docker_build", "docker_run", "docker_logs", "deploy_to_server", "monitor_logs", "run_ci_pipeline"]
+        for tool_name in devops_tools:
+            if registry.get(tool_name):
+                PASS(f"{tool_name} tool registered")
+            else:
+                return FAIL(f"{tool_name} tool missing")
+        
+        # Test tool categories
+        shell_tools = registry.list_tools(category=ToolCategory.SHELL)
+        shell_names = [t.name for t in shell_tools]
+        if "docker_build" in shell_names:
+            PASS("DevOps tools categorized as shell")
+        else:
+            return FAIL("DevOps tools not in shell category")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("DevOps agent", str(e)[:50])
 
 
 if __name__ == "__main__":

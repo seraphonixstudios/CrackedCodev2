@@ -529,7 +529,7 @@ Output plan in a code block.
         ollama = self.ollama.detect()
         cache_stats = self.ollama.get_cache_stats()
         return {
-            "version": "2.6.4",
+            "version": "2.6.5",
             "model": self.model,
             "unified_mode": self.unified_mode,
             "plan": self.plan_enabled,
