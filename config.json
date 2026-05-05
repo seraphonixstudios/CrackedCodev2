@@ -1,6 +1,6 @@
 {
   "name": "CrackedCode",
-  "version": "2.7.5",
+  "version": "2.7.6",
   "description": "Autonomous AI Coding Agent with Multi-Agent Swarm, Voice I/O, and Production-Ready App Generation",
   "model": "qwen3:8b-gpu",
   "vision_model": "llava:13b-gpu",
@@ -130,5 +130,30 @@
     "max_workers": 4,
     "task_timeout": 120,
     "gpu_acceleration": true
+  },
+  "notifications": {
+    "enabled": true,
+    "min_level": "info",
+    "email": {
+      "enabled": false,
+      "smtp_host": "smtp.gmail.com",
+      "smtp_port": 587,
+      "username": null,
+      "password": null,
+      "from": "crackedcode@localhost",
+      "to": [],
+      "use_tls": true
+    },
+    "webhook": {
+      "enabled": false,
+      "url": null,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "timeout": 10
+    },
+    "desktop": {
+      "enabled": false
+    }
   }
 }

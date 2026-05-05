@@ -1,4 +1,4 @@
-"""Task Scheduler v2.7.5 - Cron-based recurring AI task execution.
+"""Task Scheduler v2.7.6 - Cron-based recurring AI task execution.
 
 Define recurring tasks that run on a schedule:
   schedules/weekly_security.yaml
@@ -125,10 +125,11 @@ def should_run_now(cron_spec: Dict[str, List[int]]) -> bool:
 class TaskScheduler:
     """Cron-based recurring task scheduler using the orchestrator."""
     
-    def __init__(self, engine=None, schedules_dir: str = "schedules", check_interval: int = 60):
+    def __init__(self, engine=None, schedules_dir: str = "schedules", check_interval: int = 60, notifications=None):
         self.engine = engine
         self.schedules_dir = Path(schedules_dir)
         self.check_interval = check_interval
+        self.notifications = notifications
         self.schedules: Dict[str, Schedule] = {}
         self.history: Dict[str, List[ScheduledRun]] = {}
         self._running = False
@@ -342,8 +343,32 @@ class TaskScheduler:
             
             logger.info(f"Schedule {schedule.name}: {'SUCCESS' if success else 'FAILED'} ({duration:.2f}s)")
             
+            # Send notification
+            if self.notifications:
+                if success:
+                    self.notifications.success(
+                        title=f"Schedule Complete: {schedule.name}",
+                        message=f"Task completed successfully in {duration:.1f}s.\n\n{result_text[:500]}",
+                        source="task_scheduler",
+                        metadata={"schedule": schedule.name, "duration": duration, "agent": schedule.agent},
+                    )
+                else:
+                    self.notifications.error(
+                        title=f"Schedule Failed: {schedule.name}",
+                        message=f"Task failed after {duration:.1f}s.\n\nError: {error[:500]}",
+                        source="task_scheduler",
+                        metadata={"schedule": schedule.name, "duration": duration, "error": error},
+                    )
+            
         except Exception as e:
             logger.error(f"Schedule execution failed for {schedule.name}: {e}")
+            if self.notifications:
+                self.notifications.error(
+                    title=f"Schedule Error: {schedule.name}",
+                    message=f"Unhandled exception: {str(e)[:500]}",
+                    source="task_scheduler",
+                    metadata={"schedule": schedule.name, "exception": str(e)},
+                )
 
 
 def create_task_scheduler(engine=None, schedules_dir: str = "schedules") -> TaskScheduler:

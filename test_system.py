@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CRACKEDCODE v2.7.5 - Comprehensive End-to-End Test Suite
+CRACKEDCODE v2.7.6 - Comprehensive End-to-End Test Suite
 Full coverage with real operations, no placeholders
 """
 
@@ -595,11 +595,11 @@ def test_version_info() -> bool:
         PASS(f"Engine version: {status.get('version', 'unknown')}")
         
         version_checks = 0
-        if CrackedCode.VERSION == "2.7.5":
+        if CrackedCode.VERSION == "2.7.6":
             version_checks += 1
-        if MatrixUI.VERSION == "2.7.5":
+        if MatrixUI.VERSION == "2.7.6":
             version_checks += 1
-        if status.get("version") == "2.7.5":
+        if status.get("version") == "2.7.6":
             version_checks += 1
         
         PASS(f"Version consistency: {version_checks}/3")
@@ -709,10 +709,10 @@ def test_cli_integration_e2e() -> bool:
             version = result.stdout.strip()
             PASS(f"CLI import: version {version}")
             
-            if version == "2.7.5":
+            if version == "2.7.6":
                 PASS("CLI version correct")
             else:
-                FAIL("CLI version", f"Expected 2.7.5, got {version}")
+                FAIL("CLI version", f"Expected 2.7.6, got {version}")
                 return False
         else:
             FAIL("CLI import", result.stderr[:50])
@@ -1663,7 +1663,7 @@ def test_voice_hotword_detection() -> bool:
 
 
 def main() -> int:
-    print(f"\n{'='*60}\n  CRACKEDCODE v2.7.5 - E2E TEST SUITE\n{'='*60}\n")
+    print(f"\n{'='*60}\n  CRACKEDCODE v2.7.6 - E2E TEST SUITE\n{'='*60}\n")
     
     tests = [
         ("Modules", test_modules),
@@ -1757,6 +1757,7 @@ def main() -> int:
         ("Task Scheduler", test_task_scheduler),
         ("Code Diff", test_code_diff),
         ("WebSocket API", test_websocket_api),
+        ("Notification System", test_notification_system),
     ]
     
     results: list[tuple[str, bool]] = []
@@ -3799,6 +3800,118 @@ def test_websocket_api() -> bool:
         import traceback
         traceback.print_exc()
         return FAIL("WebSocket API", str(e)[:50])
+
+
+def test_notification_system() -> bool:
+    print_header("NOTIFICATION SYSTEM")
+    try:
+        from src.notifications import (
+            NotificationManager, Notification,
+            EmailBackend, WebhookBackend, DesktopBackend, LogBackend,
+            create_notification_manager, get_notification_manager,
+        )
+        
+        # Test notification dataclass
+        n = Notification(title="Test", message="Hello", level="info")
+        if n.title == "Test" and n.level == "info":
+            PASS("Notification dataclass")
+        else:
+            return FAIL("Notification dataclass failed")
+        
+        # Test manager creation (disabled)
+        nm_disabled = create_notification_manager({"enabled": False})
+        if not nm_disabled.enabled:
+            PASS("Manager respects enabled=false")
+        else:
+            return FAIL("Manager not disabled")
+        
+        # Test disabled manager returns empty
+        results = nm_disabled.notify("Test", "Hello")
+        if results == {}:
+            PASS("Disabled manager returns empty")
+        else:
+            return FAIL("Disabled manager returned results")
+        
+        # Test manager with log backend only
+        nm_log = create_notification_manager({"enabled": True, "min_level": "info"})
+        if len(nm_log.backends) >= 1 and any(isinstance(b, LogBackend) for b in nm_log.backends):
+            PASS("Log backend auto-added")
+        else:
+            return FAIL("Log backend missing")
+        
+        # Test notify returns results
+        results = nm_log.notify("Test Title", "Test message", level="info")
+        if "LogBackend" in results and results["LogBackend"] == True:
+            PASS("Notify returns backend results")
+        else:
+            return FAIL("Notify results wrong")
+        
+        # Test level filtering
+        nm_warn = create_notification_manager({"enabled": True, "min_level": "warning"})
+        results_info = nm_warn.notify("Test", "info msg", level="info")
+        if results_info == {}:
+            PASS("Level filtering works (info blocked)")
+        else:
+            return FAIL("Level filtering failed")
+        
+        results_warn = nm_warn.notify("Test", "warn msg", level="warning")
+        if "LogBackend" in results_warn:
+            PASS("Level filtering works (warning allowed)")
+        else:
+            return FAIL("Level filtering failed for warning")
+        
+        # Test convenience methods
+        nm = create_notification_manager({"enabled": True})
+        r1 = nm.info("Info", "info msg")
+        r2 = nm.success("Success", "success msg")
+        r3 = nm.warning("Warning", "warn msg")
+        r4 = nm.error("Error", "error msg")
+        if all("LogBackend" in r for r in [r1, r2, r3, r4]):
+            PASS("Convenience methods work")
+        else:
+            return FAIL("Convenience methods failed")
+        
+        # Test email backend creation
+        email_backend = EmailBackend(
+            smtp_host="smtp.test.com",
+            smtp_port=587,
+            from_addr="test@test.com",
+            to_addrs=["user@test.com"],
+        )
+        if email_backend.smtp_host == "smtp.test.com":
+            PASS("EmailBackend created")
+        else:
+            return FAIL("EmailBackend creation failed")
+        
+        # Test webhook backend creation
+        webhook_backend = WebhookBackend(url="https://hooks.slack.com/test")
+        if webhook_backend.url == "https://hooks.slack.com/test":
+            PASS("WebhookBackend created")
+        else:
+            return FAIL("WebhookBackend creation failed")
+        
+        # Test desktop backend creation
+        desktop_backend = DesktopBackend(enabled=True)
+        if desktop_backend.enabled:
+            PASS("DesktopBackend created")
+        else:
+            return FAIL("DesktopBackend creation failed")
+        
+        # Test singleton
+        import src.notifications as notif_module
+        notif_module._notification_manager = None
+        s1 = get_notification_manager()
+        s2 = get_notification_manager()
+        if s1 is s2:
+            PASS("Singleton works")
+        else:
+            return FAIL("Singleton failed")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Notification system", str(e)[:50])
 
 
 if __name__ == "__main__":
