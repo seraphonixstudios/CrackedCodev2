@@ -1,7 +1,7 @@
 # CrackedCode White Paper
 ## SOTA Local Multi-Agent Coding Swarm with Agent Reasoning Engine
 
-**Version:** 2.7.7
+**Version:** 2.7.8
 **Date:** May 2026
 **Author:** CrackedCode Team
 **License:** MIT
@@ -10,9 +10,9 @@
 
 ## Executive Summary
 
-CrackedCode is a production-grade local AI coding assistant that operates 100% offline using Ollama for large language model inference and local speech recognition/synthesis for voice I/O. Version 2.7.7 represents a major milestone with 11 specialized agent roles, 36+ tools, multi-model auto-routing, security auditing, web browser automation, screen capture/vision analysis, persistent long-term memory, MCP and A2A protocol support, and a comprehensive plugin system.
+CrackedCode is a production-grade local AI coding assistant that operates 100% offline using Ollama for large language model inference and local speech recognition/synthesis for voice I/O. Version 2.7.8 represents a major milestone with 11 specialized agent roles, 36+ tools, multi-model auto-routing, security auditing, web browser automation, screen capture/vision analysis, persistent long-term memory, MCP and A2A protocol support, and a comprehensive plugin system.
 
-Key innovations in v2.7.7:
+Key innovations in v2.7.8:
 - **Multi-Model Auto-Routing**: Each intent automatically routed to the optimal model (qwen3/dolphin/llava)
 - **Security Agent**: Dedicated 11th agent role with vulnerability scanning and secret detection
 - **Browser Automation**: Playwright-based web agent for automated testing and research
@@ -22,7 +22,7 @@ Key innovations in v2.7.7:
 - **Screen Capture / Vision**: AI-powered screen understanding with llava:13b-gpu
 - **DevOps Agent**: Docker, deploy, and CI/CD automation
 
-This white paper details the architecture, implementation, and capabilities of CrackedCode v2.7.7.
+This white paper details the architecture, implementation, and capabilities of CrackedCode v2.7.8.
 
 ---
 
@@ -41,7 +41,7 @@ Current AI coding assistants require cloud API access, raising concerns about:
 
 ### 1.2 Solution
 
-CrackedCode v2.7.7 addresses all这些问题 by:
+CrackedCode v2.7.8 addresses all这些问题 by:
 - Running 100% locally with Ollama
 - No network calls after initial model download
 - Free to operate once models are cached
@@ -70,7 +70,7 @@ CrackedCode v2.7.7 addresses all这些问题 by:
 
 ```
 +-----------------------------------------------------------------------------+
-|                           CrackedCode v2.7.7                                |
+|                           CrackedCode v2.7.8                                |
 +-----------------------------------------------------------------------------+
 |  +-------------+     +-------------+     +-----------------------------+   |
 |  |  Voice I/O  |---->|  Unified    |---->|   Agent Reasoning Engine    |   |
@@ -214,7 +214,7 @@ Output (GUI terminal / voice / file writes)
 
 ---
 
-## 3. Codebase RAG (v2.7.7)
+## 3. Codebase RAG (v2.7.8)
 
 ### 3.1 Architecture
 
@@ -242,7 +242,7 @@ CodebaseRAG
 
 ---
 
-## 4. Tool Calling Framework (v2.7.7)
+## 4. Tool Calling Framework (v2.7.8)
 
 ### 4.1 Architecture
 
@@ -289,7 +289,7 @@ ReActLoop (reasoning -> action -> observation)
 
 ---
 
-## 5. Plugin System (v2.7.7)
+## 5. Plugin System (v2.7.8)
 
 ### 5.1 Architecture
 
@@ -333,7 +333,7 @@ HookManager
 
 ---
 
-## 6. DevOps Agent (v2.7.7)
+## 6. DevOps Agent (v2.7.8)
 
 ### 6.1 Architecture
 
@@ -373,7 +373,7 @@ User: "Deploy the API to production"
 
 ---
 
-## 7. Security Agent (v2.7.7)
+## 7. Security Agent (v2.7.8)
 
 ### 7.1 Architecture
 
@@ -409,7 +409,7 @@ User: "Audit this code for vulnerabilities"
 
 ---
 
-## 8. Screen Capture / Vision Analysis (v2.7.7)
+## 8. Screen Capture / Vision Analysis (v2.7.8)
 
 ### 8.1 Architecture
 
@@ -443,7 +443,7 @@ User: "What's on my screen?"
 
 ---
 
-## 9. Browser Automation (v2.7.7)
+## 9. Browser Automation (v2.7.8)
 
 ### 9.1 Architecture
 
@@ -478,7 +478,7 @@ User: "Go to https://example.com and tell me what's wrong"
 
 ---
 
-## 10. MCP Integration (v2.7.7)
+## 10. MCP Integration (v2.7.8)
 
 ### 10.1 Protocol Overview
 
@@ -511,7 +511,7 @@ User: "Search the web for Python best practices"
 
 ---
 
-## 11. A2A Protocol (v2.7.7)
+## 11. A2A Protocol (v2.7.8)
 
 ### 11.1 Protocol Overview
 
@@ -544,7 +544,7 @@ task = client.send_task("Review this code")
 
 ---
 
-## 12. Persistent Long-Term Memory (v2.7.7)
+## 12. Persistent Long-Term Memory (v2.7.8)
 
 ### 12.1 Architecture
 
@@ -582,7 +582,7 @@ Next Request: get_context_for_prompt()
 
 ---
 
-## 13. Multi-Model Auto-Routing (v2.7.7)
+## 13. Multi-Model Auto-Routing (v2.7.8)
 
 ### 13.1 Architecture
 
@@ -769,7 +769,7 @@ save, open, run, build, search, clear, help, exit, debug, test, deploy, git, sta
 
 ## 19. Conclusion
 
-CrackedCode v2.7.7 represents a mature, production-ready local AI coding assistant with:
+CrackedCode v2.7.8 represents a mature, production-ready local AI coding assistant with:
 
 - **11 specialized agent roles** with coherent reasoning
 - **36+ tools** across 8 categories with ReAct loops
@@ -888,7 +888,7 @@ results = memory.recall("bug fix")
 ---
 
 <p align="center">
-  <strong>CrackedCode v2.7.7</strong> — Neural Coding Interface
+  <strong>CrackedCode v2.7.8</strong> — Neural Coding Interface
   <br>
   <em>100% Local. 100% Powerful. 100% Yours.</em>
 </p>

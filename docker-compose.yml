@@ -1,0 +1,62 @@
+# CrackedCode Docker Compose
+# Usage:
+#   docker-compose up -d          # Start everything
+#   docker-compose logs -f app    # Watch logs
+#   docker-compose down           # Stop everything
+#
+# Services:
+#   - ollama:   LLM inference engine (port 11434)
+#   - app:      CrackedCode API (port 8080)
+
+version: "3.8"
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: crackedcode-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    environment:
+      - OLLAMA_ORIGINS=*
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: crackedcode-app
+    ports:
+      - "8080:8080"
+    volumes:
+      # Persist CrackedCode data
+      - crackedcode-data:/app/.crackedcode
+      - crackedcode-schedules:/app/schedules
+      - crackedcode-plugins:/app/plugins
+      - crackedcode-logs:/app/logs
+      # Mount project directory for file operations
+      - .:/app/project:ro
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+      - CRACKEDCODE_CONFIG=/app/config.json
+    env_file:
+      - .env
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: unless-stopped
+    command: ["python", "-m", "src.main", "api", "--host", "0.0.0.0", "--port", "8080"]
+
+volumes:
+  ollama-data:
+  crackedcode-data:
+  crackedcode-schedules:
+  crackedcode-plugins:
+  crackedcode-logs:

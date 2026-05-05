@@ -1,0 +1,56 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.egg-info
+.eggs
+*.egg
+.venv
+venv/
+env/
+ENV/
+
+# IDEs
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs & Data
+logs/
+*.log
+.crackedcode/
+.autonomous/
+schedules/
+plugins/
+mcp_servers/
+
+# Test artifacts
+tmp/
+temp/
+*.tmp
+
+# Build artifacts
+dist/
+build/
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Documentation (optional - keep if needed)
+# *.md
+
+# Config overrides
+.env
+config.local.json

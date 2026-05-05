@@ -1,6 +1,6 @@
 {
   "name": "CrackedCode",
-  "version": "2.7.7",
+  "version": "2.7.8",
   "description": "Autonomous AI Coding Agent with Multi-Agent Swarm, Voice I/O, and Production-Ready App Generation",
   "model": "qwen3:8b-gpu",
   "vision_model": "llava:13b-gpu",
@@ -160,5 +160,11 @@
     "enabled": true,
     "max_history": 10000,
     "persist": true
+  },
+  "docker": {
+    "enabled": false,
+    "ollama_host_env": "OLLAMA_HOST",
+    "default_ollama_host": "http://ollama:11434",
+    "health_check_interval": 30
   }
 }

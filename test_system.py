@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CRACKEDCODE v2.7.7 - Comprehensive End-to-End Test Suite
+CRACKEDCODE v2.7.8 - Comprehensive End-to-End Test Suite
 Full coverage with real operations, no placeholders
 """
 
@@ -595,11 +595,11 @@ def test_version_info() -> bool:
         PASS(f"Engine version: {status.get('version', 'unknown')}")
         
         version_checks = 0
-        if CrackedCode.VERSION == "2.7.7":
+        if CrackedCode.VERSION == "2.7.8":
             version_checks += 1
-        if MatrixUI.VERSION == "2.7.7":
+        if MatrixUI.VERSION == "2.7.8":
             version_checks += 1
-        if status.get("version") == "2.7.7":
+        if status.get("version") == "2.7.8":
             version_checks += 1
         
         PASS(f"Version consistency: {version_checks}/3")
@@ -709,10 +709,10 @@ def test_cli_integration_e2e() -> bool:
             version = result.stdout.strip()
             PASS(f"CLI import: version {version}")
             
-            if version == "2.7.7":
+            if version == "2.7.8":
                 PASS("CLI version correct")
             else:
-                FAIL("CLI version", f"Expected 2.7.7, got {version}")
+                FAIL("CLI version", f"Expected 2.7.8, got {version}")
                 return False
         else:
             FAIL("CLI import", result.stderr[:50])
@@ -1663,7 +1663,7 @@ def test_voice_hotword_detection() -> bool:
 
 
 def main() -> int:
-    print(f"\n{'='*60}\n  CRACKEDCODE v2.7.7 - E2E TEST SUITE\n{'='*60}\n")
+    print(f"\n{'='*60}\n  CRACKEDCODE v2.7.8 - E2E TEST SUITE\n{'='*60}\n")
     
     tests = [
         ("Modules", test_modules),
@@ -1759,6 +1759,7 @@ def main() -> int:
         ("WebSocket API", test_websocket_api),
         ("Notification System", test_notification_system),
         ("Metrics System", test_metrics_system),
+        ("Docker Support", test_docker_support),
     ]
     
     results: list[tuple[str, bool]] = []
@@ -4036,6 +4037,113 @@ def test_metrics_system() -> bool:
         import traceback
         traceback.print_exc()
         return FAIL("Metrics system", str(e)[:50])
+
+
+def test_docker_support() -> bool:
+    print_header("DOCKER SUPPORT")
+    try:
+        import os
+        from pathlib import Path
+        
+        # Test Dockerfile exists
+        dockerfile = Path("Dockerfile")
+        if dockerfile.exists():
+            PASS("Dockerfile exists")
+        else:
+            return FAIL("Dockerfile missing")
+        
+        # Test Dockerfile content
+        content = dockerfile.read_text()
+        if "FROM python" in content:
+            PASS("Dockerfile uses Python base")
+        else:
+            return FAIL("Dockerfile missing Python base")
+        
+        if "EXPOSE 8080" in content:
+            PASS("Dockerfile exposes port 8080")
+        else:
+            return FAIL("Dockerfile missing port expose")
+        
+        if "HEALTHCHECK" in content:
+            PASS("Dockerfile has health check")
+        else:
+            return FAIL("Dockerfile missing health check")
+        
+        if "CMD" in content and "api" in content:
+            PASS("Dockerfile defaults to API server")
+        else:
+            return FAIL("Dockerfile missing API CMD")
+        
+        # Test docker-compose.yml exists
+        compose = Path("docker-compose.yml")
+        if compose.exists():
+            PASS("docker-compose.yml exists")
+        else:
+            return FAIL("docker-compose.yml missing")
+        
+        # Test docker-compose content
+        compose_content = compose.read_text()
+        if "ollama" in compose_content:
+            PASS("docker-compose includes Ollama service")
+        else:
+            return FAIL("docker-compose missing Ollama")
+        
+        if "app" in compose_content or "crackedcode" in compose_content:
+            PASS("docker-compose includes CrackedCode service")
+        else:
+            return FAIL("docker-compose missing CrackedCode")
+        
+        if "depends_on" in compose_content:
+            PASS("docker-compose has service dependencies")
+        else:
+            return FAIL("docker-compose missing dependencies")
+        
+        if "volumes:" in compose_content:
+            PASS("docker-compose has persistent volumes")
+        else:
+            return FAIL("docker-compose missing volumes")
+        
+        # Test .dockerignore exists
+        dockerignore = Path(".dockerignore")
+        if dockerignore.exists():
+            PASS(".dockerignore exists")
+        else:
+            return FAIL(".dockerignore missing")
+        
+        # Test .env.example exists
+        env_example = Path(".env.example")
+        if env_example.exists():
+            PASS(".env.example exists")
+        else:
+            return FAIL(".env.example missing")
+        
+        # Test requirements.txt exists
+        req = Path("requirements.txt")
+        if req.exists():
+            PASS("requirements.txt exists")
+        else:
+            return FAIL("requirements.txt missing")
+        
+        req_content = req.read_text()
+        if "fastapi" in req_content and "ollama" in req_content:
+            PASS("requirements.txt has core deps")
+        else:
+            return FAIL("requirements.txt missing core deps")
+        
+        # Test config has docker section
+        import json
+        with open("config.json", "r") as f:
+            cfg = json.load(f)
+        if "docker" in cfg:
+            PASS("Config has docker section")
+        else:
+            return FAIL("Config missing docker section")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Docker support", str(e)[:50])
 
 
 if __name__ == "__main__":
