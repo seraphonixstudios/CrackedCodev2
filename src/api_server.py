@@ -238,6 +238,34 @@ class FinetuneResponse(BaseModel):
     error: str = ""
 
 
+class BenchmarkRunRequest(BaseModel):
+    name: str
+    model: Optional[str] = None
+
+
+class BenchmarkRunResponse(BaseModel):
+    name: str
+    score: float
+    passed: int
+    failed: int
+    total: int
+    duration: float
+    details: List[Dict[str, Any]] = []
+
+
+class HealingWatchRequest(BaseModel):
+    log_file: str
+    auto_fix: bool = False
+
+
+class HealingFixResponse(BaseModel):
+    success: bool
+    error_detected: str = ""
+    fix_applied: bool = False
+    fix_diff: str = ""
+    tests_passed: bool = False
+
+
 # ── Rate Limiting ──────────────────────────────────────────────────────────
 
 class RateLimiter:
@@ -319,7 +347,7 @@ class CrackedCodeAPI:
         self._app = FastAPI(
             title="CrackedCode API",
             description="REST API for the CrackedCode local AI coding assistant",
-            version="2.9.0",
+            version="2.9.1",
         )
         
         # CORS
@@ -395,7 +423,7 @@ class CrackedCodeAPI:
         async def root():
             return {
                 "name": "CrackedCode API",
-                "version": "2.9.0",
+                "version": "2.9.1",
                 "docs": "/docs",
                 "auth_required": bool(self.api_key),
                 "endpoints": [
@@ -422,6 +450,13 @@ class CrackedCodeAPI:
                     "/knowledge/documents",
                     "/finetune",
                     "/finetune/jobs",
+                    "/benchmarks",
+                    "/benchmarks/run",
+                    "/benchmarks/history",
+                    "/healing/watch",
+                    "/healing/status",
+                    "/healing/fix",
+                    "/healing/fixes",
                     "/export",
                     "/import",
                     "/export/items",
@@ -550,7 +585,7 @@ class CrackedCodeAPI:
         async def status():
             """Get system status."""
             if not self.engine:
-                return StatusResponse(version="2.9.0")
+                return StatusResponse(version="2.9.1")
             
             try:
                 status_data = self.engine.get_status()
@@ -569,7 +604,7 @@ class CrackedCodeAPI:
                     conv_count = self.engine.conversation_manager.get_stats().get('total_conversations', 0)
                 
                 return StatusResponse(
-                    version=status_data.get('version', '2.9.0'),
+                    version=status_data.get('version', '2.9.1'),
                     model=status_data.get('model', ''),
                     vision_model=status_data.get('vision_model', ''),
                     secondary_model=status_data.get('secondary_model', ''),
@@ -1106,6 +1141,144 @@ class CrackedCodeAPI:
                 logger.error(f"Finetune jobs list error: {e}")
                 raise HTTPException(status_code=500, detail=str(e))
         
+        @self._app.get("/benchmarks", dependencies=[Depends(self._verify_api_key)])
+        async def list_benchmarks():
+            """List available benchmark suites."""
+            try:
+                from src.benchmarks import get_benchmark_runner
+                runner = get_benchmark_runner()
+                return {"benchmarks": runner.list_benchmarks()}
+            except Exception as e:
+                logger.error(f"Benchmark list error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.post("/benchmarks/run", response_model=BenchmarkRunResponse, dependencies=[Depends(self._verify_api_key)])
+        async def run_benchmark(request: BenchmarkRunRequest):
+            """Run a benchmark suite."""
+            try:
+                from src.benchmarks import get_benchmark_runner
+                from src.engine import CrackedCodeEngine
+                
+                runner = get_benchmark_runner()
+                engine = self.engine or CrackedCodeEngine()
+                
+                report = runner.run(request.name, engine, model=request.model)
+                
+                return BenchmarkRunResponse(
+                    name=report.name,
+                    score=report.total_score,
+                    passed=sum(1 for r in report.results if r.passed),
+                    failed=sum(1 for r in report.results if not r.passed),
+                    total=len(report.results),
+                    duration=report.duration,
+                    details=[
+                        {
+                            "case": r.case,
+                            "category": r.category,
+                            "passed": r.passed,
+                            "score": r.score,
+                            "duration": r.duration,
+                        }
+                        for r in report.results
+                    ],
+                )
+            except Exception as e:
+                logger.error(f"Benchmark run error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.get("/benchmarks/history", dependencies=[Depends(self._verify_api_key)])
+        async def get_benchmark_history(name: Optional[str] = None):
+            """Get benchmark history."""
+            try:
+                from src.benchmarks import get_benchmark_runner
+                runner = get_benchmark_runner()
+                return {"history": runner.get_history(name)}
+            except Exception as e:
+                logger.error(f"Benchmark history error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.post("/healing/watch", dependencies=[Depends(self._verify_api_key)])
+        async def start_healing_watch(request: HealingWatchRequest):
+            """Start watching a log file for errors."""
+            try:
+                from src.self_healing import get_healing_agent
+                from src.engine import CrackedCodeEngine
+                
+                agent = get_healing_agent(
+                    engine=self.engine or CrackedCodeEngine(),
+                )
+                success = agent.watch(request.log_file, auto_fix=request.auto_fix)
+                
+                return {"success": success, "status": agent.get_status()}
+            except Exception as e:
+                logger.error(f"Healing watch error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.get("/healing/status", dependencies=[Depends(self._verify_api_key)])
+        async def get_healing_status():
+            """Get self-healing agent status."""
+            try:
+                from src.self_healing import get_healing_agent
+                agent = get_healing_agent()
+                return agent.get_status()
+            except Exception as e:
+                logger.error(f"Healing status error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.post("/healing/fix", response_model=HealingFixResponse, dependencies=[Depends(self._verify_api_key)])
+        async def fix_last_error():
+            """Attempt to fix the last detected error."""
+            try:
+                from src.self_healing import get_healing_agent
+                from src.engine import CrackedCodeEngine
+                
+                agent = get_healing_agent(engine=self.engine or CrackedCodeEngine())
+                
+                errors = agent.get_errors()
+                if not errors:
+                    return HealingFixResponse(success=False, error_detected="No errors to fix")
+                
+                fix = agent.fix_error(errors[-1])
+                
+                if fix:
+                    return HealingFixResponse(
+                        success=True,
+                        error_detected=errors[-1].error_type,
+                        fix_applied=True,
+                        fix_diff=fix.diff,
+                        tests_passed=fix.tests_passed,
+                    )
+                else:
+                    return HealingFixResponse(success=False, error_detected=errors[-1].error_type)
+            except Exception as e:
+                logger.error(f"Healing fix error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.get("/healing/fixes", dependencies=[Depends(self._verify_api_key)])
+        async def list_healing_fixes():
+            """List all applied fixes."""
+            try:
+                from src.self_healing import get_healing_agent
+                agent = get_healing_agent()
+                fixes = agent.get_fixes()
+                
+                return {
+                    "fixes": [
+                        {
+                            "id": f.id,
+                            "error_id": f.error_id,
+                            "file": f.file,
+                            "tests_passed": f.tests_passed,
+                            "applied_at": f.applied_at,
+                            "reverted": f.reverted,
+                        }
+                        for f in fixes
+                    ]
+                }
+            except Exception as e:
+                logger.error(f"Healing fixes list error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
         @self._app.get("/export", dependencies=[Depends(self._verify_api_key)])
         async def export_data(items: Optional[str] = None):
             """Export all CrackedCode data to a ZIP archive."""
@@ -1301,7 +1474,7 @@ if __name__ == "__main__":
     api_key = engine.config.get("api_key") if hasattr(engine, 'config') else None
     api = create_api_server(engine=engine, api_key=api_key)
     
-    print(f"Starting CrackedCode API Server v2.9.0")
+    print(f"Starting CrackedCode API Server v2.9.1")
     print(f"URL: {api.url}")
     print(f"Docs: {api.url}/docs")
     if api.api_key:

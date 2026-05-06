@@ -1,4 +1,4 @@
-"""Agent Collaboration / Multi-Agent Chat v2.9.0 - Multi-agent debate and consensus.
+"""Agent Collaboration / Multi-Agent Chat v2.9.1 - Multi-agent debate and consensus.
 
 Multiple specialized agents (ARCHITECT, SECURITY, CODER) collaborate on a task
 through structured debate. The SUPERVISOR coordinates and synthesizes consensus.

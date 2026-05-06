@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CRACKEDCODE v2.9.0 - Comprehensive End-to-End Test Suite
+CRACKEDCODE v2.9.1 - Comprehensive End-to-End Test Suite
 Full coverage with real operations, no placeholders
 """
 
@@ -595,11 +595,11 @@ def test_version_info() -> bool:
         PASS(f"Engine version: {status.get('version', 'unknown')}")
         
         version_checks = 0
-        if CrackedCode.VERSION == "2.9.0":
+        if CrackedCode.VERSION == "2.9.1":
             version_checks += 1
-        if MatrixUI.VERSION == "2.9.0":
+        if MatrixUI.VERSION == "2.9.1":
             version_checks += 1
-        if status.get("version") == "2.9.0":
+        if status.get("version") == "2.9.1":
             version_checks += 1
         
         PASS(f"Version consistency: {version_checks}/3")
@@ -709,10 +709,10 @@ def test_cli_integration_e2e() -> bool:
             version = result.stdout.strip()
             PASS(f"CLI import: version {version}")
             
-            if version == "2.9.0":
+            if version == "2.9.1":
                 PASS("CLI version correct")
             else:
-                FAIL("CLI version", f"Expected 2.9.0, got {version}")
+                FAIL("CLI version", f"Expected 2.9.1, got {version}")
                 return False
         else:
             FAIL("CLI import", result.stderr[:50])
@@ -1663,7 +1663,7 @@ def test_voice_hotword_detection() -> bool:
 
 
 def main() -> int:
-    print(f"\n{'='*60}\n  CRACKEDCODE v2.9.0 - E2E TEST SUITE\n{'='*60}\n")
+    print(f"\n{'='*60}\n  CRACKEDCODE v2.9.1 - E2E TEST SUITE\n{'='*60}\n")
     
     tests = [
         ("Modules", test_modules),
@@ -1772,6 +1772,9 @@ def main() -> int:
         ("Code Review Bot", test_code_review_bot),
         ("Knowledge Base", test_knowledge_base),
         ("Model Fine-tuning", test_model_finetune),
+        ("SDK", test_sdk),
+        ("Benchmarks", test_benchmarks),
+        ("Self-Healing", test_self_healing),
     ]
     
     results: list[tuple[str, bool]] = []
@@ -4353,8 +4356,8 @@ def test_import_export() -> bool:
             PASS("ImportExportManager created")
             
             # Test export manifest
-            manifest = ExportManifest(version="2.9.0", items=["config"])
-            if manifest.version == "2.9.0":
+            manifest = ExportManifest(version="2.9.1", items=["config"])
+            if manifest.version == "2.9.1":
                 PASS("ExportManifest dataclass")
             else:
                 return FAIL("ExportManifest wrong")
@@ -5020,6 +5023,216 @@ def test_model_finetune() -> bool:
         return FAIL("Model fine-tuning", str(e)[:50])
 
 
+def test_sdk() -> bool:
+    print_header("SDK")
+    try:
+        from src.sdk import (
+            Client, ChatResponse, ReviewResponse, WorkflowResponse,
+            DebateResponse, DocumentResponse, BenchmarkResponse, HealingResponse,
+            create_client,
+        )
+        
+        # Test client creation
+        client = create_client(base_url="http://localhost:8080")
+        if isinstance(client, Client):
+            PASS("Client created")
+        else:
+            return FAIL("Client creation failed")
+        
+        # Test sub-clients exist
+        if hasattr(client, "workflows") and hasattr(client, "agents"):
+            PASS("Sub-clients available")
+        else:
+            return FAIL("Missing sub-clients")
+        
+        if hasattr(client, "knowledge") and hasattr(client, "benchmarks"):
+            PASS("Knowledge and benchmark clients available")
+        else:
+            return FAIL("Missing knowledge/benchmark clients")
+        
+        if hasattr(client, "healing") and hasattr(client, "review"):
+            PASS("Healing and review clients available")
+        else:
+            return FAIL("Missing healing/review clients")
+        
+        # Test response models
+        chat = ChatResponse(text="hello", model_used="qwen3")
+        if chat.text == "hello" and chat.model_used == "qwen3":
+            PASS("ChatResponse model works")
+        else:
+            return FAIL("ChatResponse failed")
+        
+        review = ReviewResponse(commit="abc", verdict="pass", score=95.0, issues_count=0, summary="ok")
+        if review.verdict == "pass" and review.score == 95.0:
+            PASS("ReviewResponse model works")
+        else:
+            return FAIL("ReviewResponse failed")
+        
+        # Test config section
+        import json
+        with open("config.json", "r") as f:
+            cfg = json.load(f)
+        if "sdk" in cfg:
+            PASS("Config has sdk section")
+        else:
+            return FAIL("Config missing sdk")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("SDK", str(e)[:50])
+
+
+def test_benchmarks() -> bool:
+    print_header("BENCHMARKS")
+    try:
+        from src.benchmarks import (
+            BenchmarkRunner, BenchmarkCase, BenchmarkResult, BenchmarkReport,
+            get_benchmark_runner, BENCHMARK_SUITES,
+        )
+        import tempfile
+        
+        # Test runner creation
+        with tempfile.TemporaryDirectory() as tmpdir:
+            runner = BenchmarkRunner(storage_dir=tmpdir)
+            PASS("BenchmarkRunner created")
+            
+            # Test list benchmarks
+            benches = runner.list_benchmarks()
+            if len(benches) > 0:
+                PASS("Benchmarks listed")
+            else:
+                return FAIL("No benchmarks found")
+            
+            if "humaneval" in benches and "security" in benches:
+                PASS("Expected benchmarks present")
+            else:
+                return FAIL("Missing expected benchmarks")
+            
+            # Test benchmark suites exist
+            if "all" in BENCHMARK_SUITES:
+                PASS("Benchmark suites loaded")
+            else:
+                return FAIL("Benchmark suites missing")
+            
+            # Test history
+            hist = runner.get_history()
+            if isinstance(hist, list):
+                PASS("History accessible")
+            else:
+                return FAIL("History not accessible")
+            
+            # Test trends
+            trends = runner.get_trends()
+            if isinstance(trends, dict):
+                PASS("Trends accessible")
+            else:
+                return FAIL("Trends not accessible")
+        
+        # Test config section
+        import json
+        with open("config.json", "r") as f:
+            cfg = json.load(f)
+        if "benchmarks" in cfg:
+            PASS("Config has benchmarks section")
+        else:
+            return FAIL("Config missing benchmarks")
+        
+        # Test API routes
+        from src.api_server import create_api_server
+        api = create_api_server()
+        routes = [route.path for route in api._app.routes]
+        if "/benchmarks" in routes and "/benchmarks/run" in routes:
+            PASS("Benchmark API routes registered")
+        else:
+            return FAIL("Missing benchmark routes")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Benchmarks", str(e)[:50])
+
+
+def test_self_healing() -> bool:
+    print_header("SELF-HEALING")
+    try:
+        from src.self_healing import (
+            SelfHealingAgent, DetectedError, AppliedFix,
+            get_healing_agent,
+        )
+        import tempfile
+        
+        # Test agent creation
+        with tempfile.TemporaryDirectory() as tmpdir:
+            agent = SelfHealingAgent(repo_path=tmpdir)
+            PASS("SelfHealingAgent created")
+            
+            # Test parse errors
+            log_content = """Traceback (most recent call last):
+  File "app.py", line 42, in main
+    result = divide(10, 0)
+  File "utils.py", line 15, in divide
+    return a / b
+ZeroDivisionError: division by zero
+"""
+            errors = agent._parse_errors(log_content)
+            if len(errors) > 0:
+                PASS("Errors parsed from log")
+            else:
+                return FAIL("Error parsing failed")
+            
+            err = errors[0]
+            if err.error_type == "ZeroDivisionError" and err.line > 0:
+                PASS("Error details extracted")
+            else:
+                return FAIL("Error details incorrect")
+            
+            # Test status
+            status = agent.get_status()
+            if "watching" in status and "errors_detected" in status:
+                PASS("Status available")
+            else:
+                return FAIL("Status missing fields")
+            
+            # Test get_errors and get_fixes
+            if isinstance(agent.get_errors(), list):
+                PASS("get_errors works")
+            else:
+                return FAIL("get_errors failed")
+            
+            if isinstance(agent.get_fixes(), list):
+                PASS("get_fixes works")
+            else:
+                return FAIL("get_fixes failed")
+        
+        # Test config section
+        import json
+        with open("config.json", "r") as f:
+            cfg = json.load(f)
+        if "self_healing" in cfg:
+            PASS("Config has self_healing section")
+        else:
+            return FAIL("Config missing self_healing")
+        
+        # Test API routes
+        from src.api_server import create_api_server
+        api = create_api_server()
+        routes = [route.path for route in api._app.routes]
+        healing_routes = ["/healing/watch", "/healing/status", "/healing/fix", "/healing/fixes"]
+        if all(r in routes for r in healing_routes):
+            PASS("Self-healing API routes registered")
+        else:
+            return FAIL("Missing self-healing routes")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Self-healing", str(e)[:50])
+
+
 if __name__ == "__main__":
     success = main()
-    sys.exit(0 if success >= 20 else 1)
+    sys.exit(0 if success >= 23 else 1)

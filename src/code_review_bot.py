@@ -1,4 +1,4 @@
-"""Code Review Bot v2.9.0 - Automated PR/code review that runs continuously.
+"""Code Review Bot v2.9.1 - Automated PR/code review that runs continuously.
 
 Monitors git repositories for changes and automatically runs code reviews
 using the reviewer agent. Can run on push, PR, or on a schedule.

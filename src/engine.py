@@ -727,7 +727,7 @@ Question: {prompt}
                 pass
         
         return {
-            "version": "2.9.0",
+            "version": "2.9.1",
             "model": self.model,
             "vision_model": self.vision_model,
             "secondary_model": self.secondary_model,

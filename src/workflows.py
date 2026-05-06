@@ -1,4 +1,4 @@
-"""Workflow Builder v2.9.0 - Multi-step AI automation pipelines.
+"""Workflow Builder v2.9.1 - Multi-step AI automation pipelines.
 
 Define workflows via YAML/JSON in the workflows/ directory:
   workflows/security_audit.yaml

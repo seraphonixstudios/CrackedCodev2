@@ -1,4 +1,4 @@
-"""Task Scheduler v2.9.0 - Cron-based recurring AI task execution.
+"""Task Scheduler v2.9.1 - Cron-based recurring AI task execution.
 
 Define recurring tasks that run on a schedule:
   schedules/weekly_security.yaml

@@ -219,5 +219,24 @@
     "data_dir": ".crackedcode/finetune",
     "default_base_model": "qwen3:8b",
     "min_quality_score": 0.7
+  },
+  "sdk": {
+    "enabled": true,
+    "default_base_url": "http://localhost:8080",
+    "timeout": 120,
+    "max_retries": 3
+  },
+  "benchmarks": {
+    "enabled": true,
+    "storage_dir": ".crackedcode/benchmarks",
+    "default_suite": "all",
+    "auto_run_on_startup": false
+  },
+  "self_healing": {
+    "enabled": true,
+    "auto_fix": false,
+    "watch_interval": 5,
+    "max_fixes_per_session": 10,
+    "require_tests_pass": true
   }
 }

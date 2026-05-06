@@ -1,4 +1,4 @@
-"""Web Dashboard v2.9.0 - Browser-based UI for CrackedCode.
+"""Web Dashboard v2.9.1 - Browser-based UI for CrackedCode.
 
 A lightweight web interface that works on any device.
 Access via http://localhost:8080/dashboard
@@ -177,7 +177,7 @@ DASHBOARD_HTML = """
 <body>
     <div class="header">
         <h1>⚡ CrackedCode Dashboard</h1>
-        <p>Local AI Coding Assistant v2.9.0</p>
+        <p>Local AI Coding Assistant v2.9.1</p>
     </div>
     
     <div class="container">

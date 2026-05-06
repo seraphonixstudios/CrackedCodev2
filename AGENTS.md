@@ -4,10 +4,10 @@
 
 CrackedCode is a 100% local AI coding assistant featuring autonomous application production (OpenClaw-style), multi-agent orchestration, voice I/O, screen capture/vision analysis, web browser automation, security auditing, persistent long-term memory, MCP integration, A2A protocol support, and a sci-fi neural interface.
 
-**Current Version:** 2.9.0
+**Current Version:** 2.9.1
 **Branch:** main
 **License:** MIT
-**Tests:** 91/91 passing
+**Tests:** 94/94 passing
 
 ## Architecture
 
