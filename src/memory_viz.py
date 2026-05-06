@@ -1,4 +1,4 @@
-"""Memory Visualization v2.9.3 - CLI visualization for agent memories.
+"""Memory Visualization v2.9.4 - CLI visualization for agent memories.
 
 Pretty-print agent memory profiles, patterns, and statistics.
 

@@ -1,4 +1,4 @@
-"""Code Diff / Patch Generation v2.9.3 - Generate and apply git-style diffs.
+"""Code Diff / Patch Generation v2.9.4 - Generate and apply git-style diffs.
 
 Instead of outputting entire files, the AI can generate unified diffs
 for precise modifications to existing code.

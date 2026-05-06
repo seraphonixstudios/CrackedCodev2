@@ -259,5 +259,18 @@
     "default_limit": 10,
     "show_colors": true,
     "max_width": 70
+  },
+  "execution_tracer": {
+    "enabled": true,
+    "storage_dir": ".crackedcode/traces",
+    "max_age_hours": 24,
+    "auto_trace": true,
+    "trace_components": ["engine", "agent", "tool", "memory"]
+  },
+  "doctor": {
+    "enabled": true,
+    "check_interval_seconds": 300,
+    "auto_alert": false,
+    "components": ["ollama", "engine", "api", "memory", "git", "voice", "files"]
   }
 }

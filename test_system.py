@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CRACKEDCODE v2.9.3 - Comprehensive End-to-End Test Suite
+CRACKEDCODE v2.9.4 - Comprehensive End-to-End Test Suite
 Full coverage with real operations, no placeholders
 """
 
@@ -595,11 +595,11 @@ def test_version_info() -> bool:
         PASS(f"Engine version: {status.get('version', 'unknown')}")
         
         version_checks = 0
-        if CrackedCode.VERSION == "2.9.3":
+        if CrackedCode.VERSION == "2.9.4":
             version_checks += 1
-        if MatrixUI.VERSION == "2.9.3":
+        if MatrixUI.VERSION == "2.9.4":
             version_checks += 1
-        if status.get("version") == "2.9.3":
+        if status.get("version") == "2.9.4":
             version_checks += 1
         
         PASS(f"Version consistency: {version_checks}/3")
@@ -709,10 +709,10 @@ def test_cli_integration_e2e() -> bool:
             version = result.stdout.strip()
             PASS(f"CLI import: version {version}")
             
-            if version == "2.9.3":
+            if version == "2.9.4":
                 PASS("CLI version correct")
             else:
-                FAIL("CLI version", f"Expected 2.9.3, got {version}")
+                FAIL("CLI version", f"Expected 2.9.4, got {version}")
                 return False
         else:
             FAIL("CLI import", result.stderr[:50])
@@ -1663,7 +1663,7 @@ def test_voice_hotword_detection() -> bool:
 
 
 def main() -> int:
-    print(f"\n{'='*60}\n  CRACKEDCODE v2.9.3 - E2E TEST SUITE\n{'='*60}\n")
+    print(f"\n{'='*60}\n  CRACKEDCODE v2.9.4 - E2E TEST SUITE\n{'='*60}\n")
     
     tests = [
         ("Modules", test_modules),
@@ -1778,6 +1778,8 @@ def main() -> int:
         ("Agent Memory", test_agent_memory),
         ("Git Hooks", test_git_hooks),
         ("Memory Viz", test_memory_viz),
+        ("Execution Tracer", test_execution_tracer),
+        ("Doctor", test_doctor),
     ]
     
     results: list[tuple[str, bool]] = []
@@ -4359,8 +4361,8 @@ def test_import_export() -> bool:
             PASS("ImportExportManager created")
             
             # Test export manifest
-            manifest = ExportManifest(version="2.9.3", items=["config"])
-            if manifest.version == "2.9.3":
+            manifest = ExportManifest(version="2.9.4", items=["config"])
+            if manifest.version == "2.9.4":
                 PASS("ExportManifest dataclass")
             else:
                 return FAIL("ExportManifest wrong")
@@ -5523,6 +5525,188 @@ def test_memory_viz() -> bool:
         return FAIL("Memory viz", str(e)[:50])
 
 
+def test_execution_tracer() -> bool:
+    print_header("EXECUTION TRACER")
+    try:
+        from src.execution_tracer import (
+            ExecutionTracer, TraceSpan, ExecutionTrace,
+            get_tracer,
+        )
+        import tempfile
+        
+        # Test tracer creation
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tracer = ExecutionTracer(storage_dir=tmpdir)
+            PASS("ExecutionTracer created")
+            
+            # Test start trace
+            trace_id = tracer.start_trace("test_trace")
+            if trace_id:
+                PASS("Trace started")
+            else:
+                return FAIL("Trace start failed")
+            
+            # Test start span
+            span_id = tracer.start_span(
+                trace_id=trace_id,
+                name="test_span",
+                component="engine",
+                agent="coder",
+                intent="code",
+            )
+            if span_id:
+                PASS("Span started")
+            else:
+                return FAIL("Span start failed")
+            
+            # Test end span
+            tracer.end_span(span_id, output_data={"result": "ok"})
+            PASS("Span ended")
+            
+            # Test end trace
+            tracer.end_trace(trace_id, success=True)
+            PASS("Trace ended")
+            
+            # Test search
+            traces = tracer.search(query="test")
+            if len(traces) > 0:
+                PASS("Search works")
+            else:
+                return FAIL("Search failed")
+            
+            # Test get trace
+            trace = tracer.get_trace(trace_id)
+            if trace and trace.id == trace_id:
+                PASS("Get trace works")
+            else:
+                return FAIL("Get trace failed")
+            
+            # Test tree
+            tree = tracer.get_tree(trace_id)
+            if tree and tree.get("trace_id") == trace_id:
+                PASS("Tree generation works")
+            else:
+                return FAIL("Tree failed")
+            
+            # Test replay
+            replay = tracer.replay(trace_id)
+            if replay and "replay" in replay:
+                PASS("Replay works")
+            else:
+                return FAIL("Replay failed")
+            
+            # Test stats
+            stats = tracer.get_stats()
+            if "total_traces" in stats:
+                PASS("Stats available")
+            else:
+                return FAIL("Stats missing")
+            
+            # Test context manager
+            with tracer.trace("context_test", component="test") as sid:
+                pass
+            PASS("Context manager works")
+        
+        # Test config section
+        import json
+        with open("config.json", "r") as f:
+            cfg = json.load(f)
+        if "execution_tracer" in cfg:
+            PASS("Config has execution_tracer section")
+        else:
+            return FAIL("Config missing execution_tracer")
+        
+        # Test API routes
+        from src.api_server import create_api_server
+        api = create_api_server()
+        routes = [route.path for route in api._app.routes]
+        trace_routes = ["/traces", "/traces/{trace_id}", "/traces/{trace_id}/tree", "/traces/stats"]
+        if all(r in routes for r in trace_routes):
+            PASS("Trace API routes registered")
+        else:
+            return FAIL("Missing trace routes")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Execution tracer", str(e)[:50])
+
+
+def test_doctor() -> bool:
+    print_header("DOCTOR / HEALTH CHECK")
+    try:
+        from src.doctor import Doctor, HealthCheck, HealthReport, run_health_check
+        
+        # Test doctor creation
+        doctor = Doctor()
+        PASS("Doctor created")
+        
+        # Test run component
+        checks = doctor.run_component("files")
+        if len(checks) > 0:
+            PASS("Component check works")
+        else:
+            return FAIL("Component check failed")
+        
+        # Test run all
+        report = doctor.run_all()
+        if isinstance(report, HealthReport):
+            PASS("Full report generated")
+        else:
+            return FAIL("Full report failed")
+        
+        if report.overall in ("ok", "warning", "error"):
+            PASS("Overall status assigned")
+        else:
+            return FAIL("Invalid overall status")
+        
+        # Test formatting
+        formatted = doctor.format_report(report)
+        if formatted and "HEALTH CHECK" in formatted:
+            PASS("Report formatting works")
+        else:
+            return FAIL("Formatting failed")
+        
+        # Test JSON formatting
+        json_formatted = doctor.format_report(report, json_output=True)
+        if json_formatted and "overall" in json_formatted:
+            PASS("JSON formatting works")
+        else:
+            return FAIL("JSON formatting failed")
+        
+        # Test run_health_check helper
+        report2 = run_health_check(component="files")
+        if report2 and report2.checks:
+            PASS("Helper function works")
+        else:
+            return FAIL("Helper function failed")
+        
+        # Test config section
+        import json
+        with open("config.json", "r") as f:
+            cfg = json.load(f)
+        if "doctor" in cfg:
+            PASS("Config has doctor section")
+        else:
+            return FAIL("Config missing doctor")
+        
+        # Test API routes
+        from src.api_server import create_api_server
+        api = create_api_server()
+        routes = [route.path for route in api._app.routes]
+        if "/health" in routes:
+            PASS("Health API route registered")
+        else:
+            return FAIL("Missing health route")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Doctor", str(e)[:50])
+
+
 if __name__ == "__main__":
     success = main()
-    sys.exit(0 if success >= 26 else 1)
+    sys.exit(0 if success >= 28 else 1)

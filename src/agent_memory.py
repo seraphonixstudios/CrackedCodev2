@@ -1,4 +1,4 @@
-"""Advanced Agent Memory v2.9.3 - Per-agent persistent memory with summarization.
+"""Advanced Agent Memory v2.9.4 - Per-agent persistent memory with summarization.
 
 Each agent role (architect, security, coder, etc.) maintains its own memory
 namespace with facts, preferences, decisions, errors, and fixes. Automatic

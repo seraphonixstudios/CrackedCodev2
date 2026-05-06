@@ -1,4 +1,4 @@
-"""Benchmark Suite v2.9.3 - Standardized code generation quality tests.
+"""Benchmark Suite v2.9.4 - Standardized code generation quality tests.
 
 Measure AI performance over time with standardized benchmarks:
 - HumanEval-style function completion

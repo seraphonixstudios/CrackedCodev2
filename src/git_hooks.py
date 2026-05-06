@@ -1,4 +1,4 @@
-"""Git Hooks v2.9.3 - Pre-commit code review and security scanning.
+"""Git Hooks v2.9.4 - Pre-commit code review and security scanning.
 
 Install a pre-commit hook that runs the code review bot on every commit.
 Blocks commits with critical issues, warns on high/medium issues.

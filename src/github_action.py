@@ -1,4 +1,4 @@
-"""GitHub Action Runner v2.9.3 - Run CrackedCode AI review in CI/CD.
+"""GitHub Action Runner v2.9.4 - Run CrackedCode AI review in CI/CD.
 
 Usage as GitHub Action:
     - uses: actions/checkout@v4
@@ -102,7 +102,7 @@ def format_review_comment(review: dict) -> str:
 - 📝 Code quality issues: {code_count}
 
 ---
-*Reviewed by CrackedCode v2.9.3*
+*Reviewed by CrackedCode v2.9.4*
 """
 
 

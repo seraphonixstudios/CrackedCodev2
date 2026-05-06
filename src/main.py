@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 CrackedCode - Local AI Coding Assistant
-Version: 2.9.3
+Version: 2.9.4
 """
 
 import os
@@ -1903,7 +1903,7 @@ class AgentSwarm:
 
 
 class CrackedCode:
-    VERSION = "2.9.3"
+    VERSION = "2.9.4"
     BANNER = """
 ============================================================
   CRACKEDCODE v{version} - Local AI Coding Assistant
@@ -2155,6 +2155,21 @@ def main():
     memory_parser.add_argument("--patterns", action="store_true", help="Show experience patterns")
     memory_parser.add_argument("--entries", action="store_true", help="Show recent entries")
     memory_parser.add_argument("--limit", type=int, default=10, help="Limit entries shown")
+    
+    trace_parser = subparsers.add_parser("trace", help="Query execution traces")
+    trace_parser.add_argument("--last", action="store_true", help="Show last trace")
+    trace_parser.add_argument("--id", default=None, help="Show specific trace")
+    trace_parser.add_argument("--tree", action="store_true", help="Show tree view")
+    trace_parser.add_argument("--search", default=None, help="Search traces")
+    trace_parser.add_argument("--agent", default=None, help="Filter by agent")
+    trace_parser.add_argument("--component", default=None, help="Filter by component")
+    trace_parser.add_argument("--since", default="1h", help="Time window (e.g. 1h, 30m, 1d)")
+    trace_parser.add_argument("--limit", type=int, default=10, help="Limit results")
+    
+    doctor_parser = subparsers.add_parser("doctor", help="Run system health checks")
+    doctor_parser.add_argument("--component", default=None, help="Check specific component")
+    doctor_parser.add_argument("--json", action="store_true", help="Output as JSON")
+    doctor_parser.add_argument("--quiet", action="store_true", help="Only show errors")
 
     parser.add_argument(
         "-c", "--config",
@@ -2211,6 +2226,62 @@ def main():
         )
         return 0
     
+    # Handle trace subcommand
+    if getattr(args, "subcmd", None) == "trace":
+        from src.execution_tracer import get_tracer
+        tracer = get_tracer()
+        
+        if getattr(args, "last", False):
+            traces = tracer.search(limit=1)
+            if traces:
+                if getattr(args, "tree", False):
+                    tracer.print_tree(traces[0].id)
+                else:
+                    replay = tracer.replay(traces[0].id)
+                    print(json.dumps(replay, indent=2))
+            else:
+                print("No traces found")
+            return 0
+        
+        if getattr(args, "id", None):
+            trace_id = getattr(args, "id")
+            if getattr(args, "tree", False):
+                tracer.print_tree(trace_id)
+            else:
+                replay = tracer.replay(trace_id)
+                print(json.dumps(replay, indent=2))
+            return 0
+        
+        if getattr(args, "search", None):
+            traces = tracer.search(
+                query=getattr(args, "search", ""),
+                agent=getattr(args, "agent", ""),
+                component=getattr(args, "component", ""),
+                since=getattr(args, "since", "1h"),
+                limit=getattr(args, "limit", 10),
+            )
+            for trace in traces:
+                print(f"{trace.id} | {trace.success} | {trace.total_duration_ms:.0f}ms | {len(trace.spans)} spans")
+            return 0
+        
+        # Default: show stats
+        stats = tracer.get_stats()
+        print(json.dumps(stats, indent=2))
+        return 0
+    
+    # Handle doctor subcommand
+    if getattr(args, "subcmd", None) == "doctor":
+        from src.doctor import run_health_check
+        report = run_health_check(
+            component=getattr(args, "component", None),
+            json_output=getattr(args, "json", False),
+            version=CrackedCode.VERSION,
+        )
+        if not getattr(args, "quiet", False) or report.overall != "ok":
+            from src.doctor import Doctor
+            print(Doctor().format_report(report, json_output=getattr(args, "json", False)))
+        return 0 if report.overall in ("ok", "warning") else 1
+    
     # Handle API subcommand
     if getattr(args, "subcmd", None) == "api":
         from src.api_server import create_api_server
@@ -2231,7 +2302,7 @@ def main():
             api_key=api_key,
         )
         
-        print(f"Starting CrackedCode API Server v2.9.3")
+        print(f"Starting CrackedCode API Server v2.9.4")
         print(f"URL: {api.url}")
         print(f"Docs: {api.url}/docs")
         if api.api_key:

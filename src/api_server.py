@@ -266,6 +266,19 @@ class HealingFixResponse(BaseModel):
     tests_passed: bool = False
 
 
+class TraceSearchRequest(BaseModel):
+    query: str = ""
+    agent: str = ""
+    component: str = ""
+    intent: str = ""
+    since: str = "1h"
+    limit: int = 20
+
+
+class DoctorCheckRequest(BaseModel):
+    component: Optional[str] = None
+
+
 class AgentMemoryStoreRequest(BaseModel):
     agent: str
     category: str = "fact"
@@ -370,7 +383,7 @@ class CrackedCodeAPI:
         self._app = FastAPI(
             title="CrackedCode API",
             description="REST API for the CrackedCode local AI coding assistant",
-            version="2.9.3",
+            version="2.9.4",
         )
         
         # CORS
@@ -446,7 +459,7 @@ class CrackedCodeAPI:
         async def root():
             return {
                 "name": "CrackedCode API",
-                "version": "2.9.3",
+                "version": "2.9.4",
                 "docs": "/docs",
                 "auth_required": bool(self.api_key),
                 "endpoints": [
@@ -490,6 +503,11 @@ class CrackedCodeAPI:
                     "/hooks/install",
                     "/hooks/uninstall",
                     "/hooks/status",
+                    "/traces",
+                    "/traces/{trace_id}",
+                    "/traces/{trace_id}/tree",
+                    "/traces/stats",
+                    "/health",
                     "/export",
                     "/import",
                     "/export/items",
@@ -618,7 +636,7 @@ class CrackedCodeAPI:
         async def status():
             """Get system status."""
             if not self.engine:
-                return StatusResponse(version="2.9.3")
+                return StatusResponse(version="2.9.4")
             
             try:
                 status_data = self.engine.get_status()
@@ -637,7 +655,7 @@ class CrackedCodeAPI:
                     conv_count = self.engine.conversation_manager.get_stats().get('total_conversations', 0)
                 
                 return StatusResponse(
-                    version=status_data.get('version', '2.9.3'),
+                    version=status_data.get('version', '2.9.4'),
                     model=status_data.get('model', ''),
                     vision_model=status_data.get('vision_model', ''),
                     secondary_model=status_data.get('secondary_model', ''),
@@ -1501,6 +1519,111 @@ class CrackedCodeAPI:
                 logger.error(f"Hook status error: {e}")
                 raise HTTPException(status_code=500, detail=str(e))
         
+        @self._app.get("/traces", dependencies=[Depends(self._verify_api_key)])
+        async def list_traces(
+            query: str = "",
+            agent: str = "",
+            component: str = "",
+            since: str = "1h",
+            limit: int = 20,
+        ):
+            """List and search execution traces."""
+            try:
+                from src.execution_tracer import get_tracer
+                tracer = get_tracer()
+                traces = tracer.search(
+                    query=query,
+                    agent=agent,
+                    component=component,
+                    since=since,
+                    limit=limit,
+                )
+                return {
+                    "traces": [
+                        {
+                            "id": t.id,
+                            "success": t.success,
+                            "duration_ms": t.total_duration_ms,
+                            "span_count": len(t.spans),
+                            "start_time": t.start_time,
+                        }
+                        for t in traces
+                    ],
+                    "count": len(traces),
+                }
+            except Exception as e:
+                logger.error(f"Trace list error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.get("/traces/{trace_id}", dependencies=[Depends(self._verify_api_key)])
+        async def get_trace(trace_id: str):
+            """Get a specific trace with full replay."""
+            try:
+                from src.execution_tracer import get_tracer
+                tracer = get_tracer()
+                replay = tracer.replay(trace_id)
+                if "error" in replay:
+                    raise HTTPException(status_code=404, detail=replay["error"])
+                return replay
+            except HTTPException:
+                raise
+            except Exception as e:
+                logger.error(f"Trace get error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.get("/traces/{trace_id}/tree", dependencies=[Depends(self._verify_api_key)])
+        async def get_trace_tree(trace_id: str):
+            """Get a trace as a tree structure."""
+            try:
+                from src.execution_tracer import get_tracer
+                tracer = get_tracer()
+                tree = tracer.get_tree(trace_id)
+                if not tree:
+                    raise HTTPException(status_code=404, detail="Trace not found")
+                return tree
+            except HTTPException:
+                raise
+            except Exception as e:
+                logger.error(f"Trace tree error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.get("/traces/stats", dependencies=[Depends(self._verify_api_key)])
+        async def get_trace_stats():
+            """Get tracer statistics."""
+            try:
+                from src.execution_tracer import get_tracer
+                tracer = get_tracer()
+                return tracer.get_stats()
+            except Exception as e:
+                logger.error(f"Trace stats error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.get("/health", dependencies=[Depends(self._verify_api_key)])
+        async def health_check(component: Optional[str] = None):
+            """Run system health checks."""
+            try:
+                from src.doctor import run_health_check
+                report = run_health_check(component=component)
+                return {
+                    "overall": report.overall,
+                    "version": report.version,
+                    "timestamp": report.timestamp,
+                    "duration_ms": round(report.duration_ms, 2),
+                    "checks": [
+                        {
+                            "component": c.component,
+                            "name": c.name,
+                            "status": c.status,
+                            "message": c.message,
+                            "duration_ms": round(c.duration_ms, 2),
+                        }
+                        for c in report.checks
+                    ],
+                }
+            except Exception as e:
+                logger.error(f"Health check error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
         @self._app.get("/export", dependencies=[Depends(self._verify_api_key)])
         async def export_data(items: Optional[str] = None):
             """Export all CrackedCode data to a ZIP archive."""
@@ -1696,7 +1819,7 @@ if __name__ == "__main__":
     api_key = engine.config.get("api_key") if hasattr(engine, 'config') else None
     api = create_api_server(engine=engine, api_key=api_key)
     
-    print(f"Starting CrackedCode API Server v2.9.3")
+    print(f"Starting CrackedCode API Server v2.9.4")
     print(f"URL: {api.url}")
     print(f"Docs: {api.url}/docs")
     if api.api_key:

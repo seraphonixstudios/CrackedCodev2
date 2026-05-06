@@ -1,4 +1,4 @@
-"""Import/Export System v2.9.3 - Backup and restore all CrackedCode data.
+"""Import/Export System v2.9.4 - Backup and restore all CrackedCode data.
 
 Export everything to a ZIP archive:
   - Conversations (SQLite database)
@@ -33,7 +33,7 @@ logger = get_logger("ImportExport")
 @dataclass
 class ExportManifest:
     """Manifest describing an export archive."""
-    version: str = "2.9.3"
+    version: str = "2.9.4"
     exported_at: float = 0.0
     items: List[str] = None
     
@@ -73,7 +73,7 @@ class ImportExportManager:
         output = Path(output_path)
         
         manifest = ExportManifest(
-            version="2.9.3",
+            version="2.9.4",
             exported_at=time.time(),
             items=[],
         )

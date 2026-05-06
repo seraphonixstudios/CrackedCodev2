@@ -4,10 +4,10 @@
 
 CrackedCode is a 100% local AI coding assistant featuring autonomous application production (OpenClaw-style), multi-agent orchestration, voice I/O, screen capture/vision analysis, web browser automation, security auditing, persistent long-term memory, MCP integration, A2A protocol support, and a sci-fi neural interface.
 
-**Current Version:** 2.9.3
+**Current Version:** 2.9.4
 **Branch:** main
 **License:** MIT
-**Tests:** 97/97 passing
+**Tests:** 99/99 passing
 
 ## Architecture
 
@@ -389,6 +389,21 @@ Key settings in config.json:
 - **Patterns view**: Shows learned experience patterns
 - **Stats dashboard**: System-wide memory statistics
 - **API**: `GET /agent-memory/viz/{agent}`
+
+### Execution Tracer (src/execution_tracer.py)
+- **Trace capture**: Records every engine call, agent decision, tool invocation, memory injection
+- **Span hierarchy**: Parent-child relationships with timing and context diffs
+- **Search**: Filter by agent, component, intent, time window
+- **Tree view**: ASCII tree visualization of execution flow
+- **Replay**: Step-by-step replay with input/output/context snapshots
+- **API**: `GET /traces`, `GET /traces/{id}`, `GET /traces/{id}/tree`, `GET /traces/stats`
+
+### Doctor / Health Check (src/doctor.py)
+- **Component checks**: Ollama, engine, API, memory, git, voice, files
+- **Auto-detect**: Tests connectivity, model availability, response generation
+- **Output formats**: Pretty-print terminal or JSON
+- **CLI**: `python src/main.py doctor`, `python src/main.py doctor --component ollama`
+- **API**: `GET /health`, `GET /health?component=ollama`
 
 ## Known Issues
 
