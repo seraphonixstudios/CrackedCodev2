@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CRACKEDCODE v2.8.1 - Comprehensive End-to-End Test Suite
+CRACKEDCODE v2.9.0 - Comprehensive End-to-End Test Suite
 Full coverage with real operations, no placeholders
 """
 
@@ -595,11 +595,11 @@ def test_version_info() -> bool:
         PASS(f"Engine version: {status.get('version', 'unknown')}")
         
         version_checks = 0
-        if CrackedCode.VERSION == "2.8.1":
+        if CrackedCode.VERSION == "2.9.0":
             version_checks += 1
-        if MatrixUI.VERSION == "2.8.1":
+        if MatrixUI.VERSION == "2.9.0":
             version_checks += 1
-        if status.get("version") == "2.8.1":
+        if status.get("version") == "2.9.0":
             version_checks += 1
         
         PASS(f"Version consistency: {version_checks}/3")
@@ -709,10 +709,10 @@ def test_cli_integration_e2e() -> bool:
             version = result.stdout.strip()
             PASS(f"CLI import: version {version}")
             
-            if version == "2.8.1":
+            if version == "2.9.0":
                 PASS("CLI version correct")
             else:
-                FAIL("CLI version", f"Expected 2.8.1, got {version}")
+                FAIL("CLI version", f"Expected 2.9.0, got {version}")
                 return False
         else:
             FAIL("CLI import", result.stderr[:50])
@@ -1663,7 +1663,7 @@ def test_voice_hotword_detection() -> bool:
 
 
 def main() -> int:
-    print(f"\n{'='*60}\n  CRACKEDCODE v2.8.1 - E2E TEST SUITE\n{'='*60}\n")
+    print(f"\n{'='*60}\n  CRACKEDCODE v2.9.0 - E2E TEST SUITE\n{'='*60}\n")
     
     tests = [
         ("Modules", test_modules),
@@ -1767,6 +1767,11 @@ def main() -> int:
         ("Multi File Gen", test_multi_file_generation),
         ("Web Dashboard", test_web_dashboard),
         ("Custom Tool Builder", test_custom_tool_builder),
+        ("Workflow Builder", test_workflow_builder),
+        ("Agent Collaboration", test_agent_collaboration),
+        ("Code Review Bot", test_code_review_bot),
+        ("Knowledge Base", test_knowledge_base),
+        ("Model Fine-tuning", test_model_finetune),
     ]
     
     results: list[tuple[str, bool]] = []
@@ -4348,8 +4353,8 @@ def test_import_export() -> bool:
             PASS("ImportExportManager created")
             
             # Test export manifest
-            manifest = ExportManifest(version="2.8.1", items=["config"])
-            if manifest.version == "2.8.1":
+            manifest = ExportManifest(version="2.9.0", items=["config"])
+            if manifest.version == "2.9.0":
                 PASS("ExportManifest dataclass")
             else:
                 return FAIL("ExportManifest wrong")
@@ -4607,6 +4612,414 @@ def test_custom_tool_builder() -> bool:
         return FAIL("Custom tool builder", str(e)[:50])
 
 
+def test_workflow_builder() -> bool:
+    print_header("WORKFLOW BUILDER")
+    try:
+        from src.workflows import (
+            WorkflowEngine, WorkflowDef, WorkflowStep,
+            get_workflow_engine, StepStatus,
+        )
+        import tempfile
+        
+        # Test engine creation
+        with tempfile.TemporaryDirectory() as tmpdir:
+            engine = WorkflowEngine(workflows_dir=tmpdir)
+            PASS("WorkflowEngine created")
+            
+            # Test save example
+            example_path = engine.save_example("test_workflow")
+            if example_path.exists():
+                PASS("Example workflow saved")
+            else:
+                return FAIL("Example save failed")
+            
+            # Test reload
+            engine.reload()
+            if len(engine.list_workflows()) == 1:
+                PASS("Workflow loaded from file")
+            else:
+                return FAIL("Workflow not loaded")
+            
+            # Test get
+            wf = engine.get("test_workflow")
+            if wf and wf.name == "test_workflow":
+                PASS("Get workflow by name works")
+            else:
+                return FAIL("Get workflow failed")
+            
+            # Test workflow has steps
+            if len(wf.steps) > 0:
+                PASS("Workflow has steps")
+            else:
+                return FAIL("Workflow missing steps")
+            
+            # Test step statuses exist
+            statuses = [StepStatus.PENDING, StepStatus.COMPLETED, StepStatus.FAILED]
+            if all(s in StepStatus for s in statuses):
+                PASS("StepStatus enum available")
+            else:
+                return FAIL("StepStatus missing")
+        
+        # Test config has workflows section
+        import json
+        with open("config.json", "r") as f:
+            cfg = json.load(f)
+        if "workflows" in cfg:
+            PASS("Config has workflows section")
+        else:
+            return FAIL("Config missing workflows")
+        
+        # Test API routes
+        from src.api_server import create_api_server
+        api = create_api_server()
+        routes = [route.path for route in api._app.routes]
+        if "/workflows" in routes and "/workflows/execute" in routes:
+            PASS("Workflow API routes registered")
+        else:
+            return FAIL("Missing workflow routes")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Workflow builder", str(e)[:50])
+
+
+def test_agent_collaboration() -> bool:
+    print_header("AGENT COLLABORATION")
+    try:
+        from src.agent_collaboration import (
+            AgentParliament, AgentMessage, AgentStance, DebateResult,
+            get_agent_parliament,
+        )
+        
+        # Test parliament creation
+        parliament = get_agent_parliament()
+        PASS("AgentParliament created")
+        
+        # Test personas exist
+        if "architect" in parliament.PERSONAS and "security" in parliament.PERSONAS:
+            PASS("Agent personas available")
+        else:
+            return FAIL("Missing agent personas")
+        
+        # Test debate (without LLM)
+        result = parliament.debate(
+            topic="Should we use microservices?",
+            agents=["architect", "security", "coder"],
+            rounds=2,
+        )
+        
+        if isinstance(result, DebateResult) and result.topic:
+            PASS("Debate executed")
+        else:
+            return FAIL("Debate failed")
+        
+        if len(result.rounds) == 2:
+            PASS("Correct number of debate rounds")
+        else:
+            return FAIL("Wrong round count")
+        
+        if result.final_consensus:
+            PASS("Consensus generated")
+        else:
+            return FAIL("No consensus")
+        
+        # Test stance extraction
+        msg = parliament._extract_stance("STANCE: support")
+        if msg == AgentStance.SUPPORT:
+            PASS("Stance extraction works")
+        else:
+            return FAIL("Stance extraction failed")
+        
+        # Test config section
+        import json
+        with open("config.json", "r") as f:
+            cfg = json.load(f)
+        if "agent_collaboration" in cfg:
+            PASS("Config has agent_collaboration section")
+        else:
+            return FAIL("Config missing agent_collaboration")
+        
+        # Test API route
+        from src.api_server import create_api_server
+        api = create_api_server()
+        routes = [route.path for route in api._app.routes]
+        if "/debate" in routes:
+            PASS("Debate API route registered")
+        else:
+            return FAIL("Missing debate route")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Agent collaboration", str(e)[:50])
+
+
+def test_code_review_bot() -> bool:
+    print_header("CODE REVIEW BOT")
+    try:
+        from src.code_review_bot import (
+            CodeReviewBot, ReviewIssue, ReviewReport, ReviewRule,
+            get_review_bot,
+        )
+        
+        # Test bot creation
+        bot = get_review_bot()
+        PASS("CodeReviewBot created")
+        
+        # Test built-in rules exist
+        if len(bot.rules) > 0:
+            PASS("Built-in review rules available")
+        else:
+            return FAIL("No review rules")
+        
+        # Test rule categories
+        categories = set(r.category for r in bot.rules)
+        if "security" in categories:
+            PASS("Security rules present")
+        else:
+            return FAIL("Missing security rules")
+        
+        # Test review commit (on current repo)
+        report = bot.review_commit("HEAD", repo_path=".")
+        if isinstance(report, ReviewReport):
+            PASS("Review report generated")
+        else:
+            return FAIL("Review failed")
+        
+        if report.score >= 0:
+            PASS("Review score calculated")
+        else:
+            return FAIL("Invalid score")
+        
+        if report.verdict in ("pass", "conditional", "fail"):
+            PASS("Review verdict assigned")
+        else:
+            return FAIL("Invalid verdict")
+        
+        # Test add rule
+        new_rule = ReviewRule(
+            name="test_rule",
+            category="style",
+            severity="low",
+            pattern=r"test_pattern",
+            message="Test message",
+        )
+        bot.add_rule(new_rule)
+        if any(r.name == "test_rule" for r in bot.rules):
+            PASS("Custom rule added")
+        else:
+            return FAIL("Custom rule not added")
+        
+        # Test config section
+        import json
+        with open("config.json", "r") as f:
+            cfg = json.load(f)
+        if "code_review_bot" in cfg:
+            PASS("Config has code_review_bot section")
+        else:
+            return FAIL("Config missing code_review_bot")
+        
+        # Test API route
+        from src.api_server import create_api_server
+        api = create_api_server()
+        routes = [route.path for route in api._app.routes]
+        if "/review" in routes:
+            PASS("Review API route registered")
+        else:
+            return FAIL("Missing review route")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Code review bot", str(e)[:50])
+
+
+def test_knowledge_base() -> bool:
+    print_header("KNOWLEDGE BASE")
+    try:
+        from src.knowledge_base import (
+            KnowledgeBase, Document, SearchResult,
+            get_knowledge_base,
+        )
+        import tempfile
+        
+        # Test KB creation
+        with tempfile.TemporaryDirectory() as tmpdir:
+            kb = KnowledgeBase(storage_dir=tmpdir)
+            PASS("KnowledgeBase created")
+            
+            # Test upload document
+            test_doc = Path(tmpdir) / "test_doc.md"
+            test_doc.write_text("# Test Document\n\nThis is a test document for the knowledge base.")
+            
+            doc = kb.upload_document(str(test_doc), title="Test Doc")
+            if doc and doc.id:
+                PASS("Document uploaded")
+            else:
+                return FAIL("Upload failed")
+            
+            # Test list documents
+            docs = kb.list_documents()
+            if len(docs) == 1:
+                PASS("Document listed")
+            else:
+                return FAIL("Document not listed")
+            
+            # Test get document
+            retrieved = kb.get_document(doc.id)
+            if retrieved and retrieved.title == "Test Doc":
+                PASS("Document retrieved by ID")
+            else:
+                return FAIL("Get document failed")
+            
+            # Test search
+            results = kb.search("test document")
+            if len(results) > 0:
+                PASS("Search returns results")
+            else:
+                return FAIL("Search empty")
+            
+            if isinstance(results[0], SearchResult):
+                PASS("Search results typed")
+            else:
+                return FAIL("Wrong search result type")
+            
+            # Test delete
+            deleted = kb.delete_document(doc.id)
+            if deleted and len(kb.list_documents()) == 0:
+                PASS("Document deleted")
+            else:
+                return FAIL("Delete failed")
+            
+            # Test stats
+            stats = kb.get_stats()
+            if "total_documents" in stats:
+                PASS("Stats available")
+            else:
+                return FAIL("Stats missing")
+        
+        # Test config section
+        import json
+        with open("config.json", "r") as f:
+            cfg = json.load(f)
+        if "knowledge_base" in cfg:
+            PASS("Config has knowledge_base section")
+        else:
+            return FAIL("Config missing knowledge_base")
+        
+        # Test API routes
+        from src.api_server import create_api_server
+        api = create_api_server()
+        routes = [route.path for route in api._app.routes]
+        kb_routes = ["/knowledge/upload", "/knowledge/search", "/knowledge/documents"]
+        if all(r in routes for r in kb_routes):
+            PASS("Knowledge base API routes registered")
+        else:
+            return FAIL("Missing knowledge base routes")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Knowledge base", str(e)[:50])
+
+
+def test_model_finetune() -> bool:
+    print_header("MODEL FINE-TUNING")
+    try:
+        from src.model_finetune import (
+            FinetunePipeline, TrainingExample, TrainingDataset, FinetuneJob,
+            get_finetune_pipeline,
+        )
+        import tempfile
+        
+        # Test pipeline creation
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pipeline = FinetunePipeline(data_dir=tmpdir)
+            PASS("FinetunePipeline created")
+            
+            # Test prepare from codebase
+            dataset = pipeline.prepare_from_codebase(repo_path="src")
+            if isinstance(dataset, TrainingDataset):
+                PASS("Dataset prepared from codebase")
+            else:
+                return FAIL("Dataset preparation failed")
+            
+            # Test export dataset
+            if len(dataset.examples) > 0:
+                path = pipeline.export_dataset(dataset, format="jsonl")
+                if Path(path).exists():
+                    PASS("Dataset exported")
+                else:
+                    return FAIL("Export failed")
+            else:
+                PASS("No examples found (expected for test)")
+            
+            # Test categorize
+            cat = pipeline._categorize("How do I fix this security bug?")
+            if cat == "security":
+                PASS("Categorization works")
+            else:
+                return FAIL("Wrong category")
+            
+            # Test job creation (mock - ollama may not be available)
+            job = FinetuneJob(
+                id="test123",
+                model_name="test-model",
+                base_model="qwen3:8b",
+                status="pending",
+            )
+            pipeline.jobs[job.id] = job
+            
+            retrieved = pipeline.get_job("test123")
+            if retrieved and retrieved.model_name == "test-model":
+                PASS("Job storage works")
+            else:
+                return FAIL("Job retrieval failed")
+            
+            # Test list jobs
+            jobs = pipeline.list_jobs()
+            if len(jobs) == 1:
+                PASS("Jobs listed")
+            else:
+                return FAIL("Job list failed")
+            
+            # Test stats
+            stats = pipeline.get_stats()
+            if "total_jobs" in stats:
+                PASS("Stats available")
+            else:
+                return FAIL("Stats missing")
+        
+        # Test config section
+        import json
+        with open("config.json", "r") as f:
+            cfg = json.load(f)
+        if "model_finetune" in cfg:
+            PASS("Config has model_finetune section")
+        else:
+            return FAIL("Config missing model_finetune")
+        
+        # Test API routes
+        from src.api_server import create_api_server
+        api = create_api_server()
+        routes = [route.path for route in api._app.routes]
+        if "/finetune" in routes and "/finetune/jobs" in routes:
+            PASS("Fine-tuning API routes registered")
+        else:
+            return FAIL("Missing fine-tuning routes")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Model fine-tuning", str(e)[:50])
+
+
 if __name__ == "__main__":
     success = main()
-    sys.exit(0 if success >= 18 else 1)
+    sys.exit(0 if success >= 20 else 1)

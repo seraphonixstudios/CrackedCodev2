@@ -4,10 +4,10 @@
 
 CrackedCode is a 100% local AI coding assistant featuring autonomous application production (OpenClaw-style), multi-agent orchestration, voice I/O, screen capture/vision analysis, web browser automation, security auditing, persistent long-term memory, MCP integration, A2A protocol support, and a sci-fi neural interface.
 
-**Current Version:** 2.8.1
+**Current Version:** 2.9.0
 **Branch:** main
 **License:** MIT
-**Tests:** 86/86 passing
+**Tests:** 91/91 passing
 
 ## Architecture
 
@@ -327,12 +327,51 @@ Key settings in config.json:
 3. Send tasks via registry.get_client(name).send_task(message)
 4. Add test in test_system.py
 
+### Workflow Builder (src/workflows.py)
+- **7 action types**: agent, tool, condition, notify, composite
+- **Dependency resolution**: Directed acyclic graph execution
+- **Parallel execution**: ThreadPoolExecutor for independent steps
+- **Condition evaluation**: Python expressions with context
+- **Retry logic**: Per-step retry with exponential backoff
+- **API**: `GET /workflows`, `POST /workflows/execute`
+
+### Agent Collaboration (src/agent_collaboration.py)
+- **6 built-in personas**: Architect, Security, Coder, Reviewer, DevOps, Tester
+- **Multi-round debate**: Configurable rounds with stance tracking
+- **Consensus scoring**: Support ratio × confidence - opposition penalty
+- **Action item extraction**: Automatic extraction from debate transcripts
+- **API**: `POST /debate`
+
+### Code Review Bot (src/code_review_bot.py)
+- **8 built-in rules**: Hardcoded passwords, SQL injection, eval usage, TODO comments, print debug, unused imports, missing error handling, insecure HTTP
+- **AI review**: LLM-based code analysis for files up to 4KB
+- **GitHub integration**: Auto-posts review comments on PRs
+- **Monitoring**: Background thread for commit monitoring
+- **Custom rules**: Add rules via ReviewRule dataclass
+- **API**: `POST /review`
+
+### Knowledge Base / RAG Upload (src/knowledge_base.py)
+- **5 supported formats**: PDF, Markdown, Text, HTML, DOCX
+- **Semantic chunking**: Paragraph-aware with configurable size/overlap
+- **Embedding generation**: Ollama embeddings with TF-IDF fallback
+- **Cosine similarity search**: Ranked results with relevance scores
+- **Filter support**: Metadata-based filtering
+- **API**: `POST /knowledge/upload`, `GET /knowledge/search`, `GET /knowledge/documents`
+
+### Model Fine-tuning Pipeline (src/model_finetune.py)
+- **2 data sources**: Conversations (from memory) and Codebase (from source)
+- **3 export formats**: JSONL, Alpaca, ShareGPT
+- **Auto-categorization**: Code, Chat, Security, Debug, Review
+- **Modelfile generation**: Automatic Ollama Modelfile creation
+- **Quality filtering**: Min quality score threshold
+- **API**: `POST /finetune`, `GET /finetune/jobs`
+
 ## Known Issues
 
 - Git push sometimes times out (requires retries)
 - Version consistency check: ensure all files are updated together
 - Windows path separators may need special handling in tests
-- PyQt6 QStatusBar.addSeparator() doesn't exist (removed in v2.8.1)
+- PyQt6 QStatusBar.addSeparator() doesn't exist (removed in v2.9.0)
 - QLocalSocket stale sockets need removeServer() before listen
 
 ## Models

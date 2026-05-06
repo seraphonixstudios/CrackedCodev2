@@ -3,7 +3,7 @@
 Local AI Coding Assistant with Sci-Fi Neural Interface
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.8.1-blue?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Version-2.9.0-blue?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License">
   <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-orange?style=for-the-badge" alt="Platform">
   <img src="https://img.shields.io/badge/Python-3.10%2B-yellow?style=for-the-badge" alt="Python">
@@ -38,18 +38,24 @@ python test_system.py
 
 | Version | Features |
 |---------|----------|
-| 2.8.1 | **Multi-Model Auto-Routing** - Intent-based model selection (qwen3/dolphin/llava) |
-| 2.8.1 | **Security Agent** - 11th agent role with vulnerability scanning, secret audit, permission check |
-| 2.8.1 | **Browser Automation** - Playwright-based web agent with 6 tools |
-| 2.8.1 | **Persistent Long-Term Memory** - Vector store of conversations, decisions, errors, fixes |
-| 2.8.1 | **A2A Protocol** - Google's Agent-to-Agent protocol for multi-agent communication |
-| 2.8.1 | **MCP Integration** - Model Context Protocol for external tool servers |
-| 2.8.1 | **Screen Capture / Vision** - AI-powered screen understanding with llava:13b-gpu |
-| 2.8.1 | **DevOps Agent** - 10th agent role with Docker, deploy, CI tools |
-| 2.8.1 | **Plugin System** - Extensible hooks with hot-reload |
-| 2.8.1 | **Tool Calling Framework** - ReAct loop with 36+ tools |
-| 2.8.1 | **Codebase RAG** - Semantic search with local embeddings |
-| 2.8.1 | **Agent Reasoning Engine** - Thought chains, coherence tracking, LLM meta-reasoning |
+| 2.9.0 | **Workflow Builder** - Multi-step AI automation with YAML/JSON definitions, conditions, parallel execution |
+| 2.9.0 | **Agent Collaboration** - Multi-agent debate and consensus building (Parliament mode) |
+| 2.9.0 | **Code Review Bot** - Automated PR/code review with 8 built-in security rules |
+| 2.9.0 | **Knowledge Base / RAG Upload** - Upload PDFs, markdown, text for semantic search |
+| 2.9.0 | **Model Fine-tuning Pipeline** - Local model fine-tuning with Ollama Modelfile generation |
+| 2.8.2 | **Custom Tool Builder** - Define tools via JSON/YAML without Python code |
+| 2.9.0 | **Multi-Model Auto-Routing** - Intent-based model selection (qwen3/dolphin/llava) |
+| 2.9.0 | **Security Agent** - 11th agent role with vulnerability scanning, secret audit, permission check |
+| 2.9.0 | **Browser Automation** - Playwright-based web agent with 6 tools |
+| 2.9.0 | **Persistent Long-Term Memory** - Vector store of conversations, decisions, errors, fixes |
+| 2.9.0 | **A2A Protocol** - Google's Agent-to-Agent protocol for multi-agent communication |
+| 2.9.0 | **MCP Integration** - Model Context Protocol for external tool servers |
+| 2.9.0 | **Screen Capture / Vision** - AI-powered screen understanding with llava:13b-gpu |
+| 2.9.0 | **DevOps Agent** - 10th agent role with Docker, deploy, CI tools |
+| 2.9.0 | **Plugin System** - Extensible hooks with hot-reload |
+| 2.9.0 | **Tool Calling Framework** - ReAct loop with 36+ tools |
+| 2.9.0 | **Codebase RAG** - Semantic search with local embeddings |
+| 2.9.0 | **Agent Reasoning Engine** - Thought chains, coherence tracking, LLM meta-reasoning |
 | 2.5.0 | UI/UX overhaul, toast notifications, searchable terminal, command palette |
 | 2.4.0 | Streaming responses, response caching, context management |
 | 2.3.9 | Task queue, Agent orchestration |
@@ -57,7 +63,7 @@ python test_system.py
 
 ---
 
-## Desktop GUI (v2.8.1)
+## Desktop GUI (v2.9.0)
 
 ```bash
 python src/gui.py
@@ -100,7 +106,7 @@ python src/gui.py
 
 ---
 
-## Multi-Model Auto-Routing (v2.8.1)
+## Multi-Model Auto-Routing (v2.9.0)
 
 CrackedCode automatically routes each request to the best model based on intent:
 
@@ -132,7 +138,7 @@ Set models in `config.json`:
 
 ---
 
-## Agent Reasoning Engine (v2.8.1)
+## Agent Reasoning Engine (v2.9.0)
 
 Every agent decision is transparent, measurable, and coherent:
 
@@ -150,7 +156,7 @@ Observation -> Analysis -> Decision -> Action -> Reflection
 
 ---
 
-## Codebase RAG (v2.8.1)
+## Codebase RAG (v2.9.0)
 
 Semantic search with local embeddings gives every agent full codebase awareness:
 
@@ -172,7 +178,7 @@ results = indexer.search("authentication middleware", top_k=5)
 
 ---
 
-## Tool Calling Framework (v2.8.1)
+## Tool Calling Framework (v2.9.0)
 
 36+ tools with ReAct-style reasoning:
 
@@ -245,7 +251,7 @@ results = indexer.search("authentication middleware", top_k=5)
 
 ---
 
-## Plugin System (v2.8.1)
+## Plugin System (v2.9.0)
 
 Extensible hooks with hot-reload:
 
@@ -270,7 +276,7 @@ class HelloPlugin:
 
 ---
 
-## DevOps Agent (v2.8.1)
+## DevOps Agent (v2.9.0)
 
 ```
 User: "Deploy the API to production"
@@ -288,7 +294,7 @@ User: "Deploy the API to production"
 
 ---
 
-## Security Agent (v2.8.1)
+## Security Agent (v2.9.0)
 
 ```
 User: "Audit this code for vulnerabilities"
@@ -306,7 +312,7 @@ User: "Audit this code for vulnerabilities"
 
 ---
 
-## Screen Capture / Vision Analysis (v2.8.1)
+## Screen Capture / Vision Analysis (v2.9.0)
 
 AI-powered screen understanding:
 
@@ -322,7 +328,7 @@ User: "What's on my screen?"
 
 ---
 
-## Browser Automation (v2.8.1)
+## Browser Automation (v2.9.0)
 
 ```
 User: "Go to https://example.com and tell me what's wrong"
@@ -344,7 +350,7 @@ agent.close()
 
 ---
 
-## Persistent Long-Term Memory (v2.8.1)
+## Persistent Long-Term Memory (v2.9.0)
 
 CrackedCode remembers everything:
 
@@ -362,7 +368,7 @@ results = memory.recall("threading bug")
 
 ---
 
-## MCP Integration (v2.8.1)
+## MCP Integration (v2.9.0)
 
 Connect to external services via Model Context Protocol:
 
@@ -381,7 +387,7 @@ MCP tools auto-sync into ToolRegistry as `server_name/tool_name`.
 
 ---
 
-## A2A Protocol (v2.8.1)
+## A2A Protocol (v2.9.0)
 
 Agent-to-Agent communication:
 
@@ -535,5 +541,5 @@ MIT License - See LICENSE file for details.
 ---
 
 <p align="center">
-  <strong>CrackedCode v2.8.1</strong> — Neural Coding Interface
+  <strong>CrackedCode v2.9.0</strong> — Neural Coding Interface
 </p>

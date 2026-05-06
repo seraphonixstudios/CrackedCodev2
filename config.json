@@ -1,6 +1,6 @@
 {
   "name": "CrackedCode",
-  "version": "2.8.1",
+  "version": "2.9.0",
   "description": "Autonomous AI Coding Agent with Multi-Agent Swarm, Voice I/O, and Production-Ready App Generation",
   "model": "qwen3:8b-gpu",
   "vision_model": "llava:13b-gpu",
@@ -188,5 +188,36 @@
     "tools_dir": "tools",
     "auto_reload": true,
     "max_tools": 50
+  },
+  "workflows": {
+    "enabled": true,
+    "workflows_dir": "workflows",
+    "auto_reload": true,
+    "max_workflows": 20
+  },
+  "agent_collaboration": {
+    "enabled": true,
+    "default_agents": ["architect", "security", "coder"],
+    "max_rounds": 5,
+    "require_consensus": false
+  },
+  "code_review_bot": {
+    "enabled": true,
+    "auto_review": false,
+    "monitor_interval": 300,
+    "min_severity": "medium"
+  },
+  "knowledge_base": {
+    "enabled": true,
+    "storage_dir": ".crackedcode/knowledge",
+    "supported_types": ["pdf", "markdown", "text", "html", "docx"],
+    "chunk_size": 500,
+    "chunk_overlap": 50
+  },
+  "model_finetune": {
+    "enabled": true,
+    "data_dir": ".crackedcode/finetune",
+    "default_base_model": "qwen3:8b",
+    "min_quality_score": 0.7
   }
 }

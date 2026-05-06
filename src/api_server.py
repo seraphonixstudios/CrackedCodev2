@@ -174,6 +174,70 @@ class CustomToolExecuteResponse(BaseModel):
     error: str = ""
 
 
+class WorkflowExecuteRequest(BaseModel):
+    name: str
+    context: Dict[str, Any] = {}
+
+
+class WorkflowExecuteResponse(BaseModel):
+    success: bool
+    workflow: str
+    steps: List[Dict[str, Any]] = []
+    duration: float = 0.0
+    error: str = ""
+
+
+class DebateRequest(BaseModel):
+    topic: str
+    agents: List[str] = ["architect", "security", "coder"]
+    rounds: int = 3
+    context: Dict[str, Any] = {}
+
+
+class DebateResponse(BaseModel):
+    topic: str
+    consensus: str = ""
+    consensus_score: float = 0.0
+    action_items: List[str] = []
+    duration: float = 0.0
+
+
+class ReviewRequest(BaseModel):
+    commit: str = "HEAD"
+    repo_path: str = "."
+    files: Optional[List[str]] = None
+
+
+class ReviewResponse(BaseModel):
+    commit: str
+    verdict: str
+    score: float
+    issues_count: int
+    summary: str
+
+
+class DocumentUploadResponse(BaseModel):
+    success: bool
+    document_id: str = ""
+    title: str = ""
+    chunks: int = 0
+    error: str = ""
+
+
+class FinetuneRequest(BaseModel):
+    model_name: str
+    base_model: str = "qwen3:8b"
+    source: str = "conversations"  # conversations, codebase
+    system_prompt: str = ""
+
+
+class FinetuneResponse(BaseModel):
+    success: bool
+    job_id: str = ""
+    status: str = ""
+    error: str = ""
+
+
 # ── Rate Limiting ──────────────────────────────────────────────────────────
 
 class RateLimiter:
@@ -255,7 +319,7 @@ class CrackedCodeAPI:
         self._app = FastAPI(
             title="CrackedCode API",
             description="REST API for the CrackedCode local AI coding assistant",
-            version="2.8.1",
+            version="2.9.0",
         )
         
         # CORS
@@ -331,7 +395,7 @@ class CrackedCodeAPI:
         async def root():
             return {
                 "name": "CrackedCode API",
-                "version": "2.8.1",
+                "version": "2.9.0",
                 "docs": "/docs",
                 "auth_required": bool(self.api_key),
                 "endpoints": [
@@ -349,6 +413,15 @@ class CrackedCodeAPI:
                     "/github/repos",
                     "/custom-tools",
                     "/custom-tools/execute",
+                    "/workflows",
+                    "/workflows/execute",
+                    "/debate",
+                    "/review",
+                    "/knowledge/upload",
+                    "/knowledge/search",
+                    "/knowledge/documents",
+                    "/finetune",
+                    "/finetune/jobs",
                     "/export",
                     "/import",
                     "/export/items",
@@ -477,7 +550,7 @@ class CrackedCodeAPI:
         async def status():
             """Get system status."""
             if not self.engine:
-                return StatusResponse(version="2.8.1")
+                return StatusResponse(version="2.9.0")
             
             try:
                 status_data = self.engine.get_status()
@@ -496,7 +569,7 @@ class CrackedCodeAPI:
                     conv_count = self.engine.conversation_manager.get_stats().get('total_conversations', 0)
                 
                 return StatusResponse(
-                    version=status_data.get('version', '2.8.1'),
+                    version=status_data.get('version', '2.9.0'),
                     model=status_data.get('model', ''),
                     vision_model=status_data.get('vision_model', ''),
                     secondary_model=status_data.get('secondary_model', ''),
@@ -784,6 +857,255 @@ class CrackedCodeAPI:
                 logger.error(f"Custom tool execution error: {e}")
                 raise HTTPException(status_code=500, detail=str(e))
         
+        @self._app.get("/workflows", dependencies=[Depends(self._verify_api_key)])
+        async def list_workflows():
+            """List all available workflows."""
+            try:
+                from src.workflows import get_workflow_engine
+                engine = get_workflow_engine()
+                workflows = engine.list_workflows()
+                
+                return [
+                    {
+                        "name": w.name,
+                        "description": w.description,
+                        "version": w.version,
+                        "steps": len(w.steps),
+                        "triggers": [t.type for t in w.triggers],
+                        "enabled": w.enabled,
+                        "tags": w.tags,
+                    }
+                    for w in workflows
+                ]
+            except Exception as e:
+                logger.error(f"Workflow list error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.post("/workflows/execute", response_model=WorkflowExecuteResponse, dependencies=[Depends(self._verify_api_key)])
+        async def execute_workflow(request: WorkflowExecuteRequest):
+            """Execute a workflow."""
+            try:
+                from src.workflows import get_workflow_engine
+                engine = get_workflow_engine()
+                
+                result = engine.execute(request.name, context=request.context)
+                
+                return WorkflowExecuteResponse(
+                    success=result.success,
+                    workflow=result.workflow,
+                    steps=[
+                        {
+                            "name": s.step_name,
+                            "status": s.status.value,
+                            "error": s.error,
+                            "duration": s.duration,
+                        }
+                        for s in result.steps
+                    ],
+                    duration=result.duration,
+                    error="",
+                )
+            except Exception as e:
+                logger.error(f"Workflow execution error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.post("/debate", response_model=DebateResponse, dependencies=[Depends(self._verify_api_key)])
+        async def run_debate(request: DebateRequest):
+            """Run a multi-agent debate."""
+            try:
+                from src.agent_collaboration import get_agent_parliament
+                parliament = get_agent_parliament(engine=self.engine)
+                
+                result = parliament.debate(
+                    topic=request.topic,
+                    agents=request.agents,
+                    rounds=request.rounds,
+                    context=request.context,
+                )
+                
+                return DebateResponse(
+                    topic=result.topic,
+                    consensus=result.final_consensus,
+                    consensus_score=result.consensus_score,
+                    action_items=result.action_items,
+                    duration=result.duration,
+                )
+            except Exception as e:
+                logger.error(f"Debate error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.post("/review", response_model=ReviewResponse, dependencies=[Depends(self._verify_api_key)])
+        async def run_code_review(request: ReviewRequest):
+            """Run automated code review."""
+            try:
+                from src.code_review_bot import get_review_bot
+                bot = get_review_bot(engine=self.engine)
+                
+                report = bot.review_commit(
+                    commit=request.commit,
+                    repo_path=request.repo_path,
+                    files=request.files,
+                )
+                
+                return ReviewResponse(
+                    commit=report.commit,
+                    verdict=report.verdict,
+                    score=report.score,
+                    issues_count=len(report.issues),
+                    summary=report.summary,
+                )
+            except Exception as e:
+                logger.error(f"Code review error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.post("/knowledge/upload", dependencies=[Depends(self._verify_api_key)])
+        async def upload_document(file: UploadFile = None):
+            """Upload a document to the knowledge base."""
+            try:
+                from src.knowledge_base import get_knowledge_base
+                import tempfile
+                
+                if not file:
+                    raise HTTPException(status_code=400, detail="No file provided")
+                
+                kb = get_knowledge_base()
+                
+                # Save uploaded file temporarily
+                suffix = Path(file.filename).suffix
+                with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+                    content = await file.read()
+                    tmp.write(content)
+                    tmp_path = tmp.name
+                
+                # Upload to knowledge base
+                doc = kb.upload_document(
+                    tmp_path,
+                    title=file.filename,
+                )
+                
+                # Clean up temp file
+                os.unlink(tmp_path)
+                
+                return DocumentUploadResponse(
+                    success=True,
+                    document_id=doc.id,
+                    title=doc.title,
+                    chunks=len(doc.chunks),
+                )
+            except Exception as e:
+                logger.error(f"Document upload error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.get("/knowledge/search", dependencies=[Depends(self._verify_api_key)])
+        async def search_knowledge(query: str, top_k: int = 5):
+            """Search the knowledge base."""
+            try:
+                from src.knowledge_base import get_knowledge_base
+                kb = get_knowledge_base()
+                
+                results = kb.search(query, top_k=top_k)
+                
+                return {
+                    "query": query,
+                    "results": [
+                        {
+                            "document_id": r.document_id,
+                            "title": r.title,
+                            "content": r.content,
+                            "score": r.score,
+                        }
+                        for r in results
+                    ],
+                }
+            except Exception as e:
+                logger.error(f"Knowledge search error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.get("/knowledge/documents", dependencies=[Depends(self._verify_api_key)])
+        async def list_documents():
+            """List all documents in the knowledge base."""
+            try:
+                from src.knowledge_base import get_knowledge_base
+                kb = get_knowledge_base()
+                
+                docs = kb.list_documents()
+                
+                return [
+                    {
+                        "id": d.id,
+                        "title": d.title,
+                        "type": d.content_type,
+                        "chunks": len(d.chunks),
+                        "uploaded_at": d.uploaded_at,
+                        "metadata": d.metadata,
+                    }
+                    for d in docs
+                ]
+            except Exception as e:
+                logger.error(f"Document list error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.post("/finetune", response_model=FinetuneResponse, dependencies=[Depends(self._verify_api_key)])
+        async def start_finetune(request: FinetuneRequest):
+            """Start a model fine-tuning job."""
+            try:
+                from src.model_finetune import get_finetune_pipeline
+                pipeline = get_finetune_pipeline()
+                
+                # Prepare dataset
+                if request.source == "conversations":
+                    dataset = pipeline.prepare_from_conversations(".crackedcode/memory")
+                elif request.source == "codebase":
+                    dataset = pipeline.prepare_from_codebase()
+                else:
+                    raise HTTPException(status_code=400, detail=f"Unknown source: {request.source}")
+                
+                # Export dataset
+                dataset_path = pipeline.export_dataset(dataset, format="jsonl")
+                
+                # Start fine-tuning job
+                job = pipeline.create_model(
+                    model_name=request.model_name,
+                    base_model=request.base_model,
+                    dataset_path=dataset_path,
+                    system_prompt=request.system_prompt or None,
+                )
+                
+                return FinetuneResponse(
+                    success=job.status == "completed",
+                    job_id=job.id,
+                    status=job.status,
+                    error=job.error,
+                )
+            except Exception as e:
+                logger.error(f"Fine-tuning error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.get("/finetune/jobs", dependencies=[Depends(self._verify_api_key)])
+        async def list_finetune_jobs():
+            """List all fine-tuning jobs."""
+            try:
+                from src.model_finetune import get_finetune_pipeline
+                pipeline = get_finetune_pipeline()
+                
+                jobs = pipeline.list_jobs()
+                
+                return [
+                    {
+                        "id": j.id,
+                        "model_name": j.model_name,
+                        "base_model": j.base_model,
+                        "status": j.status,
+                        "started_at": j.started_at,
+                        "completed_at": j.completed_at,
+                        "error": j.error,
+                    }
+                    for j in jobs
+                ]
+            except Exception as e:
+                logger.error(f"Finetune jobs list error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
         @self._app.get("/export", dependencies=[Depends(self._verify_api_key)])
         async def export_data(items: Optional[str] = None):
             """Export all CrackedCode data to a ZIP archive."""
@@ -979,7 +1301,7 @@ if __name__ == "__main__":
     api_key = engine.config.get("api_key") if hasattr(engine, 'config') else None
     api = create_api_server(engine=engine, api_key=api_key)
     
-    print(f"Starting CrackedCode API Server v2.8.1")
+    print(f"Starting CrackedCode API Server v2.9.0")
     print(f"URL: {api.url}")
     print(f"Docs: {api.url}/docs")
     if api.api_key:

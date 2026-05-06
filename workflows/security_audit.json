@@ -1,0 +1,58 @@
+{
+  "name": "security_audit",
+  "description": "Daily security audit workflow",
+  "version": "1.0",
+  "variables": {
+    "repo": ".",
+    "notify_email": "admin@company.com"
+  },
+  "steps": [
+    {
+      "name": "scan_dependencies",
+      "type": "agent",
+      "config": {
+        "agent": "security",
+        "task": "Scan dependencies for known vulnerabilities in {repo}"
+      },
+      "output_var": "scan_results",
+      "parallel": true
+    },
+    {
+      "name": "audit_secrets",
+      "type": "tool",
+      "config": {
+        "tool": "audit_secrets",
+        "parameters": {"path": "{repo}"}
+      },
+      "output_var": "secret_results",
+      "parallel": true
+    },
+    {
+      "name": "review_code",
+      "type": "agent",
+      "config": {
+        "agent": "reviewer",
+        "task": "Review code quality and security in {repo}"
+      },
+      "depends_on": ["scan_dependencies", "audit_secrets"],
+      "condition": "scan_results.get('issues_found', 0) > 0 or secret_results.get('secrets_found', 0) > 0",
+      "output_var": "review_report"
+    },
+    {
+      "name": "notify_team",
+      "type": "notify",
+      "config": {
+        "message": "Security audit completed for {repo}. Issues: {scan_results}",
+        "level": "warning",
+        "backend": "log"
+      },
+      "depends_on": ["review_code"]
+    }
+  ],
+  "triggers": [
+    {"type": "manual"},
+    {"type": "cron", "config": {"schedule": "0 9 * * *"}}
+  ],
+  "enabled": true,
+  "tags": ["security", "audit", "daily"]
+}
