@@ -1,6 +1,6 @@
 {
   "name": "CrackedCode",
-  "version": "2.8.0",
+  "version": "2.8.1",
   "description": "Autonomous AI Coding Agent with Multi-Agent Swarm, Voice I/O, and Production-Ready App Generation",
   "model": "qwen3:8b-gpu",
   "vision_model": "llava:13b-gpu",
@@ -172,5 +172,15 @@
     "token": null,
     "auto_review_prs": false,
     "review_comment_template": "🤖 CrackedCode AI Review\n\n**Verdict:** {verdict}\n\n{summary}\n\n---\n*Reviewed by CrackedCode*"
+  },
+  "rate_limiting": {
+    "enabled": true,
+    "max_requests": 60,
+    "window_seconds": 60
+  },
+  "web_dashboard": {
+    "enabled": false,
+    "host": "0.0.0.0",
+    "port": 3000
   }
 }

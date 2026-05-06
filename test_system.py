@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CRACKEDCODE v2.8.0 - Comprehensive End-to-End Test Suite
+CRACKEDCODE v2.8.1 - Comprehensive End-to-End Test Suite
 Full coverage with real operations, no placeholders
 """
 
@@ -595,11 +595,11 @@ def test_version_info() -> bool:
         PASS(f"Engine version: {status.get('version', 'unknown')}")
         
         version_checks = 0
-        if CrackedCode.VERSION == "2.8.0":
+        if CrackedCode.VERSION == "2.8.1":
             version_checks += 1
-        if MatrixUI.VERSION == "2.8.0":
+        if MatrixUI.VERSION == "2.8.1":
             version_checks += 1
-        if status.get("version") == "2.8.0":
+        if status.get("version") == "2.8.1":
             version_checks += 1
         
         PASS(f"Version consistency: {version_checks}/3")
@@ -709,10 +709,10 @@ def test_cli_integration_e2e() -> bool:
             version = result.stdout.strip()
             PASS(f"CLI import: version {version}")
             
-            if version == "2.8.0":
+            if version == "2.8.1":
                 PASS("CLI version correct")
             else:
-                FAIL("CLI version", f"Expected 2.8.0, got {version}")
+                FAIL("CLI version", f"Expected 2.8.1, got {version}")
                 return False
         else:
             FAIL("CLI import", result.stderr[:50])
@@ -1663,7 +1663,7 @@ def test_voice_hotword_detection() -> bool:
 
 
 def main() -> int:
-    print(f"\n{'='*60}\n  CRACKEDCODE v2.8.0 - E2E TEST SUITE\n{'='*60}\n")
+    print(f"\n{'='*60}\n  CRACKEDCODE v2.8.1 - E2E TEST SUITE\n{'='*60}\n")
     
     tests = [
         ("Modules", test_modules),
@@ -1762,6 +1762,10 @@ def main() -> int:
         ("Docker Support", test_docker_support),
         ("GitHub Integration", test_github_integration),
         ("GitHub Actions", test_github_actions),
+        ("Import Export", test_import_export),
+        ("Rate Limiting", test_rate_limiting),
+        ("Multi File Gen", test_multi_file_generation),
+        ("Web Dashboard", test_web_dashboard),
     ]
     
     results: list[tuple[str, bool]] = []
@@ -4328,6 +4332,189 @@ def test_github_actions() -> bool:
         import traceback
         traceback.print_exc()
         return FAIL("GitHub Actions", str(e)[:50])
+
+
+def test_import_export() -> bool:
+    print_header("IMPORT/EXPORT")
+    try:
+        from src.import_export import ImportExportManager, create_import_export_manager, ExportManifest
+        import tempfile
+        import os
+        
+        # Test manager creation
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mgr = ImportExportManager(project_root=tmpdir)
+            PASS("ImportExportManager created")
+            
+            # Test export manifest
+            manifest = ExportManifest(version="2.8.1", items=["config"])
+            if manifest.version == "2.8.1":
+                PASS("ExportManifest dataclass")
+            else:
+                return FAIL("ExportManifest wrong")
+            
+            # Test export (empty)
+            result = mgr.export_all(os.path.join(tmpdir, "test.zip"))
+            if result["success"] and os.path.exists(result["path"]):
+                PASS("Export works")
+            else:
+                return FAIL("Export failed")
+            
+            # Test import
+            import_result = mgr.import_all(result["path"], overwrite=True)
+            if import_result["success"]:
+                PASS("Import works")
+            else:
+                return FAIL("Import failed")
+            
+            # Test get_exportable_items
+            items = mgr.get_exportable_items()
+            if isinstance(items, list):
+                PASS("Get exportable items works")
+            else:
+                return FAIL("Get items failed")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Import/Export", str(e)[:50])
+
+
+def test_rate_limiting() -> bool:
+    print_header("RATE LIMITING")
+    try:
+        from src.api_server import RateLimiter
+        
+        # Test rate limiter creation
+        rl = RateLimiter(max_requests=3, window_seconds=60)
+        PASS("RateLimiter created")
+        
+        # Test requests allowed
+        if rl.is_allowed("client1"):
+            PASS("First request allowed")
+        else:
+            return FAIL("First request blocked")
+        
+        if rl.is_allowed("client1"):
+            PASS("Second request allowed")
+        else:
+            return FAIL("Second request blocked")
+        
+        if rl.is_allowed("client1"):
+            PASS("Third request allowed")
+        else:
+            return FAIL("Third request blocked")
+        
+        # Test limit exceeded
+        if not rl.is_allowed("client1"):
+            PASS("Fourth request blocked")
+        else:
+            return FAIL("Fourth request allowed")
+        
+        # Test remaining
+        if rl.get_remaining("client1") == 0:
+            PASS("Remaining is 0")
+        else:
+            return FAIL("Remaining wrong")
+        
+        # Test different client
+        if rl.is_allowed("client2"):
+            PASS("Different client allowed")
+        else:
+            return FAIL("Different client blocked")
+        
+        # Test reset time
+        if rl.get_reset_time("client1") >= 0:
+            PASS("Reset time returned")
+        else:
+            return FAIL("Reset time wrong")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Rate limiting", str(e)[:50])
+
+
+def test_multi_file_generation() -> bool:
+    print_header("MULTI-FILE GENERATION")
+    try:
+        # Test that the method exists
+        from src.engine import CrackedCodeEngine
+        
+        engine = CrackedCodeEngine()
+        if hasattr(engine, 'generate_multi_file'):
+            PASS("generate_multi_file method exists")
+        else:
+            return FAIL("generate_multi_file missing")
+        
+        # Test _extract_filename
+        filename = engine._extract_filename("create test.py with hello world")
+        if filename == "test.py":
+            PASS("Filename extraction works")
+        else:
+            return FAIL("Filename extraction failed")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Multi-file generation", str(e)[:50])
+
+
+def test_web_dashboard() -> bool:
+    print_header("WEB DASHBOARD")
+    try:
+        from src.web_dashboard import WebDashboard, create_web_dashboard
+        
+        # Test dashboard creation
+        dash = create_web_dashboard()
+        if dash is not None:
+            PASS("WebDashboard created")
+        else:
+            return FAIL("WebDashboard creation failed")
+        
+        # Test properties
+        if dash.host == "0.0.0.0" and dash.port == 3000:
+            PASS("Default config correct")
+        else:
+            return FAIL("Default config wrong")
+        
+        # Test _get_status
+        status = dash._get_status()
+        if "ollama_available" in status:
+            PASS("Status method works")
+        else:
+            return FAIL("Status method failed")
+        
+        # Test _get_metrics
+        metrics = dash._get_metrics()
+        if "requests_total" in metrics:
+            PASS("Metrics method works")
+        else:
+            return FAIL("Metrics method failed")
+        
+        # Test config has web_dashboard section
+        import json
+        with open("config.json", "r") as f:
+            cfg = json.load(f)
+        if "web_dashboard" in cfg:
+            PASS("Config has web_dashboard section")
+        else:
+            return FAIL("Config missing web_dashboard")
+        
+        # Test config has rate_limiting section
+        if "rate_limiting" in cfg:
+            PASS("Config has rate_limiting section")
+        else:
+            return FAIL("Config missing rate_limiting")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Web dashboard", str(e)[:50])
 
 
 if __name__ == "__main__":

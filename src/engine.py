@@ -727,7 +727,7 @@ Question: {prompt}
                 pass
         
         return {
-            "version": "2.8.0",
+            "version": "2.8.1",
             "model": self.model,
             "vision_model": self.vision_model,
             "secondary_model": self.secondary_model,
@@ -1004,6 +1004,88 @@ Question: {prompt}
                 return match.group(1)
         return None
 
+    def generate_multi_file(self, prompt: str, output_dir: str = None) -> Dict[str, Any]:
+        """Generate multiple files for a project scaffold.
+        
+        Args:
+            prompt: Description of the project to generate
+            output_dir: Directory to save files (default: auto-generated)
+        
+        Returns:
+            Dict with files generated and their paths
+        """
+        import re
+        
+        if output_dir is None:
+            output_dir = self._extract_filename(prompt) or "generated_project"
+            output_dir = output_dir.replace(".py", "")
+        
+        output_path = Path(self.project_root) / output_dir
+        output_path.mkdir(parents=True, exist_ok=True)
+        
+        # Build multi-file prompt
+        multi_file_prompt = f"""Generate a complete multi-file project for the following task.
+
+Task: {prompt}
+
+Generate ALL necessary files with complete code. Format each file as:
+
+### FILE: path/to/filename.ext
+```language
+complete code here
+```
+
+### FILE: path/to/another_file.ext
+```language
+complete code here
+```
+
+Requirements:
+- Generate all files needed for a working project
+- Include a main entry point
+- Include any config files
+- Include a README with setup instructions
+- All code must be complete and runnable
+"""
+        
+        response = self.ollama.chat(multi_file_prompt)
+        
+        if not response.success:
+            return {"success": False, "error": response.error, "files": []}
+        
+        # Parse files from response
+        files = []
+        file_pattern = r'### FILE:\s*(.+?)\n```(?:\w+)?\n(.*?)```'
+        matches = re.findall(file_pattern, response.text, re.DOTALL)
+        
+        for filepath, content in matches:
+            filepath = filepath.strip()
+            content = content.strip()
+            
+            if filepath and content:
+                file_path = output_path / filepath
+                file_path.parent.mkdir(parents=True, exist_ok=True)
+                
+                try:
+                    file_path.write_text(content)
+                    files.append(str(file_path))
+                    logger.info(f"Generated file: {file_path}")
+                except Exception as e:
+                    logger.error(f"Failed to write {file_path}: {e}")
+        
+        if not files:
+            # Fallback: save entire response as single file
+            fallback_path = output_path / "output.txt"
+            fallback_path.write_text(response.text)
+            files.append(str(fallback_path))
+        
+        return {
+            "success": True,
+            "output_dir": str(output_path),
+            "files": files,
+            "file_count": len(files),
+        }
+    
     async def process(self, prompt: str, streaming: bool = False, callback: Callable = None) -> AgentResponse:
         """Process a user prompt with full intent detection and execution.
         

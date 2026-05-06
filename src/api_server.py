@@ -35,9 +35,9 @@ from typing import Any, AsyncGenerator, Dict, List, Optional
 from src.logger_config import get_logger
 
 try:
-    from fastapi import FastAPI, HTTPException, Depends, Security, WebSocket, WebSocketDisconnect
+    from fastapi import FastAPI, HTTPException, Depends, Security, WebSocket, WebSocketDisconnect, UploadFile
     from fastapi.middleware.cors import CORSMiddleware
-    from fastapi.responses import StreamingResponse
+    from fastapi.responses import StreamingResponse, FileResponse
     from fastapi.security import APIKeyHeader
     from pydantic import BaseModel
     import uvicorn
@@ -149,16 +149,75 @@ class GitHubIssueResponse(BaseModel):
     confidence: float
 
 
+# ── Rate Limiting ──────────────────────────────────────────────────────────
+
+class RateLimiter:
+    """Simple in-memory rate limiter."""
+    
+    def __init__(self, max_requests: int = 60, window_seconds: int = 60):
+        self.max_requests = max_requests
+        self.window_seconds = window_seconds
+        self._requests: Dict[str, List[float]] = {}
+        self._lock = threading.Lock()
+    
+    def is_allowed(self, key: str) -> bool:
+        """Check if a request is allowed for the given key."""
+        now = time.time()
+        with self._lock:
+            if key not in self._requests:
+                self._requests[key] = []
+            
+            # Remove old requests outside the window
+            self._requests[key] = [
+                ts for ts in self._requests[key]
+                if now - ts < self.window_seconds
+            ]
+            
+            if len(self._requests[key]) < self.max_requests:
+                self._requests[key].append(now)
+                return True
+            
+            return False
+    
+    def get_remaining(self, key: str) -> int:
+        """Get remaining requests for the given key."""
+        now = time.time()
+        with self._lock:
+            if key not in self._requests:
+                return self.max_requests
+            
+            self._requests[key] = [
+                ts for ts in self._requests[key]
+                if now - ts < self.window_seconds
+            ]
+            
+            return max(0, self.max_requests - len(self._requests[key]))
+    
+    def get_reset_time(self, key: str) -> float:
+        """Get time until rate limit resets."""
+        now = time.time()
+        with self._lock:
+            if key not in self._requests or not self._requests[key]:
+                return 0.0
+            
+            oldest = min(self._requests[key])
+            reset = oldest + self.window_seconds - now
+            return max(0.0, reset)
+
+
 # ── API Server ─────────────────────────────────────────────────────────────
 
 class CrackedCodeAPI:
     """REST API server for CrackedCode."""
     
-    def __init__(self, engine=None, host: str = "0.0.0.0", port: int = 8080, api_key: Optional[str] = None):
+    def __init__(self, engine=None, host: str = "0.0.0.0", port: int = 8080, api_key: Optional[str] = None,
+                 rate_limit_enabled: bool = True, rate_limit_max: int = 60, rate_limit_window: int = 60):
         self.engine = engine
         self.host = host
         self.port = port
         self.api_key = api_key
+        self.rate_limit_enabled = rate_limit_enabled
+        self.rate_limiter = RateLimiter(max_requests=rate_limit_max, window_seconds=rate_limit_window) if rate_limit_enabled else None
         self._app: Optional[Any] = None
         self._server_thread: Optional[threading.Thread] = None
         self._running = False
@@ -171,7 +230,7 @@ class CrackedCodeAPI:
         self._app = FastAPI(
             title="CrackedCode API",
             description="REST API for the CrackedCode local AI coding assistant",
-            version="2.8.0",
+            version="2.8.1",
         )
         
         # CORS
@@ -182,6 +241,41 @@ class CrackedCodeAPI:
             allow_methods=["*"],
             allow_headers=["*"],
         )
+        
+        # Rate limiting middleware
+        if self.rate_limit_enabled and self.rate_limiter:
+            @self._app.middleware("http")
+            async def rate_limit_middleware(request, call_next):
+                """Apply rate limiting to all requests."""
+                client_ip = request.client.host if request.client else "unknown"
+                api_key = request.headers.get("X-API-Key", "")
+                limit_key = f"{client_ip}:{api_key}"
+                
+                if not self.rate_limiter.is_allowed(limit_key):
+                    remaining = self.rate_limiter.get_remaining(limit_key)
+                    reset_time = self.rate_limiter.get_reset_time(limit_key)
+                    
+                    raise HTTPException(
+                        status_code=429,
+                        detail="Rate limit exceeded. Try again later.",
+                        headers={
+                            "X-RateLimit-Limit": str(self.rate_limiter.max_requests),
+                            "X-RateLimit-Remaining": str(remaining),
+                            "X-RateLimit-Reset": str(int(reset_time)),
+                            "Retry-After": str(int(reset_time)),
+                        },
+                    )
+                
+                response = await call_next(request)
+                
+                # Add rate limit headers
+                remaining = self.rate_limiter.get_remaining(limit_key)
+                reset_time = self.rate_limiter.get_reset_time(limit_key)
+                response.headers["X-RateLimit-Limit"] = str(self.rate_limiter.max_requests)
+                response.headers["X-RateLimit-Remaining"] = str(remaining)
+                response.headers["X-RateLimit-Reset"] = str(int(reset_time))
+                
+                return response
         
         self._register_routes()
     
@@ -212,7 +306,7 @@ class CrackedCodeAPI:
         async def root():
             return {
                 "name": "CrackedCode API",
-                "version": "2.8.0",
+                "version": "2.8.1",
                 "docs": "/docs",
                 "auth_required": bool(self.api_key),
                 "endpoints": [
@@ -228,6 +322,9 @@ class CrackedCodeAPI:
                     "/github/review-pr",
                     "/github/analyze-issue",
                     "/github/repos",
+                    "/export",
+                    "/import",
+                    "/export/items",
                 ],
             }
         
@@ -353,7 +450,7 @@ class CrackedCodeAPI:
         async def status():
             """Get system status."""
             if not self.engine:
-                return StatusResponse(version="2.8.0")
+                return StatusResponse(version="2.8.1")
             
             try:
                 status_data = self.engine.get_status()
@@ -372,7 +469,7 @@ class CrackedCodeAPI:
                     conv_count = self.engine.conversation_manager.get_stats().get('total_conversations', 0)
                 
                 return StatusResponse(
-                    version=status_data.get('version', '2.8.0'),
+                    version=status_data.get('version', '2.8.1'),
                     model=status_data.get('model', ''),
                     vision_model=status_data.get('vision_model', ''),
                     secondary_model=status_data.get('secondary_model', ''),
@@ -615,6 +712,66 @@ class CrackedCodeAPI:
                 logger.error(f"GitHub repos error: {e}")
                 raise HTTPException(status_code=500, detail=str(e))
         
+        @self._app.get("/export", dependencies=[Depends(self._verify_api_key)])
+        async def export_data(items: Optional[str] = None):
+            """Export all CrackedCode data to a ZIP archive."""
+            try:
+                from src.import_export import create_import_export_manager
+                import tempfile
+                
+                mgr = create_import_export_manager()
+                item_list = items.split(",") if items else None
+                
+                with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp:
+                    result = mgr.export_all(tmp.name, items=item_list)
+                
+                if result["success"]:
+                    from fastapi.responses import FileResponse
+                    return FileResponse(
+                        result["path"],
+                        filename=f"crackedcode-backup-{int(time.time())}.zip",
+                        media_type="application/zip",
+                    )
+                else:
+                    raise HTTPException(status_code=500, detail=result.get("error", "Export failed"))
+            except Exception as e:
+                logger.error(f"Export error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.post("/import", dependencies=[Depends(self._verify_api_key)])
+        async def import_data(file: UploadFile = None, overwrite: bool = False):
+            """Import data from a ZIP archive."""
+            try:
+                from src.import_export import create_import_export_manager
+                import tempfile
+                
+                if not file:
+                    raise HTTPException(status_code=400, detail="No file provided")
+                
+                mgr = create_import_export_manager()
+                
+                with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp:
+                    content = await file.read()
+                    tmp.write(content)
+                    tmp.flush()
+                    result = mgr.import_all(tmp.name, overwrite=overwrite)
+                
+                return result
+            except Exception as e:
+                logger.error(f"Import error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.get("/export/items", dependencies=[Depends(self._verify_api_key)])
+        async def export_items():
+            """List exportable items."""
+            try:
+                from src.import_export import create_import_export_manager
+                mgr = create_import_export_manager()
+                return {"items": mgr.get_exportable_items()}
+            except Exception as e:
+                logger.error(f"Export items error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
         @self._app.websocket("/ws")
         async def websocket_endpoint(websocket: WebSocket):
             """Bidirectional WebSocket for real-time AI chat."""
@@ -750,7 +907,7 @@ if __name__ == "__main__":
     api_key = engine.config.get("api_key") if hasattr(engine, 'config') else None
     api = create_api_server(engine=engine, api_key=api_key)
     
-    print(f"Starting CrackedCode API Server v2.8.0")
+    print(f"Starting CrackedCode API Server v2.8.1")
     print(f"URL: {api.url}")
     print(f"Docs: {api.url}/docs")
     if api.api_key:
