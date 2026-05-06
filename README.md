@@ -3,7 +3,7 @@
 Local AI Coding Assistant with Sci-Fi Neural Interface
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.9.2-blue?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Version-2.9.3-blue?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License">
   <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-orange?style=for-the-badge" alt="Platform">
   <img src="https://img.shields.io/badge/Python-3.10%2B-yellow?style=for-the-badge" alt="Python">
@@ -38,10 +38,12 @@ python test_system.py
 
 | Version | Features |
 |---------|----------|
-| 2.9.2 | **Advanced Agent Memory** - Per-agent persistent memory with automatic summarization and experience learning |
-| 2.9.2 | **Python SDK** - Official client with typed responses, retries, sub-clients for all API areas |
-| 2.9.2 | **Benchmark Suite** - Standardized tests (HumanEval, security, refactoring) with history and trends |
-| 2.9.2 | **Self-Healing Agent** - Auto-detect errors in logs, generate fixes, verify with tests |
+| 2.9.3 | **Git Pre-commit Hook** - Auto-run code review on every commit, block critical issues |
+| 2.9.3 | **Memory Visualization** - Pretty-print agent profiles, patterns, and statistics in terminal |
+| 2.9.3 | **Advanced Agent Memory** - Per-agent persistent memory with automatic summarization and experience learning |
+| 2.9.3 | **Python SDK** - Official client with typed responses, retries, sub-clients for all API areas |
+| 2.9.3 | **Benchmark Suite** - Standardized tests (HumanEval, security, refactoring) with history and trends |
+| 2.9.3 | **Self-Healing Agent** - Auto-detect errors in logs, generate fixes, verify with tests |
 | 2.9.0 | **Workflow Builder** - Multi-step AI automation with YAML/JSON definitions, conditions, parallel execution |
 | 2.9.0 | **Agent Collaboration** - Multi-agent debate and consensus building (Parliament mode) |
 | 2.9.0 | **Code Review Bot** - Automated PR/code review with 8 built-in security rules |

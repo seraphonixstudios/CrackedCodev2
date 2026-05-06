@@ -370,7 +370,7 @@ class CrackedCodeAPI:
         self._app = FastAPI(
             title="CrackedCode API",
             description="REST API for the CrackedCode local AI coding assistant",
-            version="2.9.2",
+            version="2.9.3",
         )
         
         # CORS
@@ -446,7 +446,7 @@ class CrackedCodeAPI:
         async def root():
             return {
                 "name": "CrackedCode API",
-                "version": "2.9.2",
+                "version": "2.9.3",
                 "docs": "/docs",
                 "auth_required": bool(self.api_key),
                 "endpoints": [
@@ -486,6 +486,10 @@ class CrackedCodeAPI:
                     "/agent-memory/{agent}/recall",
                     "/agent-memory/{agent}/summarize",
                     "/agent-memory/stats",
+                    "/agent-memory/viz/{agent}",
+                    "/hooks/install",
+                    "/hooks/uninstall",
+                    "/hooks/status",
                     "/export",
                     "/import",
                     "/export/items",
@@ -614,7 +618,7 @@ class CrackedCodeAPI:
         async def status():
             """Get system status."""
             if not self.engine:
-                return StatusResponse(version="2.9.2")
+                return StatusResponse(version="2.9.3")
             
             try:
                 status_data = self.engine.get_status()
@@ -633,7 +637,7 @@ class CrackedCodeAPI:
                     conv_count = self.engine.conversation_manager.get_stats().get('total_conversations', 0)
                 
                 return StatusResponse(
-                    version=status_data.get('version', '2.9.2'),
+                    version=status_data.get('version', '2.9.3'),
                     model=status_data.get('model', ''),
                     vision_model=status_data.get('vision_model', ''),
                     secondary_model=status_data.get('secondary_model', ''),
@@ -1453,6 +1457,50 @@ class CrackedCodeAPI:
                 logger.error(f"Forget agent memory error: {e}")
                 raise HTTPException(status_code=500, detail=str(e))
         
+        @self._app.get("/agent-memory/viz/{agent}", dependencies=[Depends(self._verify_api_key)])
+        async def visualize_agent_memory(agent: str, patterns: bool = False, entries: bool = False, limit: int = 10):
+            """Get visualization data for an agent's memory."""
+            try:
+                from src.memory_viz import show_agent_memory
+                output = show_agent_memory(agent=agent, show_patterns=patterns, show_entries=entries, limit=limit)
+                return {"agent": agent, "visualization": output}
+            except Exception as e:
+                logger.error(f"Memory viz error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.post("/hooks/install", dependencies=[Depends(self._verify_api_key)])
+        async def install_hook(force: bool = False):
+            """Install Git pre-commit hook."""
+            try:
+                from src.git_hooks import install_precommit_hook
+                success = install_precommit_hook(force=force)
+                return {"success": success, "installed": success}
+            except Exception as e:
+                logger.error(f"Hook install error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.post("/hooks/uninstall", dependencies=[Depends(self._verify_api_key)])
+        async def uninstall_hook():
+            """Uninstall Git pre-commit hook."""
+            try:
+                from src.git_hooks import uninstall_precommit_hook
+                success = uninstall_precommit_hook()
+                return {"success": success, "uninstalled": success}
+            except Exception as e:
+                logger.error(f"Hook uninstall error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.get("/hooks/status", dependencies=[Depends(self._verify_api_key)])
+        async def hook_status():
+            """Get Git hook status."""
+            try:
+                from src.git_hooks import GitHookManager
+                manager = GitHookManager()
+                return manager.get_status()
+            except Exception as e:
+                logger.error(f"Hook status error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
         @self._app.get("/export", dependencies=[Depends(self._verify_api_key)])
         async def export_data(items: Optional[str] = None):
             """Export all CrackedCode data to a ZIP archive."""
@@ -1648,7 +1696,7 @@ if __name__ == "__main__":
     api_key = engine.config.get("api_key") if hasattr(engine, 'config') else None
     api = create_api_server(engine=engine, api_key=api_key)
     
-    print(f"Starting CrackedCode API Server v2.9.2")
+    print(f"Starting CrackedCode API Server v2.9.3")
     print(f"URL: {api.url}")
     print(f"Docs: {api.url}/docs")
     if api.api_key:

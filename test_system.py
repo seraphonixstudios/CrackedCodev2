@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CRACKEDCODE v2.9.2 - Comprehensive End-to-End Test Suite
+CRACKEDCODE v2.9.3 - Comprehensive End-to-End Test Suite
 Full coverage with real operations, no placeholders
 """
 
@@ -595,11 +595,11 @@ def test_version_info() -> bool:
         PASS(f"Engine version: {status.get('version', 'unknown')}")
         
         version_checks = 0
-        if CrackedCode.VERSION == "2.9.2":
+        if CrackedCode.VERSION == "2.9.3":
             version_checks += 1
-        if MatrixUI.VERSION == "2.9.2":
+        if MatrixUI.VERSION == "2.9.3":
             version_checks += 1
-        if status.get("version") == "2.9.2":
+        if status.get("version") == "2.9.3":
             version_checks += 1
         
         PASS(f"Version consistency: {version_checks}/3")
@@ -709,10 +709,10 @@ def test_cli_integration_e2e() -> bool:
             version = result.stdout.strip()
             PASS(f"CLI import: version {version}")
             
-            if version == "2.9.2":
+            if version == "2.9.3":
                 PASS("CLI version correct")
             else:
-                FAIL("CLI version", f"Expected 2.9.2, got {version}")
+                FAIL("CLI version", f"Expected 2.9.3, got {version}")
                 return False
         else:
             FAIL("CLI import", result.stderr[:50])
@@ -1663,7 +1663,7 @@ def test_voice_hotword_detection() -> bool:
 
 
 def main() -> int:
-    print(f"\n{'='*60}\n  CRACKEDCODE v2.9.2 - E2E TEST SUITE\n{'='*60}\n")
+    print(f"\n{'='*60}\n  CRACKEDCODE v2.9.3 - E2E TEST SUITE\n{'='*60}\n")
     
     tests = [
         ("Modules", test_modules),
@@ -1776,6 +1776,8 @@ def main() -> int:
         ("Benchmarks", test_benchmarks),
         ("Self-Healing", test_self_healing),
         ("Agent Memory", test_agent_memory),
+        ("Git Hooks", test_git_hooks),
+        ("Memory Viz", test_memory_viz),
     ]
     
     results: list[tuple[str, bool]] = []
@@ -4357,8 +4359,8 @@ def test_import_export() -> bool:
             PASS("ImportExportManager created")
             
             # Test export manifest
-            manifest = ExportManifest(version="2.9.2", items=["config"])
-            if manifest.version == "2.9.2":
+            manifest = ExportManifest(version="2.9.3", items=["config"])
+            if manifest.version == "2.9.3":
                 PASS("ExportManifest dataclass")
             else:
                 return FAIL("ExportManifest wrong")
@@ -5364,6 +5366,163 @@ def test_agent_memory() -> bool:
         return FAIL("Agent memory", str(e)[:50])
 
 
+def test_git_hooks() -> bool:
+    print_header("GIT HOOKS")
+    try:
+        from src.git_hooks import GitHookManager, install_precommit_hook, uninstall_precommit_hook
+        import tempfile
+        
+        # Test hook manager creation
+        manager = GitHookManager()
+        PASS("GitHookManager created")
+        
+        # Test is_git_repo
+        if manager.is_git_repo():
+            PASS("Detected git repository")
+        else:
+            return FAIL("Git repo not detected")
+        
+        # Test get_status
+        status = manager.get_status()
+        if "is_git_repo" in status:
+            PASS("Status available")
+        else:
+            return FAIL("Status missing")
+        
+        # Test install/uninstall with temp git dir
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create fake git repo
+            git_dir = Path(tmpdir) / ".git" / "hooks"
+            git_dir.mkdir(parents=True)
+            
+            temp_manager = GitHookManager(repo_path=tmpdir)
+            installed = temp_manager.install_precommit()
+            if installed:
+                PASS("Hook installed in temp repo")
+            else:
+                return FAIL("Hook install failed")
+            
+            if temp_manager.hook_exists("pre-commit"):
+                PASS("Hook exists after install")
+            else:
+                return FAIL("Hook not found after install")
+            
+            uninstalled = temp_manager.uninstall_precommit()
+            if uninstalled:
+                PASS("Hook uninstalled")
+            else:
+                return FAIL("Hook uninstall failed")
+        
+        # Test config section
+        import json
+        with open("config.json", "r") as f:
+            cfg = json.load(f)
+        if "git_hooks" in cfg:
+            PASS("Config has git_hooks section")
+        else:
+            return FAIL("Config missing git_hooks")
+        
+        # Test API routes
+        from src.api_server import create_api_server
+        api = create_api_server()
+        routes = [route.path for route in api._app.routes]
+        hook_routes = ["/hooks/install", "/hooks/uninstall", "/hooks/status"]
+        if all(r in routes for r in hook_routes):
+            PASS("Hook API routes registered")
+        else:
+            return FAIL("Missing hook routes")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Git hooks", str(e)[:50])
+
+
+def test_memory_viz() -> bool:
+    print_header("MEMORY VISUALIZATION")
+    try:
+        from src.memory_viz import (
+            MemoryVisualizer, show_agent_memory, print_memory,
+            _bar, _box, _color,
+        )
+        import tempfile
+        
+        # Test visualizer creation
+        viz = MemoryVisualizer()
+        PASS("MemoryVisualizer created")
+        
+        # Test helper functions
+        bar = _bar(0.5)
+        if "█" in bar and "%" in bar:
+            PASS("Bar chart works")
+        else:
+            return FAIL("Bar chart failed")
+        
+        box = _box("Test", "Hello\nWorld")
+        if "┌" in box and "└" in box:
+            PASS("Box drawing works")
+        else:
+            return FAIL("Box drawing failed")
+        
+        # Test show with no data
+        output = show_agent_memory(agent="nonexistent_agent_xyz")
+        if "No memories found" in output:
+            PASS("Handles missing agent")
+        else:
+            return FAIL("Missing agent handling failed")
+        
+        # Test show_all with no data
+        output = show_agent_memory(all_agents=True)
+        if "No agent memories" in output:
+            PASS("Handles empty system")
+        else:
+            return FAIL("Empty system handling failed")
+        
+        # Test stats with data
+        from src.agent_memory import get_agent_memory_system
+        with tempfile.TemporaryDirectory() as tmpdir:
+            memory = get_agent_memory_system(storage_dir=tmpdir)
+            memory.remember("coder", "fact", {"topic": "testing"})
+            
+            viz2 = MemoryVisualizer(storage_dir=tmpdir)
+            output = viz2.show_all()
+            if "coder" in output.lower():
+                PASS("Shows agent with data")
+            else:
+                return FAIL("Agent display failed")
+            
+            output = viz2.show_agent("coder", show_entries=True)
+            if "coder" in output.lower():
+                PASS("Show agent detail works")
+            else:
+                return FAIL("Agent detail failed")
+        
+        # Test config section
+        import json
+        with open("config.json", "r") as f:
+            cfg = json.load(f)
+        if "memory_viz" in cfg:
+            PASS("Config has memory_viz section")
+        else:
+            return FAIL("Config missing memory_viz")
+        
+        # Test API route
+        from src.api_server import create_api_server
+        api = create_api_server()
+        routes = [route.path for route in api._app.routes]
+        if "/agent-memory/viz/{agent}" in routes:
+            PASS("Memory viz API route registered")
+        else:
+            return FAIL("Missing viz route")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Memory viz", str(e)[:50])
+
+
 if __name__ == "__main__":
     success = main()
-    sys.exit(0 if success >= 24 else 1)
+    sys.exit(0 if success >= 26 else 1)

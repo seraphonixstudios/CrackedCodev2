@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 CrackedCode - Local AI Coding Assistant
-Version: 2.9.2
+Version: 2.9.3
 """
 
 import os
@@ -1903,7 +1903,7 @@ class AgentSwarm:
 
 
 class CrackedCode:
-    VERSION = "2.9.2"
+    VERSION = "2.9.3"
     BANNER = """
 ============================================================
   CRACKEDCODE v{version} - Local AI Coding Assistant
@@ -2140,6 +2140,21 @@ def main():
     api_parser.add_argument("--host", default="0.0.0.0", help="API server host (default: 0.0.0.0)")
     api_parser.add_argument("--port", type=int, default=8080, help="API server port (default: 8080)")
     api_parser.add_argument("--api-key", default=None, help="API key for authentication (overrides config)")
+    
+    hook_parser = subparsers.add_parser("install-hook", help="Install Git pre-commit hook")
+    hook_parser.add_argument("--force", action="store_true", help="Overwrite existing hook")
+    
+    unhook_parser = subparsers.add_parser("uninstall-hook", help="Uninstall Git pre-commit hook")
+    
+    review_parser = subparsers.add_parser("review", help="Run code review on current commit")
+    
+    memory_parser = subparsers.add_parser("memory", help="Visualize agent memories")
+    memory_parser.add_argument("--agent", default=None, help="Show memory for specific agent")
+    memory_parser.add_argument("--all", action="store_true", help="Show all agents")
+    memory_parser.add_argument("--stats", action="store_true", help="Show statistics only")
+    memory_parser.add_argument("--patterns", action="store_true", help="Show experience patterns")
+    memory_parser.add_argument("--entries", action="store_true", help="Show recent entries")
+    memory_parser.add_argument("--limit", type=int, default=10, help="Limit entries shown")
 
     parser.add_argument(
         "-c", "--config",
@@ -2164,6 +2179,38 @@ def main():
 
     args = parser.parse_args()
 
+    # Handle install-hook subcommand
+    if getattr(args, "subcmd", None) == "install-hook":
+        from src.git_hooks import install_precommit_hook
+        force = getattr(args, "force", False)
+        success = install_precommit_hook(force=force)
+        return 0 if success else 1
+    
+    # Handle uninstall-hook subcommand
+    if getattr(args, "subcmd", None) == "uninstall-hook":
+        from src.git_hooks import uninstall_precommit_hook
+        success = uninstall_precommit_hook()
+        return 0 if success else 1
+    
+    # Handle review subcommand
+    if getattr(args, "subcmd", None) == "review":
+        from src.git_hooks import run_precommit_review
+        success = run_precommit_review()
+        return 0 if success else 1
+    
+    # Handle memory subcommand
+    if getattr(args, "subcmd", None) == "memory":
+        from src.memory_viz import print_memory
+        print_memory(
+            agent=getattr(args, "agent", None),
+            all_agents=getattr(args, "all", False),
+            stats_only=getattr(args, "stats", False),
+            show_patterns=getattr(args, "patterns", False),
+            show_entries=getattr(args, "entries", False),
+            limit=getattr(args, "limit", 10),
+        )
+        return 0
+    
     # Handle API subcommand
     if getattr(args, "subcmd", None) == "api":
         from src.api_server import create_api_server
@@ -2184,7 +2231,7 @@ def main():
             api_key=api_key,
         )
         
-        print(f"Starting CrackedCode API Server v2.9.2")
+        print(f"Starting CrackedCode API Server v2.9.3")
         print(f"URL: {api.url}")
         print(f"Docs: {api.url}/docs")
         if api.api_key:

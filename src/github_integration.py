@@ -1,4 +1,4 @@
-"""GitHub Integration v2.9.2 - Automated PR review and issue analysis.
+"""GitHub Integration v2.9.3 - Automated PR review and issue analysis.
 
 Features:
   - Review pull requests for security/code quality
@@ -403,7 +403,7 @@ Format as JSON:
         
         lines.extend([
             f"---",
-            f"*Reviewed by CrackedCode v2.9.2*",
+            f"*Reviewed by CrackedCode v2.9.3*",
         ])
         
         return "\n".join(lines)

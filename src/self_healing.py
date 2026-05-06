@@ -1,4 +1,4 @@
-"""Self-Healing Agent v2.9.2 - Auto-detect errors and fix them.
+"""Self-Healing Agent v2.9.3 - Auto-detect errors and fix them.
 
 Monitors log files for exceptions, traces them to source code,
 generates patches, and verifies fixes with tests.

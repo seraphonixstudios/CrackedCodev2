@@ -4,10 +4,10 @@
 
 CrackedCode is a 100% local AI coding assistant featuring autonomous application production (OpenClaw-style), multi-agent orchestration, voice I/O, screen capture/vision analysis, web browser automation, security auditing, persistent long-term memory, MCP integration, A2A protocol support, and a sci-fi neural interface.
 
-**Current Version:** 2.9.2
+**Current Version:** 2.9.3
 **Branch:** main
 **License:** MIT
-**Tests:** 95/95 passing
+**Tests:** 97/97 passing
 
 ## Architecture
 
@@ -375,6 +375,20 @@ Key settings in config.json:
 - **Engine integration**: CODE/SECURITY/REVIEW/DEBUG intents auto-load agent context
 - **Collaboration integration**: Debates store outcomes as agent memories
 - **API**: `GET /agent-memory/agents`, `POST /agent-memory/{agent}/remember`, `POST /agent-memory/{agent}/recall`, `GET /agent-memory/{agent}/summarize`
+
+### Git Pre-commit Hook (src/git_hooks.py)
+- **Auto-install**: `python src/main.py install-hook`
+- **Auto-review**: Runs code review bot on every commit
+- **Block policy**: Blocks commits with critical issues
+- **Manual run**: `python src/main.py review`
+- **API**: `POST /hooks/install`, `POST /hooks/uninstall`, `GET /hooks/status`
+
+### Memory Visualization (src/memory_viz.py)
+- **CLI commands**: `python src/main.py memory --agent security`, `python src/main.py memory --all`
+- **ASCII charts**: Bar charts, boxes, color-coded output
+- **Patterns view**: Shows learned experience patterns
+- **Stats dashboard**: System-wide memory statistics
+- **API**: `GET /agent-memory/viz/{agent}`
 
 ## Known Issues
 
