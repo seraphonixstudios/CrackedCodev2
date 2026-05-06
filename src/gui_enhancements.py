@@ -450,42 +450,51 @@ class EnhancedStatusBar(QStatusBar):
     def _init_ui(self):
         from src.gui import ATLAN_GREEN, ATLAN_DARK
         
-        # Left: Status message
-        self.status_label = QLabel("READY", self)
-        self.status_label.setFont(QFont("Consolas", 10, QFont.Weight.Bold))
-        self.addWidget(self.status_label)
+        # Create a container widget with layout since QStatusBar doesn't support addStretch()
+        container = QWidget(self)
+        layout = QHBoxLayout(container)
+        layout.setContentsMargins(4, 0, 4, 0)
+        layout.setSpacing(8)
         
-        self.addStretch()
+        # Left: Status message
+        self.status_label = QLabel("READY")
+        self.status_label.setFont(QFont("Consolas", 10, QFont.Weight.Bold))
+        layout.addWidget(self.status_label)
+        
+        layout.addStretch()
         
         # Center: Info panels
-        self.model_label = QLabel("Model: —", self)
+        self.model_label = QLabel("Model: —")
         self.model_label.setFont(QFont("Consolas", 9))
-        self.addWidget(self.model_label)
+        layout.addWidget(self.model_label)
         
-        self.mode_label = QLabel("Mode: PLAN+BUILD", self)
+        self.mode_label = QLabel("Mode: PLAN+BUILD")
         self.mode_label.setFont(QFont("Consolas", 9))
-        self.addWidget(self.mode_label)
+        layout.addWidget(self.mode_label)
         
-        self.files_label = QLabel("Files: 0", self)
+        self.files_label = QLabel("Files: 0")
         self.files_label.setFont(QFont("Consolas", 9))
-        self.addWidget(self.files_label)
+        layout.addWidget(self.files_label)
         
-        self.voice_label = QLabel("🎤", self)
+        self.voice_label = QLabel("🎤")
         self.voice_label.setFont(QFont("Consolas", 9))
         self.voice_label.setToolTip("Voice status")
-        self.addWidget(self.voice_label)
+        layout.addWidget(self.voice_label)
         
-        self.addStretch()
+        layout.addStretch()
         
         # Right: Activity indicator
-        self.activity_label = QLabel("●", self)
+        self.activity_label = QLabel("●")
         self.activity_label.setFont(QFont("Consolas", 10))
         self.activity_label.setStyleSheet(f"color: {ATLAN_GREEN};")
-        self.addWidget(self.activity_label)
+        layout.addWidget(self.activity_label)
         
-        self.cursor_label = QLabel("Ln 1, Col 1", self)
+        self.cursor_label = QLabel("Ln 1, Col 1")
         self.cursor_label.setFont(QFont("Consolas", 9))
-        self.addWidget(self.cursor_label)
+        layout.addWidget(self.cursor_label)
+        
+        # Add the container widget to the status bar
+        self.addWidget(container, 1)
     
     def set_status(self, text: str, color: str = None):
         self.status_label.setText(text.upper())
