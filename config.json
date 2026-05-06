@@ -182,5 +182,11 @@
     "enabled": false,
     "host": "0.0.0.0",
     "port": 3000
+  },
+  "custom_tools": {
+    "enabled": true,
+    "tools_dir": "tools",
+    "auto_reload": true,
+    "max_tools": 50
   }
 }

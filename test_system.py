@@ -1766,6 +1766,7 @@ def main() -> int:
         ("Rate Limiting", test_rate_limiting),
         ("Multi File Gen", test_multi_file_generation),
         ("Web Dashboard", test_web_dashboard),
+        ("Custom Tool Builder", test_custom_tool_builder),
     ]
     
     results: list[tuple[str, bool]] = []
@@ -4515,6 +4516,95 @@ def test_web_dashboard() -> bool:
         import traceback
         traceback.print_exc()
         return FAIL("Web dashboard", str(e)[:50])
+
+
+def test_custom_tool_builder() -> bool:
+    print_header("CUSTOM TOOL BUILDER")
+    try:
+        from src.custom_tools import (
+            CustomToolRegistry, CustomToolDef, ToolParameter, ToolAction,
+            get_custom_tool_registry, HTTPExecutor, ShellExecutor,
+            FileExecutor, PythonExecutor,
+        )
+        import tempfile
+        import os
+        
+        # Test registry creation
+        with tempfile.TemporaryDirectory() as tmpdir:
+            registry = CustomToolRegistry(tools_dir=tmpdir)
+            PASS("CustomToolRegistry created")
+            
+            # Test save example
+            example_path = registry.save_example("test_tool")
+            if example_path.exists():
+                PASS("Example tool saved")
+            else:
+                return FAIL("Example save failed")
+            
+            # Test reload
+            registry.reload()
+            if len(registry.list_tools()) == 1:
+                PASS("Tool loaded from file")
+            else:
+                return FAIL("Tool not loaded")
+            
+            # Test get
+            tool = registry.get("test_tool")
+            if tool and tool.name == "test_tool":
+                PASS("Get tool by name works")
+            else:
+                return FAIL("Get tool failed")
+            
+            # Test tool definition
+            if tool.description and len(tool.parameters) > 0:
+                PASS("Tool has parameters")
+            else:
+                return FAIL("Tool missing parameters")
+            
+            # Test executors exist
+            if isinstance(CustomToolRegistry.EXECUTORS.get("http"), HTTPExecutor):
+                PASS("HTTP executor available")
+            else:
+                return FAIL("HTTP executor missing")
+            
+            if isinstance(CustomToolRegistry.EXECUTORS.get("shell"), ShellExecutor):
+                PASS("Shell executor available")
+            else:
+                return FAIL("Shell executor missing")
+            
+            if isinstance(CustomToolRegistry.EXECUTORS.get("file"), FileExecutor):
+                PASS("File executor available")
+            else:
+                return FAIL("File executor missing")
+            
+            if isinstance(CustomToolRegistry.EXECUTORS.get("python"), PythonExecutor):
+                PASS("Python executor available")
+            else:
+                return FAIL("Python executor missing")
+        
+        # Test config has custom_tools section
+        import json
+        with open("config.json", "r") as f:
+            cfg = json.load(f)
+        if "custom_tools" in cfg:
+            PASS("Config has custom_tools section")
+        else:
+            return FAIL("Config missing custom_tools")
+        
+        # Test API routes
+        from src.api_server import create_api_server
+        api = create_api_server()
+        routes = [route.path for route in api._app.routes]
+        if "/custom-tools" in routes and "/custom-tools/execute" in routes:
+            PASS("Custom tool API routes registered")
+        else:
+            return FAIL("Missing custom tool routes")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Custom tool builder", str(e)[:50])
 
 
 if __name__ == "__main__":

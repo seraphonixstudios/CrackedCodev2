@@ -149,6 +149,31 @@ class GitHubIssueResponse(BaseModel):
     confidence: float
 
 
+class CustomToolInfo(BaseModel):
+    name: str
+    description: str = ""
+    version: str = "1.0"
+    permission: str = "read"
+    category: str = "custom"
+    parameters: List[Dict[str, Any]] = []
+    examples: List[str] = []
+    enabled: bool = True
+    author: str = ""
+    tags: List[str] = []
+
+
+class CustomToolExecuteRequest(BaseModel):
+    name: str
+    parameters: Dict[str, Any] = {}
+
+
+class CustomToolExecuteResponse(BaseModel):
+    success: bool
+    tool: str
+    results: List[Dict[str, Any]] = []
+    error: str = ""
+
+
 # ── Rate Limiting ──────────────────────────────────────────────────────────
 
 class RateLimiter:
@@ -322,6 +347,8 @@ class CrackedCodeAPI:
                     "/github/review-pr",
                     "/github/analyze-issue",
                     "/github/repos",
+                    "/custom-tools",
+                    "/custom-tools/execute",
                     "/export",
                     "/import",
                     "/export/items",
@@ -710,6 +737,51 @@ class CrackedCodeAPI:
                 raise HTTPException(status_code=400, detail=str(e))
             except Exception as e:
                 logger.error(f"GitHub repos error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.get("/custom-tools", dependencies=[Depends(self._verify_api_key)])
+        async def list_custom_tools():
+            """List all custom tools."""
+            try:
+                from src.custom_tools import get_custom_tool_registry
+                registry = get_custom_tool_registry()
+                tools = registry.list_tools()
+                
+                return [
+                    {
+                        "name": t.name,
+                        "description": t.description,
+                        "version": t.version,
+                        "permission": t.permission,
+                        "category": t.category,
+                        "parameters": [{"name": p.name, "type": p.type, "required": p.required, "description": p.description} for p in t.parameters],
+                        "examples": t.examples,
+                        "enabled": t.enabled,
+                        "author": t.author,
+                        "tags": t.tags,
+                    }
+                    for t in tools
+                ]
+            except Exception as e:
+                logger.error(f"Custom tools list error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.post("/custom-tools/execute", response_model=CustomToolExecuteResponse, dependencies=[Depends(self._verify_api_key)])
+        async def execute_custom_tool(request: CustomToolExecuteRequest):
+            """Execute a custom tool."""
+            try:
+                from src.custom_tools import get_custom_tool_registry
+                registry = get_custom_tool_registry()
+                result = registry.execute(request.name, request.parameters)
+                
+                return CustomToolExecuteResponse(
+                    success=result.get("success", False),
+                    tool=result.get("tool", request.name),
+                    results=result.get("results", []),
+                    error=result.get("error", ""),
+                )
+            except Exception as e:
+                logger.error(f"Custom tool execution error: {e}")
                 raise HTTPException(status_code=500, detail=str(e))
         
         @self._app.get("/export", dependencies=[Depends(self._verify_api_key)])

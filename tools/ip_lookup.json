@@ -1,0 +1,37 @@
+{
+  "name": "ip_lookup",
+  "description": "Look up IP address information using ipapi.co",
+  "version": "1.0",
+  "permission": "read",
+  "category": "custom",
+  "parameters": [
+    {
+      "name": "ip",
+      "type": "string",
+      "required": false,
+      "default": "",
+      "description": "IP address to look up (empty for current)"
+    }
+  ],
+  "actions": [
+    {
+      "type": "http",
+      "config": {
+        "method": "GET",
+        "url": "https://ipapi.co/{ip}/json/",
+        "headers": {
+          "Accept": "application/json"
+        },
+        "timeout": 10
+      },
+      "output_var": "ip_info"
+    }
+  ],
+  "examples": [
+    "Look up IP 8.8.8.8",
+    "Get my current IP information"
+  ],
+  "enabled": true,
+  "author": "CrackedCode",
+  "tags": ["network", "ip", "geolocation"]
+}
