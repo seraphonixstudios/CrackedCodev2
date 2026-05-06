@@ -46,3 +46,7 @@ Thumbs.db
 ~/.cache/whisper/
 ~/.ollama/
 ~/.local/share/piper-voices/
+
+# GitHub Actions (requires PAT with 'workflow' scope to push)
+# To enable: git add -f .github/workflows/ && git commit
+.github/workflows/
