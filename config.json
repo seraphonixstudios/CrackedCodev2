@@ -238,5 +238,14 @@
     "watch_interval": 5,
     "max_fixes_per_session": 10,
     "require_tests_pass": true
+  },
+  "agent_memory": {
+    "enabled": true,
+    "storage_dir": ".crackedcode/agent_memory",
+    "max_entries_per_agent": 1000,
+    "auto_summarize_threshold": 50,
+    "categories": ["fact", "preference", "decision", "error", "fix", "interaction"],
+    "inject_into_prompts": true,
+    "max_context_entries": 3
   }
 }

@@ -4,10 +4,10 @@
 
 CrackedCode is a 100% local AI coding assistant featuring autonomous application production (OpenClaw-style), multi-agent orchestration, voice I/O, screen capture/vision analysis, web browser automation, security auditing, persistent long-term memory, MCP integration, A2A protocol support, and a sci-fi neural interface.
 
-**Current Version:** 2.9.1
+**Current Version:** 2.9.2
 **Branch:** main
 **License:** MIT
-**Tests:** 94/94 passing
+**Tests:** 95/95 passing
 
 ## Architecture
 
@@ -365,6 +365,16 @@ Key settings in config.json:
 - **Modelfile generation**: Automatic Ollama Modelfile creation
 - **Quality filtering**: Min quality score threshold
 - **API**: `POST /finetune`, `GET /finetune/jobs`
+
+### Advanced Agent Memory (src/agent_memory.py)
+- **Per-agent namespaces**: Each agent role has isolated persistent memory
+- **6 memory categories**: fact, preference, decision, error, fix, interaction
+- **Automatic summarization**: Condenses experience into actionable profiles
+- **Experience patterns**: Learns recurring patterns from agent history
+- **Context injection**: Automatically injects relevant memories into prompts
+- **Engine integration**: CODE/SECURITY/REVIEW/DEBUG intents auto-load agent context
+- **Collaboration integration**: Debates store outcomes as agent memories
+- **API**: `GET /agent-memory/agents`, `POST /agent-memory/{agent}/remember`, `POST /agent-memory/{agent}/recall`, `GET /agent-memory/{agent}/summarize`
 
 ## Known Issues
 

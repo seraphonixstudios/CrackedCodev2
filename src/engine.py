@@ -727,7 +727,7 @@ Question: {prompt}
                 pass
         
         return {
-            "version": "2.9.1",
+            "version": "2.9.2",
             "model": self.model,
             "vision_model": self.vision_model,
             "secondary_model": self.secondary_model,
@@ -1085,7 +1085,19 @@ Requirements:
             "files": files,
             "file_count": len(files),
         }
-    
+
+    def _intent_to_agent_role(self, intent) -> Optional[str]:
+        """Map intent to agent role for memory injection."""
+        intent_role_map = {
+            "code": "coder",
+            "chat": "coder",
+            "security": "security",
+            "review": "reviewer",
+            "debug": "debugger",
+        }
+        intent_value = intent.value if hasattr(intent, "value") else str(intent).lower()
+        return intent_role_map.get(intent_value)
+
     async def process(self, prompt: str, streaming: bool = False, callback: Callable = None) -> AgentResponse:
         """Process a user prompt with full intent detection and execution.
         
@@ -1131,7 +1143,21 @@ Requirements:
             request.intent = Intent.CODE
         
         logger.info(f"Processing: {request.intent.value} (confidence: {request.context.get('confidence', 0):.2f})")
-        
+
+        # Inject agent memory for relevant intents
+        if request.intent in (Intent.CODE, Intent.CHAT, Intent.SECURITY, Intent.REVIEW, Intent.DEBUG):
+            try:
+                from src.agent_memory import get_agent_memory_system
+                memory = get_agent_memory_system()
+                agent_role = self._intent_to_agent_role(request.intent)
+                if agent_role:
+                    memory_context = memory.get_context(agent_role, request.text, max_entries=3)
+                    if memory_context:
+                        request.text = f"{memory_context}\n\n---\n\n{request.text}"
+                        execution_reasoning.append({"type": "observation", "content": f"Injected agent memory for {agent_role}", "confidence": 0.8})
+            except Exception as e:
+                logger.debug(f"Agent memory injection failed: {e}")
+
         # Route to execution handler with reasoning
         if request.intent == Intent.EXECUTE:
             execution_reasoning.append({"type": "decision", "content": "Routing to CodeExecutor (shell command execution)", "confidence": 0.9})

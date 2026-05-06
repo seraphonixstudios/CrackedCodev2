@@ -1,4 +1,4 @@
-"""CrackedCode Python SDK v2.9.1 - Official client for the CrackedCode API.
+"""CrackedCode Python SDK v2.9.2 - Official client for the CrackedCode API.
 
 Provides a clean, typed interface to all API endpoints with automatic
 retries, error handling, and both sync/async support.

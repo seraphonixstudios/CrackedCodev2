@@ -1,4 +1,4 @@
-"""Knowledge Base / RAG Upload v2.9.1 - Upload documents to augment RAG.
+"""Knowledge Base / RAG Upload v2.9.2 - Upload documents to augment RAG.
 
 Upload PDFs, markdown files, text files, and code documentation to extend
 the semantic search capabilities beyond just the codebase.

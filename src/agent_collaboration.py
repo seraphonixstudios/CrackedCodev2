@@ -1,4 +1,4 @@
-"""Agent Collaboration / Multi-Agent Chat v2.9.1 - Multi-agent debate and consensus.
+"""Agent Collaboration / Multi-Agent Chat v2.9.2 - Multi-agent debate and consensus.
 
 Multiple specialized agents (ARCHITECT, SECURITY, CODER) collaborate on a task
 through structured debate. The SUPERVISOR coordinates and synthesizes consensus.
@@ -132,8 +132,9 @@ class AgentParliament:
         ),
     }
     
-    def __init__(self, engine=None):
+    def __init__(self, engine=None, memory=None):
         self.engine = engine
+        self.memory = memory
     
     def debate(self, topic: str, agents: List[str], rounds: int = 3,
                context: Optional[Dict[str, Any]] = None) -> DebateResult:
@@ -180,10 +181,45 @@ class AgentParliament:
         final_consensus, dissents, action_items = self._synthesize_consensus(
             topic, debate_rounds, agents,
         )
-        
+
         # Calculate overall consensus score
         consensus_score = sum(r.consensus_score for r in debate_rounds) / len(debate_rounds) if debate_rounds else 0.0
-        
+
+        # Store debate memories for each agent
+        if self.memory:
+            for agent_name in agents:
+                # Store the topic and consensus as a memory
+                self.memory.remember(
+                    agent=agent_name,
+                    category="interaction",
+                    content={
+                        "topic": topic,
+                        "consensus_score": round(consensus_score, 2),
+                        "action_items": action_items[:3],
+                        "role": "debate_participant",
+                    },
+                    importance=0.7,
+                    tags=["debate", "collaboration"],
+                )
+                # Store expertise learned
+                agent_messages = []
+                for r in debate_rounds:
+                    for msg in r.messages:
+                        if msg.agent.lower() == agent_name.lower() or msg.agent.lower() == self.PERSONAS.get(agent_name, AgentPersona(name=agent_name)).name.lower():
+                            agent_messages.append(msg.content[:200])
+                if agent_messages:
+                    self.memory.remember(
+                        agent=agent_name,
+                        category="fact",
+                        content={
+                            "topic": topic,
+                            "expertise": f"Participated in debate about {topic}",
+                            "key_points": agent_messages[:2],
+                        },
+                        importance=0.6,
+                        tags=["debate", "expertise"],
+                    )
+
         return DebateResult(
             topic=topic,
             rounds=debate_rounds,
@@ -232,6 +268,14 @@ class AgentParliament:
                              round_num: int, context: str,
                              previous_rounds: List[DebateRound]) -> str:
         """Build the debate prompt for an agent."""
+        # Inject memory context if available
+        memory_context = ""
+        if self.memory:
+            try:
+                memory_context = self.memory.get_context(persona.role, topic, max_entries=3)
+            except Exception:
+                pass
+
         prompt = f"""You are participating in a technical debate on the following topic:
 
 TOPIC: {topic}
@@ -240,7 +284,11 @@ YOUR ROLE: {persona.name}
 YOUR EXPERTISE: {', '.join(persona.expertise)}
 YOUR PRIORITIES: {', '.join(persona.priorities)}
 COMMUNICATION STYLE: {persona.communication_style}
+"""
+        if memory_context:
+            prompt += f"\nYOUR PAST EXPERIENCE:\n{memory_context}\n"
 
+        prompt += f"""
 CURRENT CONTEXT:
 {context}
 
@@ -377,6 +425,6 @@ ANALYSIS: Your detailed reasoning
         return consensus, dissents, action_items
 
 
-def get_agent_parliament(engine=None) -> AgentParliament:
+def get_agent_parliament(engine=None, memory=None) -> AgentParliament:
     """Get the global agent parliament."""
-    return AgentParliament(engine=engine)
+    return AgentParliament(engine=engine, memory=memory)

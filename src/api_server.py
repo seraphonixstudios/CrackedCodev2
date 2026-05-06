@@ -266,6 +266,29 @@ class HealingFixResponse(BaseModel):
     tests_passed: bool = False
 
 
+class AgentMemoryStoreRequest(BaseModel):
+    agent: str
+    category: str = "fact"
+    content: Dict[str, Any]
+    importance: float = 1.0
+    confidence: float = 1.0
+    tags: List[str] = []
+
+
+class AgentMemoryQueryRequest(BaseModel):
+    agent: str
+    query: str = ""
+    category: Optional[str] = None
+    limit: int = 10
+
+
+class AgentMemoryResponse(BaseModel):
+    success: bool
+    entries: List[Dict[str, Any]] = []
+    count: int = 0
+    error: str = ""
+
+
 # ── Rate Limiting ──────────────────────────────────────────────────────────
 
 class RateLimiter:
@@ -347,7 +370,7 @@ class CrackedCodeAPI:
         self._app = FastAPI(
             title="CrackedCode API",
             description="REST API for the CrackedCode local AI coding assistant",
-            version="2.9.1",
+            version="2.9.2",
         )
         
         # CORS
@@ -423,7 +446,7 @@ class CrackedCodeAPI:
         async def root():
             return {
                 "name": "CrackedCode API",
-                "version": "2.9.1",
+                "version": "2.9.2",
                 "docs": "/docs",
                 "auth_required": bool(self.api_key),
                 "endpoints": [
@@ -457,6 +480,12 @@ class CrackedCodeAPI:
                     "/healing/status",
                     "/healing/fix",
                     "/healing/fixes",
+                    "/agent-memory/agents",
+                    "/agent-memory/{agent}/profile",
+                    "/agent-memory/{agent}/remember",
+                    "/agent-memory/{agent}/recall",
+                    "/agent-memory/{agent}/summarize",
+                    "/agent-memory/stats",
                     "/export",
                     "/import",
                     "/export/items",
@@ -585,7 +614,7 @@ class CrackedCodeAPI:
         async def status():
             """Get system status."""
             if not self.engine:
-                return StatusResponse(version="2.9.1")
+                return StatusResponse(version="2.9.2")
             
             try:
                 status_data = self.engine.get_status()
@@ -604,7 +633,7 @@ class CrackedCodeAPI:
                     conv_count = self.engine.conversation_manager.get_stats().get('total_conversations', 0)
                 
                 return StatusResponse(
-                    version=status_data.get('version', '2.9.1'),
+                    version=status_data.get('version', '2.9.2'),
                     model=status_data.get('model', ''),
                     vision_model=status_data.get('vision_model', ''),
                     secondary_model=status_data.get('secondary_model', ''),
@@ -1279,6 +1308,151 @@ class CrackedCodeAPI:
                 logger.error(f"Healing fixes list error: {e}")
                 raise HTTPException(status_code=500, detail=str(e))
         
+        @self._app.get("/agent-memory/agents", dependencies=[Depends(self._verify_api_key)])
+        async def list_memory_agents():
+            """List all agents with memories."""
+            try:
+                from src.agent_memory import get_agent_memory_system
+                memory = get_agent_memory_system()
+                return {"agents": memory.list_agents()}
+            except Exception as e:
+                logger.error(f"Agent memory list error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.get("/agent-memory/{agent}/profile", dependencies=[Depends(self._verify_api_key)])
+        async def get_agent_profile(agent: str):
+            """Get an agent's memory profile."""
+            try:
+                from src.agent_memory import get_agent_memory_system
+                memory = get_agent_memory_system()
+                profile = memory.get_profile(agent)
+                
+                if not profile:
+                    raise HTTPException(status_code=404, detail=f"Agent not found: {agent}")
+                
+                return {
+                    "agent": profile.agent,
+                    "total_interactions": profile.total_interactions,
+                    "success_rate": profile.success_rate,
+                    "expertise_areas": profile.expertise_areas,
+                    "preferred_tools": profile.preferred_tools,
+                    "common_mistakes": profile.common_mistakes,
+                    "summary": profile.summary,
+                    "last_summarized": profile.last_summarized,
+                }
+            except HTTPException:
+                raise
+            except Exception as e:
+                logger.error(f"Agent profile error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.post("/agent-memory/{agent}/remember", dependencies=[Depends(self._verify_api_key)])
+        async def store_agent_memory(agent: str, request: AgentMemoryStoreRequest):
+            """Store a memory for an agent."""
+            try:
+                from src.agent_memory import get_agent_memory_system
+                memory = get_agent_memory_system()
+                
+                entry = memory.remember(
+                    agent=agent,
+                    category=request.category,
+                    content=request.content,
+                    importance=request.importance,
+                    confidence=request.confidence,
+                    tags=request.tags,
+                )
+                
+                return {
+                    "success": True,
+                    "entry_id": entry.id,
+                    "agent": entry.agent,
+                    "category": entry.category,
+                    "timestamp": entry.timestamp,
+                }
+            except Exception as e:
+                logger.error(f"Store agent memory error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.post("/agent-memory/{agent}/recall", response_model=AgentMemoryResponse, dependencies=[Depends(self._verify_api_key)])
+        async def recall_agent_memory(agent: str, request: AgentMemoryQueryRequest):
+            """Recall memories for an agent."""
+            try:
+                from src.agent_memory import get_agent_memory_system
+                memory = get_agent_memory_system()
+                
+                entries = memory.recall(
+                    agent=agent,
+                    query=request.query,
+                    category=request.category,
+                    limit=request.limit,
+                )
+                
+                return AgentMemoryResponse(
+                    success=True,
+                    entries=[
+                        {
+                            "id": e.id,
+                            "category": e.category,
+                            "content": e.content,
+                            "importance": e.importance,
+                            "confidence": e.confidence,
+                            "timestamp": e.timestamp,
+                            "tags": e.tags,
+                        }
+                        for e in entries
+                    ],
+                    count=len(entries),
+                )
+            except Exception as e:
+                logger.error(f"Recall agent memory error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.get("/agent-memory/{agent}/summarize", dependencies=[Depends(self._verify_api_key)])
+        async def summarize_agent_memory(agent: str):
+            """Generate a summary of an agent's experience."""
+            try:
+                from src.agent_memory import get_agent_memory_system
+                memory = get_agent_memory_system()
+                
+                summary = memory.summarize(agent, engine=self.engine)
+                
+                return {
+                    "agent": agent,
+                    "summary": summary,
+                }
+            except Exception as e:
+                logger.error(f"Summarize agent memory error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.get("/agent-memory/stats", dependencies=[Depends(self._verify_api_key)])
+        async def get_agent_memory_stats():
+            """Get agent memory system statistics."""
+            try:
+                from src.agent_memory import get_agent_memory_system
+                memory = get_agent_memory_system()
+                return memory.get_stats()
+            except Exception as e:
+                logger.error(f"Agent memory stats error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self._app.delete("/agent-memory/{agent}/entries/{entry_id}", dependencies=[Depends(self._verify_api_key)])
+        async def forget_agent_memory(agent: str, entry_id: str):
+            """Remove a specific memory entry."""
+            try:
+                from src.agent_memory import get_agent_memory_system
+                memory = get_agent_memory_system()
+                
+                success = memory.forget(agent, entry_id)
+                if not success:
+                    raise HTTPException(status_code=404, detail="Entry not found")
+                
+                return {"success": True, "deleted": entry_id}
+            except HTTPException:
+                raise
+            except Exception as e:
+                logger.error(f"Forget agent memory error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
         @self._app.get("/export", dependencies=[Depends(self._verify_api_key)])
         async def export_data(items: Optional[str] = None):
             """Export all CrackedCode data to a ZIP archive."""
@@ -1474,7 +1648,7 @@ if __name__ == "__main__":
     api_key = engine.config.get("api_key") if hasattr(engine, 'config') else None
     api = create_api_server(engine=engine, api_key=api_key)
     
-    print(f"Starting CrackedCode API Server v2.9.1")
+    print(f"Starting CrackedCode API Server v2.9.2")
     print(f"URL: {api.url}")
     print(f"Docs: {api.url}/docs")
     if api.api_key:

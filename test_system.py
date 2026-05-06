@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CRACKEDCODE v2.9.1 - Comprehensive End-to-End Test Suite
+CRACKEDCODE v2.9.2 - Comprehensive End-to-End Test Suite
 Full coverage with real operations, no placeholders
 """
 
@@ -595,11 +595,11 @@ def test_version_info() -> bool:
         PASS(f"Engine version: {status.get('version', 'unknown')}")
         
         version_checks = 0
-        if CrackedCode.VERSION == "2.9.1":
+        if CrackedCode.VERSION == "2.9.2":
             version_checks += 1
-        if MatrixUI.VERSION == "2.9.1":
+        if MatrixUI.VERSION == "2.9.2":
             version_checks += 1
-        if status.get("version") == "2.9.1":
+        if status.get("version") == "2.9.2":
             version_checks += 1
         
         PASS(f"Version consistency: {version_checks}/3")
@@ -709,10 +709,10 @@ def test_cli_integration_e2e() -> bool:
             version = result.stdout.strip()
             PASS(f"CLI import: version {version}")
             
-            if version == "2.9.1":
+            if version == "2.9.2":
                 PASS("CLI version correct")
             else:
-                FAIL("CLI version", f"Expected 2.9.1, got {version}")
+                FAIL("CLI version", f"Expected 2.9.2, got {version}")
                 return False
         else:
             FAIL("CLI import", result.stderr[:50])
@@ -1663,7 +1663,7 @@ def test_voice_hotword_detection() -> bool:
 
 
 def main() -> int:
-    print(f"\n{'='*60}\n  CRACKEDCODE v2.9.1 - E2E TEST SUITE\n{'='*60}\n")
+    print(f"\n{'='*60}\n  CRACKEDCODE v2.9.2 - E2E TEST SUITE\n{'='*60}\n")
     
     tests = [
         ("Modules", test_modules),
@@ -1775,6 +1775,7 @@ def main() -> int:
         ("SDK", test_sdk),
         ("Benchmarks", test_benchmarks),
         ("Self-Healing", test_self_healing),
+        ("Agent Memory", test_agent_memory),
     ]
     
     results: list[tuple[str, bool]] = []
@@ -4356,8 +4357,8 @@ def test_import_export() -> bool:
             PASS("ImportExportManager created")
             
             # Test export manifest
-            manifest = ExportManifest(version="2.9.1", items=["config"])
-            if manifest.version == "2.9.1":
+            manifest = ExportManifest(version="2.9.2", items=["config"])
+            if manifest.version == "2.9.2":
                 PASS("ExportManifest dataclass")
             else:
                 return FAIL("ExportManifest wrong")
@@ -5233,6 +5234,136 @@ ZeroDivisionError: division by zero
         return FAIL("Self-healing", str(e)[:50])
 
 
+def test_agent_memory() -> bool:
+    print_header("AGENT MEMORY")
+    try:
+        from src.agent_memory import (
+            AgentMemorySystem, MemoryEntry, AgentProfile, ExperiencePattern,
+            get_agent_memory_system, inject_agent_memory,
+        )
+        import tempfile
+        
+        # Test system creation
+        with tempfile.TemporaryDirectory() as tmpdir:
+            memory = AgentMemorySystem(storage_dir=tmpdir)
+            PASS("AgentMemorySystem created")
+            
+            # Test remember
+            entry = memory.remember(
+                agent="security",
+                category="fact",
+                content={"type": "SQL injection", "file": "auth.py", "fix": "Use parameterized queries"},
+                importance=0.9,
+                tags=["security", "vulnerability"],
+            )
+            if entry and entry.id:
+                PASS("Memory stored")
+            else:
+                return FAIL("Memory storage failed")
+            
+            # Test recall
+            entries = memory.recall("security", query="SQL")
+            if len(entries) > 0:
+                PASS("Memory recalled")
+            else:
+                return FAIL("Memory recall failed")
+            
+            # Test recall with category filter
+            entries = memory.recall("security", category="fact")
+            if len(entries) > 0:
+                PASS("Category filter works")
+            else:
+                return FAIL("Category filter failed")
+            
+            # Test get_context
+            context = memory.get_context("security", "SQL injection")
+            if context and "security" in context.lower():
+                PASS("Context generated")
+            else:
+                return FAIL("Context generation failed")
+            
+            # Test profile
+            profile = memory.get_profile("security")
+            if profile and profile.total_interactions > 0:
+                PASS("Profile updated")
+            else:
+                return FAIL("Profile not updated")
+            
+            # Test patterns
+            patterns = memory.get_patterns("security")
+            if len(patterns) > 0:
+                PASS("Patterns learned")
+            else:
+                return FAIL("Pattern learning failed")
+            
+            # Test summarize
+            summary = memory.summarize("security")
+            if summary and "security" in summary.lower():
+                PASS("Summary generated")
+            else:
+                return FAIL("Summary failed")
+            
+            # Test list agents
+            agents = memory.list_agents()
+            if "security" in agents:
+                PASS("Agents listed")
+            else:
+                return FAIL("Agent list failed")
+            
+            # Test stats
+            stats = memory.get_stats()
+            if "total_agents" in stats and stats["total_agents"] > 0:
+                PASS("Stats available")
+            else:
+                return FAIL("Stats missing")
+            
+            # Test forget
+            forgot = memory.forget("security", entry.id)
+            if forgot:
+                PASS("Memory forgotten")
+            else:
+                return FAIL("Forget failed")
+            
+            # Test inject_agent_memory helper
+            injected = inject_agent_memory("security", "Review auth module")
+            if isinstance(injected, str):
+                PASS("Inject helper works")
+            else:
+                return FAIL("Inject helper failed")
+        
+        # Test config section
+        import json
+        with open("config.json", "r") as f:
+            cfg = json.load(f)
+        if "agent_memory" in cfg:
+            PASS("Config has agent_memory section")
+        else:
+            return FAIL("Config missing agent_memory")
+        
+        # Test API routes
+        from src.api_server import create_api_server
+        api = create_api_server()
+        routes = [route.path for route in api._app.routes]
+        memory_routes = [
+            "/agent-memory/agents",
+            "/agent-memory/{agent}/profile",
+            "/agent-memory/{agent}/remember",
+            "/agent-memory/{agent}/recall",
+            "/agent-memory/{agent}/summarize",
+            "/agent-memory/stats",
+        ]
+        if all(r in routes for r in memory_routes):
+            PASS("Agent memory API routes registered")
+        else:
+            return FAIL("Missing agent memory routes")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Agent memory", str(e)[:50])
+
+
 if __name__ == "__main__":
     success = main()
-    sys.exit(0 if success >= 23 else 1)
+    sys.exit(0 if success >= 24 else 1)
