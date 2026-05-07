@@ -181,6 +181,9 @@ class STTEngine:
             logger.info(f"STT unavailable: whisper={WHISPER_AVAILABLE}, audio={AUDIO_AVAILABLE}, devices={check_audio_devices()}")
 
     def _detect_device(self) -> str:
+        force_cpu = os.environ.get("WHISPER_FORCE_CPU", "0") == "1"
+        if force_cpu:
+            return "cpu"
         if platform.system() == "Windows":
             try:
                 result = subprocess.run(
@@ -212,17 +215,36 @@ class STTEngine:
                 return True
             try:
                 compute = "float16" if self._device == "cuda" else "int8"
+                logger.info(f"Loading Whisper model: {self.config.stt_model_size} (device={self._device}, compute={compute})")
                 self.model = WhisperModel(
                     self.config.stt_model_size,
                     device=self._device,
                     compute_type=compute,
                     download_root=str(Path.home() / ".cache" / "whisper"),
+                    local_files_only=False,
                 )
                 self._loaded = True
                 logger.info(f"Whisper loaded: {self.config.stt_model_size} ({self._device}, {compute})")
                 return True
             except Exception as e:
-                logger.error(f"Failed to load Whisper model: {e}")
+                error_msg = str(e)
+                logger.error(f"Failed to load Whisper model: {error_msg}")
+                if "cuda" in error_msg.lower() and self._device == "cuda":
+                    logger.warning("CUDA failed, retrying on CPU...")
+                    self._device = "cpu"
+                    try:
+                        self.model = WhisperModel(
+                            self.config.stt_model_size,
+                            device="cpu",
+                            compute_type="int8",
+                            download_root=str(Path.home() / ".cache" / "whisper"),
+                            local_files_only=False,
+                        )
+                        self._loaded = True
+                        logger.info(f"Whisper loaded on CPU fallback: {self.config.stt_model_size}")
+                        return True
+                    except Exception as e2:
+                        logger.error(f"CPU fallback also failed: {e2}")
                 self._available = False
                 return False
 

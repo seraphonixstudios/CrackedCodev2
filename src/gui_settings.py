@@ -6,6 +6,7 @@ CrackedCode Settings Dialog - GUI preferences editor
 from __future__ import annotations
 
 import json
+import threading
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 
@@ -438,6 +439,22 @@ class SettingsDialog(QDialog):
         hist_layout.addRow("Max History:", self.max_history_spin)
 
         layout.addWidget(hist_group)
+
+        # Test voice group
+        test_group = QGroupBox("TEST VOICE", content)
+        test_layout = QVBoxLayout(test_group)
+        test_layout.setContentsMargins(8, 16, 8, 8)
+
+        self.test_voice_btn = QPushButton("LOAD & TEST SPEECH RECOGNITION", test_group)
+        self.test_voice_btn.setToolTip("Load Whisper model and test STT (may take time)")
+        self.test_voice_btn.clicked.connect(self._test_voice_load)
+        test_layout.addWidget(self.test_voice_btn)
+
+        self.test_status = QLabel("Not tested yet", test_group)
+        self.test_status.setStyleSheet(f"color: #888; padding: 4px;")
+        test_layout.addWidget(self.test_status)
+
+        layout.addWidget(test_group)
         layout.addStretch()
 
         scroll.setWidget(content)
@@ -780,6 +797,50 @@ NAVIGATION
             self.accept()
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Could not save: {e}")
+
+    def _test_voice_load(self):
+        """Load Whisper model and test speech recognition in background."""
+        self.test_voice_btn.setEnabled(False)
+        self.test_voice_btn.setText("LOADING...")
+        self.test_status.setStyleSheet(f"color: {ATLAN_GOLD};")
+        self.test_status.setText("Loading Whisper model... (this may take a moment)")
+
+        def _load_and_test():
+            try:
+                from src.voice_engine import UnifiedVoiceEngine, VoiceConfig, check_audio_devices
+
+                voice_cfg = VoiceConfig(
+                    stt_model_size=self.config.get("whisper_size", "base"),
+                    tts_backend=self.config.get("tts_backend", "pyttsx3"),
+                    tts_voice=self.config.get("tts_voice", "default"),
+                    tts_gender=self.config.get("tts_gender", "female"),
+                    tts_rate=self.config.get("tts_rate", 175),
+                )
+
+                voice = UnifiedVoiceEngine(voice_cfg)
+                voice.initialize(load_stt=True, load_tts=True)
+
+                if voice.stt.is_loaded:
+                    QTimer.singleShot(0, lambda: self._on_voice_test_success(voice))
+                else:
+                    QTimer.singleShot(0, lambda: self._on_voice_test_fail("Model failed to load"))
+            except Exception as e:
+                QTimer.singleShot(0, lambda e=e: self._on_voice_test_fail(str(e)))
+
+        threading.Thread(target=_load_and_test, daemon=True).start()
+
+    def _on_voice_test_success(self, voice):
+        self.test_voice_btn.setEnabled(True)
+        self.test_voice_btn.setText("LOAD & TEST SPEECH RECOGNITION")
+        self.test_status.setStyleSheet(f"color: {ATLAN_GREEN};")
+        self.test_status.setText(f"Voice OK - STT loaded, TTS={voice.tts.current_backend.value}")
+
+    def _on_voice_test_fail(self, reason):
+        self.test_voice_btn.setEnabled(True)
+        self.test_voice_btn.setText("LOAD & TEST SPEECH RECOGNITION")
+        self.test_status.setStyleSheet("color: #FF4444;")
+        self.test_status.setText(f"Failed: {reason}")
+        QMessageBox.warning(self, "Voice Test Failed", f"Could not load voice:\n{reason}")
 
 
 __all__ = ["SettingsDialog"]

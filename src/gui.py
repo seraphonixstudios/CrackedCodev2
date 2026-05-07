@@ -3938,9 +3938,9 @@ class CrackedCodeGUI(QMainWindow):
             return
 
         if not self.voice.stt.is_loaded:
-            self.term("[VOICE: Loading Whisper model in background...]")
-            self.show_toast("Loading speech recognition...", ToastType.INFO)
-            threading.Thread(target=self._load_whisper_model, daemon=True).start()
+            self.term("[VOICE: Speech recognition not loaded yet]")
+            self.term("[VOICE] Go to Settings > Voice to configure and load the model first")
+            self.show_toast("Voice not configured - check Settings", ToastType.WARNING)
             return
 
         if self.voice_recording:
