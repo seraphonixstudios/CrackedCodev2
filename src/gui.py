@@ -1369,6 +1369,7 @@ class CrackedCodeGUI(QMainWindow):
         self.engine = None
         self.voice: Optional[Any] = None
         self.voice_recording = False
+        self._loading_voice = False
         self.project_path: Optional[Path] = None
         self.status_labels = {}
         self.current_file: Optional[Path] = None
@@ -1503,6 +1504,8 @@ class CrackedCodeGUI(QMainWindow):
                 self.term("[VOICE: not available - install dependencies]")
             if hasattr(self, 'voice_btn'):
                 self.voice_btn.setEnabled(False)
+            if hasattr(self, 'load_voice_btn'):
+                self.load_voice_btn.setEnabled(False)
             return
 
         try:
@@ -1520,8 +1523,15 @@ class CrackedCodeGUI(QMainWindow):
 
             status = self.voice.status
             backend = status.get("tts_backend", "fallback")
+            stt_loaded = self.voice.stt.is_loaded if self.voice.stt else False
             if hasattr(self, 'terminal'):
-                self.term(f"[VOICE: ready | TTS={backend}]")
+                self.term(f"[VOICE: ready | TTS={backend} | STT={'loaded' if stt_loaded else 'not loaded'}]")
+            if hasattr(self, 'load_voice_btn'):
+                if stt_loaded:
+                    self.load_voice_btn.setText("VOICE LOADED")
+                    self.load_voice_btn.setStyleSheet(f"color: {ATLAN_GREEN};")
+                else:
+                    self.load_voice_btn.setText("LOAD VOICE")
             logger.info(f"Voice engine initialized: {status}")
         except Exception as e:
             logger.error(f"Voice init failed: {e}")
@@ -2607,6 +2617,11 @@ class CrackedCodeGUI(QMainWindow):
         self.voice_btn.setToolTip("Listen for voice commands (Ctrl+Shift+V)")
         self.voice_btn.clicked.connect(self.toggle_voice)
         tb.addWidget(self.voice_btn)
+        
+        self.load_voice_btn = QPushButton("LOAD VOICE")
+        self.load_voice_btn.setToolTip("Load Whisper speech recognition model")
+        self.load_voice_btn.clicked.connect(self.load_voice_model)
+        tb.addWidget(self.load_voice_btn)
         
         tb.addSeparator()
         
@@ -3938,9 +3953,7 @@ class CrackedCodeGUI(QMainWindow):
             return
 
         if not self.voice.stt.is_loaded:
-            self.term("[VOICE: Speech recognition not loaded yet]")
-            self.term("[VOICE] Go to Settings > Voice to configure and load the model first")
-            self.show_toast("Voice not configured - check Settings", ToastType.WARNING)
+            self.load_voice_model()
             return
 
         if self.voice_recording:
@@ -3956,23 +3969,48 @@ class CrackedCodeGUI(QMainWindow):
             self._voice_thread = threading.Thread(target=self._record_voice_thread, daemon=True)
             self._voice_thread.start()
 
-    def _load_whisper_model(self):
-        """Load Whisper model in background thread."""
-        try:
-            success = self.voice.stt.load()
-            if success:
-                QTimer.singleShot(0, self._on_whisper_loaded)
-            else:
-                QTimer.singleShot(0, lambda: self.term("[VOICE] Failed to load Whisper model"))
-                QTimer.singleShot(0, lambda: self.show_toast("Failed to load speech recognition", ToastType.ERROR))
-        except Exception as e:
-            QTimer.singleShot(0, lambda e=e: self.term(f"[VOICE] Model load error: {e}"))
-            QTimer.singleShot(0, lambda e=e: self.show_toast(f"Error: {e}", ToastType.ERROR))
+    def load_voice_model(self):
+        """Load Whisper speech recognition model in background thread."""
+        if hasattr(self, '_loading_voice') and self._loading_voice:
+            self.term("[VOICE] Already loading...")
+            return
 
-    def _on_whisper_loaded(self):
-        """Called on main thread after Whisper model loads."""
-        self.term("[VOICE] Whisper model loaded - click voice button to start recording")
-        self.show_toast("Speech recognition ready", ToastType.SUCCESS)
+        self._loading_voice = True
+        self.load_voice_btn.setEnabled(False)
+        self.load_voice_btn.setText("LOADING...")
+        self.term("[VOICE] Loading Whisper model in background... (may take a moment)")
+        self.show_toast("Loading speech recognition...", ToastType.INFO)
+
+        def _do_load():
+            try:
+                success = self.voice.stt.load()
+                QTimer.singleShot(0, lambda s=success: self._on_voice_load_complete(s))
+            except Exception as e:
+                QTimer.singleShot(0, lambda e=e: self._on_voice_load_error(e))
+
+        threading.Thread(target=_do_load, daemon=True).start()
+
+    def _on_voice_load_complete(self, success):
+        """Called on main thread after voice model load attempt."""
+        self._loading_voice = False
+        self.load_voice_btn.setEnabled(True)
+        if success:
+            self.load_voice_btn.setText("VOICE LOADED")
+            self.load_voice_btn.setStyleSheet(f"color: {ATLAN_GREEN};")
+            self.term("[VOICE] Speech recognition ready - click VOICE to start recording")
+            self.show_toast("Speech recognition ready", ToastType.SUCCESS)
+        else:
+            self.load_voice_btn.setText("LOAD VOICE")
+            self.term("[VOICE] Failed to load Whisper model")
+            self.show_toast("Failed to load speech recognition", ToastType.ERROR)
+
+    def _on_voice_load_error(self, error):
+        """Called on main thread if voice model load raises exception."""
+        self._loading_voice = False
+        self.load_voice_btn.setEnabled(True)
+        self.load_voice_btn.setText("LOAD VOICE")
+        self.term(f"[VOICE] Model load error: {error}")
+        self.show_toast(f"Voice error: {error}", ToastType.ERROR)
 
     def _record_voice_thread(self):
         """Run voice recording in background thread to avoid blocking GUI."""
