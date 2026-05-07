@@ -36,6 +36,19 @@ try:
 except ImportError:
     AUDIO_AVAILABLE = False
 
+def check_audio_devices() -> bool:
+    """Check if there are any audio input devices available."""
+    if not AUDIO_AVAILABLE:
+        return False
+    try:
+        devices = sd.query_devices()
+        for dev in devices:
+            if dev['max_input_channels'] > 0:
+                return True
+        return False
+    except Exception:
+        return False
+
 try:
     from faster_whisper import WhisperModel
     WHISPER_AVAILABLE = True
@@ -160,10 +173,12 @@ class STTEngine:
     def __init__(self, config: Optional[VoiceConfig] = None):
         self.config = config or VoiceConfig()
         self.model: Optional[WhisperModel] = None
-        self._available = WHISPER_AVAILABLE and AUDIO_AVAILABLE
+        self._available = WHISPER_AVAILABLE and AUDIO_AVAILABLE and check_audio_devices()
         self._device = self._detect_device()
         self._loaded = False
         self._load_lock = threading.Lock()
+        if not self._available:
+            logger.info(f"STT unavailable: whisper={WHISPER_AVAILABLE}, audio={AUDIO_AVAILABLE}, devices={check_audio_devices()}")
 
     def _detect_device(self) -> str:
         if platform.system() == "Windows":

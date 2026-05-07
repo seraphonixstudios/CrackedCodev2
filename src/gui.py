@@ -24,6 +24,7 @@ from PyQt6.QtWidgets import (
     QTreeWidgetItem, QStackedWidget, QSizePolicy, QDockWidget, QToolTip
 )
 from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal, QSettings, QUrl, QMimeData, QSize, QPropertyAnimation, QEasingCurve, QPoint
+import threading
 from PyQt6.QtGui import (
     QAction, QIcon, QFont, QColor, QTextCursor, QKeySequence,
     QGuiApplication, QDesktopServices, QPainter, QDragEnterEvent, QDropEvent, QPixmap, QImage, QPalette,
@@ -3898,71 +3899,89 @@ class CrackedCodeGUI(QMainWindow):
             return
 
         if not self.voice.stt.is_loaded:
-            self.term("[VOICE: Loading Whisper model...]")
+            self.term("[VOICE: Loading Whisper model in background...]")
             self.show_toast("Loading speech recognition...", ToastType.INFO)
-            try:
-                if not self.voice.stt.load():
-                    self.term("[VOICE: Failed to load Whisper model]")
-                    self.show_toast("Failed to load speech recognition", ToastType.ERROR)
-                    return
-                self.term("[VOICE: Whisper model loaded]")
-            except Exception as e:
-                self.term(f"[VOICE: Error loading model: {e}]")
-                self.show_toast(f"Error: {e}", ToastType.ERROR)
-                return
+            threading.Thread(target=self._load_whisper_model, daemon=True).start()
+            return
 
         if self.voice_recording:
             self.voice_recording = False
             self.voice_btn.setChecked(False)
             self.set_status("READY")
             self.term("[VOICE] Recording stopped")
-            self.voice.stop_session()
         else:
             self.voice_recording = True
             self.voice_btn.setChecked(True)
             self.set_status("RECORDING...")
             self.term("[VOICE] Recording... Speak now!")
-            self._record_voice()
+            self._voice_thread = threading.Thread(target=self._record_voice_thread, daemon=True)
+            self._voice_thread.start()
 
-    def _record_voice(self):
+    def _load_whisper_model(self):
+        """Load Whisper model in background thread."""
+        try:
+            success = self.voice.stt.load()
+            if success:
+                QTimer.singleShot(0, self._on_whisper_loaded)
+            else:
+                QTimer.singleShot(0, lambda: self.term("[VOICE] Failed to load Whisper model"))
+                QTimer.singleShot(0, lambda: self.show_toast("Failed to load speech recognition", ToastType.ERROR))
+        except Exception as e:
+            QTimer.singleShot(0, lambda e=e: self.term(f"[VOICE] Model load error: {e}"))
+            QTimer.singleShot(0, lambda e=e: self.show_toast(f"Error: {e}", ToastType.ERROR))
+
+    def _on_whisper_loaded(self):
+        """Called on main thread after Whisper model loads."""
+        self.term("[VOICE] Whisper model loaded - click voice button to start recording")
+        self.show_toast("Speech recognition ready", ToastType.SUCCESS)
+
+    def _record_voice_thread(self):
+        """Run voice recording in background thread to avoid blocking GUI."""
         if not self.voice_recording or not self.voice:
             return
 
         try:
-            # Use the unified engine's listen method
             result = self.voice.listen(duration=5.0, use_vad=False)
             if result.success and result.text:
                 transcribed = result.text.strip()
-                self.term(f"[VOICE] '{transcribed}'")
-
-                # Use unified command processor
-                command = self.voice.processor.parse(transcribed)
-                if command.command_type.value != "unknown":
-                    self.term(f"[CMD] {command.command_type.value} (conf={command.confidence:.2f})")
-                    executed = self.voice.processor.execute(command)
-                    if executed:
-                        self.voice.speak(f"Executed {command.command_type.value}")
-                    else:
-                        self.voice.speak(f"Recognized {command.command_type.value}")
-                else:
-                    # No command detected - treat as input text
-                    self.term_input.setText(transcribed)
-                    if self.orchestrator:
-                        intent = self.engine.parse_intent(transcribed)
-                        agent, task = self.orchestrator.delegate(intent, transcribed)
-                        self.term(f"[DELEGATED] -> {agent}")
-                        self.update_orchestrator_display()
+                QTimer.singleShot(0, lambda t=transcribed: self._handle_voice_result(t))
             elif result.error:
-                self.term(f"[VOICE ERROR] {result.error}")
+                QTimer.singleShot(0, lambda e=result.error: self.term(f"[VOICE ERROR] {e}"))
 
             if self.voice_recording:
-                QTimer.singleShot(300, self._record_voice)
+                QTimer.singleShot(300, self._restart_voice_recording)
         except Exception as e:
             logger.error(f"Voice recording error: {e}")
-            self.term(f"[VOICE ERROR] {e}")
-            self.voice_recording = False
-            self.voice_btn.setChecked(False)
-            self.set_status("READY")
+            QTimer.singleShot(0, lambda: self.term(f"[VOICE ERROR] {e}"))
+            QTimer.singleShot(0, lambda: setattr(self, 'voice_recording', False))
+            QTimer.singleShot(0, lambda: self.voice_btn.setChecked(False) if hasattr(self, 'voice_btn') else None)
+            QTimer.singleShot(0, lambda: self.set_status("READY"))
+
+    def _handle_voice_result(self, transcribed: str):
+        """Process voice result on main thread."""
+        self.term(f"[VOICE] '{transcribed}'")
+
+        command = self.voice.processor.parse(transcribed)
+        if command.command_type.value != "unknown":
+            self.term(f"[CMD] {command.command_type.value} (conf={command.confidence:.2f})")
+            executed = self.voice.processor.execute(command)
+            if executed:
+                self.voice.speak(f"Executed {command.command_type.value}")
+            else:
+                self.voice.speak(f"Recognized {command.command_type.value}")
+        else:
+            self.term_input.setText(transcribed)
+            if self.orchestrator:
+                intent = self.engine.parse_intent(transcribed)
+                agent, task = self.orchestrator.delegate(intent, transcribed)
+                self.term(f"[DELEGATED] -> {agent}")
+                self.update_orchestrator_display()
+
+    def _restart_voice_recording(self):
+        """Restart recording loop if still active."""
+        if self.voice_recording:
+            self._voice_thread = threading.Thread(target=self._record_voice_thread, daemon=True)
+            self._voice_thread.start()
 
     def process_voice_command(self, text: str) -> bool:
         """Process voice text using the unified engine's command processor."""
