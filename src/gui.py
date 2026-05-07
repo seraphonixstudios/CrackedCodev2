@@ -11,6 +11,7 @@ import io
 import re
 import base64
 import hashlib
+import requests
 from pathlib import Path
 from typing import Optional, Dict, List, Any, Tuple, Callable, Set
 from dataclasses import dataclass, field
@@ -1923,6 +1924,11 @@ class CrackedCodeGUI(QMainWindow):
         if hasattr(self, 'terminal'):
             self.term(f"[ENGINE v{status.get('version', '?')} loaded]")
             self.term(f"[OLLAMA: {len(status.get('ollama_models', []))} models]")
+        
+        # Check Ollama connectivity
+        self._check_ollama_connection()
+        
+        if hasattr(self, 'terminal'):
             self.term("[READY] Type your prompt below...")
         
         # Load plugins
@@ -1959,6 +1965,39 @@ class CrackedCodeGUI(QMainWindow):
             sb = self.statusBar()
             sb.set_model(self.config.get("model", "unknown"))
             sb.set_files_count(0)
+    
+    def _check_ollama_connection(self):
+        """Check Ollama connectivity on boot and update status bar."""
+        try:
+            import requests
+            ollama_host = self.config.get("ollama_host", "http://localhost:11434")
+            response = requests.get(f"{ollama_host}/api/tags", timeout=5)
+            if response.status_code == 200:
+                models = response.json().get("models", [])
+                model_names = [m.get("name", "unknown") for m in models]
+                if hasattr(self, 'terminal'):
+                    self.term(f"[OLLAMA] Connected: {len(model_names)} models available")
+                    if model_names:
+                        self.term(f"[OLLAMA] {', '.join(model_names[:5])}{'...' if len(model_names) > 5 else ''}")
+                if ENHANCEMENTS_AVAILABLE and hasattr(self, 'status_bar') and hasattr(self.status_bar, 'set_ollama_status'):
+                    self.status_bar.set_ollama_status(True)
+            else:
+                self._ollama_connection_failed(f"HTTP {response.status_code}")
+        except requests.exceptions.ConnectionError:
+            self._ollama_connection_failed("Connection refused")
+        except requests.exceptions.Timeout:
+            self._ollama_connection_failed("Timeout")
+        except Exception as e:
+            self._ollama_connection_failed(str(e))
+    
+    def _ollama_connection_failed(self, reason: str):
+        """Handle Ollama connection failure."""
+        if hasattr(self, 'terminal'):
+            self.term(f"[OLLAMA] DISCONNECTED: {reason}", level="error")
+            self.term("[OLLAMA] Please ensure Ollama is running on the configured host")
+        if ENHANCEMENTS_AVAILABLE and hasattr(self, 'status_bar') and hasattr(self.status_bar, 'set_ollama_status'):
+            self.status_bar.set_ollama_status(False)
+        self.show_toast(f"Ollama disconnected: {reason}", ToastType.ERROR)
     
     def _setup_quick_actions(self):
         """Setup command palette with all available actions."""

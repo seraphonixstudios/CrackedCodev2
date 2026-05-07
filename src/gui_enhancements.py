@@ -481,6 +481,11 @@ class EnhancedStatusBar(QStatusBar):
         self.voice_label.setToolTip("Voice status")
         layout.addWidget(self.voice_label)
         
+        self.ollama_label = QLabel("● OLLAMA")
+        self.ollama_label.setFont(QFont("Consolas", 9))
+        self.ollama_label.setToolTip("Ollama connection status")
+        layout.addWidget(self.ollama_label)
+        
         layout.addStretch()
         
         # Right: Activity indicator
@@ -516,6 +521,16 @@ class EnhancedStatusBar(QStatusBar):
     def set_voice_status(self, active: bool):
         color = "#00FF41" if active else "#555"
         self.voice_label.setStyleSheet(f"color: {color};")
+    
+    def set_ollama_status(self, connected: bool):
+        """Update Ollama connection indicator in status bar."""
+        from src.gui import ATLAN_GREEN
+        if connected:
+            self.ollama_label.setText("● OLLAMA")
+            self.ollama_label.setStyleSheet(f"color: {ATLAN_GREEN};")
+        else:
+            self.ollama_label.setText("● OLLAMA")
+            self.ollama_label.setStyleSheet("color: #FF4444;")
     
     def set_cursor_position(self, line: int, col: int):
         self.cursor_label.setText(f"Ln {line}, Col {col}")

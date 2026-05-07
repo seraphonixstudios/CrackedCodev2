@@ -274,12 +274,17 @@ class SettingsDialog(QDialog):
 
     def _create_voice_tab(self) -> QWidget:
         tab = QWidget(self)
-        layout = QVBoxLayout(tab)
+        scroll = QScrollArea(tab)
+        scroll.setWidgetResizable(True)
+        scroll.setStyleSheet("QScrollArea { border: none; background-color: transparent; }")
+
+        content = QWidget(scroll)
+        layout = QVBoxLayout(content)
         layout.setContentsMargins(12, 12, 12, 12)
-        layout.setSpacing(8)
+        layout.setSpacing(10)
 
         # STT group
-        stt_group = QGroupBox("SPEECH-TO-TEXT", tab)
+        stt_group = QGroupBox("SPEECH-TO-TEXT", content)
         stt_layout = QFormLayout(stt_group)
         stt_layout.setContentsMargins(8, 16, 8, 8)
 
@@ -291,10 +296,74 @@ class SettingsDialog(QDialog):
         self.stt_lang.setPlaceholderText("en")
         stt_layout.addRow("Language:", self.stt_lang)
 
+        self.stt_beam_spin = QSpinBox(stt_group)
+        self.stt_beam_spin.setRange(1, 20)
+        self.stt_beam_spin.setValue(5)
+        stt_layout.addRow("Beam Size:", self.stt_beam_spin)
+
         layout.addWidget(stt_group)
 
+        # Audio Input group
+        audio_group = QGroupBox("AUDIO INPUT", content)
+        audio_layout = QFormLayout(audio_group)
+        audio_layout.setContentsMargins(8, 16, 8, 8)
+
+        self.sample_rate_combo = QComboBox(audio_group)
+        self.sample_rate_combo.addItems(["8000", "16000", "22050", "44100", "48000"])
+        audio_layout.addRow("Sample Rate:", self.sample_rate_combo)
+
+        self.channels_spin = QSpinBox(audio_group)
+        self.channels_spin.setRange(1, 2)
+        self.channels_spin.setValue(1)
+        audio_layout.addRow("Channels:", self.channels_spin)
+
+        self.record_duration_spin = QSpinBox(audio_group)
+        self.record_duration_spin.setRange(1, 30)
+        self.record_duration_spin.setSuffix(" sec")
+        self.record_duration_spin.setValue(5)
+        audio_layout.addRow("Record Duration:", self.record_duration_spin)
+
+        self.dtype_combo = QComboBox(audio_group)
+        self.dtype_combo.addItems(["float32", "int16", "int32"])
+        audio_layout.addRow("Audio Format:", self.dtype_combo)
+
+        layout.addWidget(audio_group)
+
+        # VAD group
+        vad_group = QGroupBox("VOICE ACTIVITY DETECTION", content)
+        vad_layout = QFormLayout(vad_group)
+        vad_layout.setContentsMargins(8, 16, 8, 8)
+
+        self.vad_sensitivity_slider = QSlider(Qt.Orientation.Horizontal, vad_group)
+        self.vad_sensitivity_slider.setRange(1, 3)
+        self.vad_sensitivity_slider.setValue(2)
+        self.vad_sensitivity_label = QLabel("2 (Medium)", vad_group)
+        self.vad_sensitivity_slider.valueChanged.connect(
+            lambda v: self.vad_sensitivity_label.setText(f"{v} ({'Low' if v == 1 else 'High' if v == 3 else 'Medium'})")
+        )
+        vad_layout.addRow("VAD Aggressiveness:", self.vad_sensitivity_slider)
+        vad_layout.addRow("", self.vad_sensitivity_label)
+
+        self.silence_threshold_slider = QSlider(Qt.Orientation.Horizontal, vad_group)
+        self.silence_threshold_slider.setRange(1, 100)
+        self.silence_threshold_slider.setValue(15)
+        self.silence_threshold_label = QLabel("0.015", vad_group)
+        self.silence_threshold_slider.valueChanged.connect(
+            lambda v: self.silence_threshold_label.setText(f"{v / 1000:.3f}")
+        )
+        vad_layout.addRow("Silence Threshold:", self.silence_threshold_slider)
+        vad_layout.addRow("", self.silence_threshold_label)
+
+        self.silence_timeout_spin = QSpinBox(vad_group)
+        self.silence_timeout_spin.setRange(1, 10)
+        self.silence_timeout_spin.setValue(2)
+        self.silence_timeout_spin.setSuffix(" sec")
+        vad_layout.addRow("Silence Timeout:", self.silence_timeout_spin)
+
+        layout.addWidget(vad_group)
+
         # TTS group
-        tts_group = QGroupBox("TEXT-TO-SPEECH", tab)
+        tts_group = QGroupBox("TEXT-TO-SPEECH", content)
         tts_layout = QFormLayout(tts_group)
         tts_layout.setContentsMargins(8, 16, 8, 8)
 
@@ -312,18 +381,26 @@ class SettingsDialog(QDialog):
 
         self.tts_rate_slider = QSlider(Qt.Orientation.Horizontal, tts_group)
         self.tts_rate_slider.setRange(50, 300)
-        tts_layout.addRow("Rate (WPM):", self.tts_rate_slider)
-
-        self.tts_rate_label = QLabel("175", tts_group)
-        tts_layout.addRow("Current Rate:", self.tts_rate_label)
+        self.tts_rate_label = QLabel("175 WPM", tts_group)
         self.tts_rate_slider.valueChanged.connect(
-            lambda v: self.tts_rate_label.setText(str(v))
+            lambda v: self.tts_rate_label.setText(f"{v} WPM")
         )
+        tts_layout.addRow("Rate (WPM):", self.tts_rate_slider)
+        tts_layout.addRow("Current Rate:", self.tts_rate_label)
+
+        self.tts_volume_slider = QSlider(Qt.Orientation.Horizontal, tts_group)
+        self.tts_volume_slider.setRange(0, 100)
+        self.tts_volume_label = QLabel("100%", tts_group)
+        self.tts_volume_slider.valueChanged.connect(
+            lambda v: self.tts_volume_label.setText(f"{v}%")
+        )
+        tts_layout.addRow("Volume:", self.tts_volume_slider)
+        tts_layout.addRow("", self.tts_volume_label)
 
         layout.addWidget(tts_group)
 
         # Voice mode group
-        mode_group = QGroupBox("VOICE MODE", tab)
+        mode_group = QGroupBox("VOICE MODE", content)
         mode_layout = QFormLayout(mode_group)
         mode_layout.setContentsMargins(8, 16, 8, 8)
 
@@ -337,8 +414,36 @@ class SettingsDialog(QDialog):
         self.hotword_input.setPlaceholderText("cracked code")
         mode_layout.addRow("Hotword:", self.hotword_input)
 
+        self.hotword_sensitivity_slider = QSlider(Qt.Orientation.Horizontal, mode_group)
+        self.hotword_sensitivity_slider.setRange(0, 100)
+        self.hotword_sensitivity_slider.setValue(70)
+        self.hotword_sensitivity_label = QLabel("70%", mode_group)
+        self.hotword_sensitivity_slider.valueChanged.connect(
+            lambda v: self.hotword_sensitivity_label.setText(f"{v}%")
+        )
+        mode_layout.addRow("Hotword Sensitivity:", self.hotword_sensitivity_slider)
+        mode_layout.addRow("", self.hotword_sensitivity_label)
+
         layout.addWidget(mode_group)
+
+        # Command History group
+        hist_group = QGroupBox("COMMAND HISTORY", content)
+        hist_layout = QFormLayout(hist_group)
+        hist_layout.setContentsMargins(8, 16, 8, 8)
+
+        self.max_history_spin = QSpinBox(hist_group)
+        self.max_history_spin.setRange(10, 500)
+        self.max_history_spin.setValue(50)
+        self.max_history_spin.setSuffix(" commands")
+        hist_layout.addRow("Max History:", self.max_history_spin)
+
+        layout.addWidget(hist_group)
         layout.addStretch()
+
+        scroll.setWidget(content)
+        outer_layout = QVBoxLayout(tab)
+        outer_layout.setContentsMargins(0, 0, 0, 0)
+        outer_layout.addWidget(scroll)
         return tab
 
     def _create_appearance_tab(self) -> QWidget:
@@ -486,16 +591,44 @@ NAVIGATION
         temp = self.config.get("temperature", 0.1)
         self.temp_spin.setValue(int(temp * 100))
 
-        # Voice
+        # Voice - STT
         self.stt_combo.setCurrentText(self.config.get("whisper_size", "base"))
         self.stt_lang.setText(self.config.get("stt_language", "en"))
+        self.stt_beam_spin.setValue(self.config.get("stt_beam_size", 5))
+
+        # Voice - Audio Input
+        sample_rate = str(self.config.get("sample_rate", 16000))
+        if self.sample_rate_combo.findText(sample_rate) >= 0:
+            self.sample_rate_combo.setCurrentText(sample_rate)
+        self.channels_spin.setValue(self.config.get("audio_channels", 1))
+        self.record_duration_spin.setValue(self.config.get("record_duration", 5))
+        self.dtype_combo.setCurrentText(self.config.get("audio_dtype", "float32"))
+
+        # Voice - VAD
+        vad_agg = self.config.get("vad_aggressiveness", 2)
+        self.vad_sensitivity_slider.setValue(vad_agg)
+        silence_thresh = int(self.config.get("silence_threshold", 0.015) * 1000)
+        self.silence_threshold_slider.setValue(max(1, min(100, silence_thresh)))
+        self.silence_timeout_spin.setValue(self.config.get("silence_timeout", 2))
+
+        # Voice - TTS
         self.tts_backend_combo.setCurrentText(self.config.get("tts_backend", "pyttsx3"))
         self.tts_voice.setText(self.config.get("tts_voice", "default"))
         self.tts_gender_combo.setCurrentText(self.config.get("tts_gender", "female"))
-        self.tts_rate_slider.setValue(self.config.get("tts_rate", 175))
+        tts_rate = self.config.get("tts_rate", 175)
+        self.tts_rate_slider.setValue(tts_rate)
+        tts_volume = int(self.config.get("tts_volume", 1.0) * 100)
+        self.tts_volume_slider.setValue(tts_volume)
+
+        # Voice - Mode
         self.voice_enabled_check.setChecked(self.config.get("voice_enabled", True))
         self.push_to_talk_check.setChecked(self.config.get("push_to_talk", False))
         self.hotword_input.setText(self.config.get("hotword", "cracked code"))
+        hotword_sens = int(self.config.get("hotword_sensitivity", 0.7) * 100)
+        self.hotword_sensitivity_slider.setValue(hotword_sens)
+
+        # Voice - History
+        self.max_history_spin.setValue(self.config.get("max_command_history", 50))
 
         # Appearance
         self.font_size_spin.setValue(self.config.get("font_size", 11))
@@ -561,6 +694,25 @@ NAVIGATION
                 "voice_enabled": True,
                 "auto_save": True,
                 "ollama_host": "http://localhost:11434",
+                "whisper_size": "base",
+                "stt_language": "en",
+                "stt_beam_size": 5,
+                "sample_rate": 16000,
+                "audio_channels": 1,
+                "record_duration": 5,
+                "audio_dtype": "float32",
+                "vad_aggressiveness": 2,
+                "silence_threshold": 0.015,
+                "silence_timeout": 2,
+                "tts_backend": "pyttsx3",
+                "tts_voice": "default",
+                "tts_gender": "female",
+                "tts_rate": 175,
+                "tts_volume": 1.0,
+                "push_to_talk": False,
+                "hotword": "cracked code",
+                "hotword_sensitivity": 0.7,
+                "max_command_history": 50,
             }
             self._load_values()
 
@@ -578,16 +730,37 @@ NAVIGATION
         self.config["max_context"] = self.max_ctx_spin.value()
         self.config["temperature"] = self.temp_spin.value() / 100.0
 
-        # Voice
+        # Voice - STT
         self.config["whisper_size"] = self.stt_combo.currentText()
         self.config["stt_language"] = self.stt_lang.text() or "en"
+        self.config["stt_beam_size"] = self.stt_beam_spin.value()
+
+        # Voice - Audio Input
+        self.config["sample_rate"] = int(self.sample_rate_combo.currentText())
+        self.config["audio_channels"] = self.channels_spin.value()
+        self.config["record_duration"] = self.record_duration_spin.value()
+        self.config["audio_dtype"] = self.dtype_combo.currentText()
+
+        # Voice - VAD
+        self.config["vad_aggressiveness"] = self.vad_sensitivity_slider.value()
+        self.config["silence_threshold"] = self.silence_threshold_slider.value() / 1000.0
+        self.config["silence_timeout"] = self.silence_timeout_spin.value()
+
+        # Voice - TTS
         self.config["tts_backend"] = self.tts_backend_combo.currentText()
         self.config["tts_voice"] = self.tts_voice.text() or "default"
         self.config["tts_gender"] = self.tts_gender_combo.currentText()
         self.config["tts_rate"] = self.tts_rate_slider.value()
+        self.config["tts_volume"] = self.tts_volume_slider.value() / 100.0
+
+        # Voice - Mode
         self.config["voice_enabled"] = self.voice_enabled_check.isChecked()
         self.config["push_to_talk"] = self.push_to_talk_check.isChecked()
         self.config["hotword"] = self.hotword_input.text() or "cracked code"
+        self.config["hotword_sensitivity"] = self.hotword_sensitivity_slider.value() / 100.0
+
+        # Voice - History
+        self.config["max_command_history"] = self.max_history_spin.value()
 
         # Appearance
         self.config["font_size"] = self.font_size_spin.value()
