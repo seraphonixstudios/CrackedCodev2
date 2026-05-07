@@ -3845,15 +3845,516 @@ class CrackedCodeGUI(QMainWindow):
         dialog.exec()
 
     def show_settings(self):
-        """Open the settings/preferences dialog."""
+        """Show settings as a tab in the main window."""
+        # Check if settings tab already exists
+        for i in range(self.tab_widget.count()):
+            if self.tab_widget.tabText(i) == "SETTINGS":
+                self.tab_widget.setCurrentIndex(i)
+                return
+
+        # Create settings tab
+        settings_widget = self._create_settings_tab_widget()
+        self.tab_widget.addTab(settings_widget, "SETTINGS")
+        self.tab_widget.setCurrentWidget(settings_widget)
+        self.update_tab_count()
+
+    def _create_settings_tab_widget(self):
+        """Create a settings widget for embedding in a tab."""
+        from PyQt6.QtWidgets import (
+            QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
+            QComboBox, QSpinBox, QCheckBox, QPushButton, QTabWidget,
+            QGroupBox, QFormLayout, QSlider, QFileDialog,
+            QMessageBox, QScrollArea, QFrame, QTextEdit
+        )
+        from PyQt6.QtCore import Qt
+        from PyQt6.QtGui import QFont
+
+        ATLAN_GREEN = "#00FF41"
+        ATLAN_DARK = "#0a0a0a"
+        ATLAN_MEDIUM = "#1a1a1a"
+        ATLAN_GOLD = "#FFD700"
+        ATLAN_CYAN = "#00FFFF"
+
+        # Container widget
+        container = QWidget()
+        container.setStyleSheet(f"""
+            QWidget {{
+                background-color: {ATLAN_DARK};
+                color: {ATLAN_GREEN};
+                font-family: Consolas;
+            }}
+            QTabWidget::pane {{
+                border: 1px solid {ATLAN_GREEN};
+                background-color: {ATLAN_DARK};
+            }}
+            QTabBar::tab {{
+                background-color: {ATLAN_MEDIUM};
+                color: {ATLAN_GREEN};
+                padding: 8px 16px;
+                border: 1px solid #333;
+                border-top-left-radius: 6px;
+                border-top-right-radius: 6px;
+            }}
+            QTabBar::tab:selected {{
+                background-color: {ATLAN_GREEN};
+                color: {ATLAN_DARK};
+                font-weight: bold;
+            }}
+            QGroupBox {{
+                border: 1px solid {ATLAN_GREEN};
+                margin-top: 10px;
+                font-weight: bold;
+                border-radius: 6px;
+                padding-top: 10px;
+                color: {ATLAN_GOLD};
+            }}
+            QGroupBox::title {{
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 4px;
+            }}
+            QLabel {{ color: {ATLAN_GREEN}; font-family: Consolas; }}
+            QLineEdit {{
+                background-color: #050505;
+                color: {ATLAN_GREEN};
+                border: 1px solid #333;
+                padding: 6px;
+                border-radius: 4px;
+            }}
+            QComboBox {{
+                background-color: {ATLAN_MEDIUM};
+                color: {ATLAN_GREEN};
+                border: 1px solid #333;
+                padding: 4px;
+                border-radius: 4px;
+            }}
+            QSpinBox {{
+                background-color: {ATLAN_MEDIUM};
+                color: {ATLAN_GREEN};
+                border: 1px solid #333;
+                padding: 4px;
+                border-radius: 4px;
+            }}
+            QSlider::groove:horizontal {{ height: 6px; background: {ATLAN_MEDIUM}; border-radius: 3px; }}
+            QSlider::handle:horizontal {{ background: {ATLAN_GREEN}; width: 14px; height: 14px; border-radius: 7px; }}
+            QCheckBox {{ color: {ATLAN_GREEN}; spacing: 8px; }}
+            QCheckBox::indicator {{ width: 16px; height: 16px; border: 1px solid {ATLAN_GREEN}; border-radius: 3px; }}
+            QCheckBox::indicator:checked {{ background-color: {ATLAN_GREEN}; }}
+            QPushButton {{
+                background-color: {ATLAN_MEDIUM};
+                color: {ATLAN_GREEN};
+                border: 1px solid {ATLAN_GREEN};
+                padding: 8px 16px;
+                border-radius: 6px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{ background-color: {ATLAN_GREEN}; color: {ATLAN_DARK}; }}
+            QTextEdit {{
+                background-color: #050505;
+                color: {ATLAN_GREEN};
+                border: 1px solid #333;
+                border-radius: 4px;
+                font-family: Consolas;
+            }}
+        """)
+
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(12)
+
+        # Tabs
+        settings_tabs = QTabWidget(container)
+
+        # === GENERAL TAB ===
+        general_tab = QWidget()
+        g_layout = QVBoxLayout(general_tab)
+        g_layout.setContentsMargins(12, 12, 12, 12)
+        g_layout.setSpacing(8)
+
+        model_group = QGroupBox("AI MODEL", general_tab)
+        m_layout = QFormLayout(model_group)
+        m_layout.setContentsMargins(8, 16, 8, 8)
+
+        model_combo = QComboBox(model_group)
+        model_combo.setEditable(True)
+        model_combo.addItems(["qwen3:8b-gpu", "qwen3:14b-gpu", "llava:13b-gpu", "dolphin-llama3:8b-gpu", "codellama:7b", "mistral:7b"])
+        model_combo.setCurrentText(self.config.get("model", "qwen3:8b-gpu"))
+        m_layout.addRow("Primary Model:", model_combo)
+
+        vision_combo = QComboBox(model_group)
+        vision_combo.setEditable(True)
+        vision_combo.addItems(["llava:13b-gpu", "llava:7b"])
+        vision_combo.setCurrentText(self.config.get("vision_model", "llava:13b-gpu"))
+        m_layout.addRow("Vision Model:", vision_combo)
+
+        secondary_combo = QComboBox(model_group)
+        secondary_combo.setEditable(True)
+        secondary_combo.addItems(["dolphin-llama3:8b-gpu", "qwen3:8b-gpu", "mistral:7b"])
+        secondary_combo.setCurrentText(self.config.get("secondary_model", "dolphin-llama3:8b-gpu"))
+        m_layout.addRow("Secondary Model:", secondary_combo)
+
+        ollama_host = QLineEdit(model_group)
+        ollama_host.setText(self.config.get("ollama_host", "http://localhost:11434"))
+        m_layout.addRow("Ollama Host:", ollama_host)
+
+        g_layout.addWidget(model_group)
+
+        behavior_group = QGroupBox("BEHAVIOR", general_tab)
+        b_layout = QFormLayout(behavior_group)
+        b_layout.setContentsMargins(8, 16, 8, 8)
+
+        streaming_check = QCheckBox("Enable streaming responses", behavior_group)
+        streaming_check.setChecked(self.config.get("streaming_enabled", True))
+        b_layout.addRow(streaming_check)
+
+        cache_check = QCheckBox("Enable response caching", behavior_group)
+        cache_check.setChecked(self.config.get("cache_enabled", True))
+        b_layout.addRow(cache_check)
+
+        unified_check = QCheckBox("Unified mode (all models)", behavior_group)
+        unified_check.setChecked(self.config.get("unified_mode", False))
+        b_layout.addRow(unified_check)
+
+        autonomous_check = QCheckBox("Enable autonomous production", behavior_group)
+        autonomous_check.setChecked(self.config.get("autonomous_enabled", True))
+        b_layout.addRow(autonomous_check)
+
+        max_ctx_spin = QSpinBox(behavior_group)
+        max_ctx_spin.setRange(5, 50)
+        max_ctx_spin.setSuffix(" exchanges")
+        max_ctx_spin.setValue(self.config.get("max_context", 20))
+        b_layout.addRow("Max Context:", max_ctx_spin)
+
+        temp_spin = QSpinBox(behavior_group)
+        temp_spin.setRange(0, 100)
+        temp_spin.setSuffix("%")
+        temp_spin.setValue(int(self.config.get("temperature", 0.1) * 100))
+        b_layout.addRow("Temperature:", temp_spin)
+
+        g_layout.addWidget(behavior_group)
+        g_layout.addStretch()
+        settings_tabs.addTab(general_tab, "GENERAL")
+
+        # === VOICE TAB ===
+        voice_tab = QWidget()
+        v_scroll = QScrollArea(voice_tab)
+        v_scroll.setWidgetResizable(True)
+        v_scroll.setStyleSheet("QScrollArea { border: none; background-color: transparent; }")
+
+        v_content = QWidget()
+        v_layout = QVBoxLayout(v_content)
+        v_layout.setContentsMargins(12, 12, 12, 12)
+        v_layout.setSpacing(10)
+
+        stt_group = QGroupBox("SPEECH-TO-TEXT", v_content)
+        stt_layout = QFormLayout(stt_group)
+        stt_layout.setContentsMargins(8, 16, 8, 8)
+
+        stt_combo = QComboBox(stt_group)
+        stt_combo.addItems(["tiny", "base", "small", "medium", "large"])
+        stt_combo.setCurrentText(self.config.get("whisper_size", "base"))
+        stt_layout.addRow("Whisper Model:", stt_combo)
+
+        stt_lang = QLineEdit(stt_group)
+        stt_lang.setPlaceholderText("en")
+        stt_lang.setText(self.config.get("stt_language", "en"))
+        stt_layout.addRow("Language:", stt_lang)
+
+        stt_beam_spin = QSpinBox(stt_group)
+        stt_beam_spin.setRange(1, 20)
+        stt_beam_spin.setValue(self.config.get("stt_beam_size", 5))
+        stt_layout.addRow("Beam Size:", stt_beam_spin)
+
+        v_layout.addWidget(stt_group)
+
+        tts_group = QGroupBox("TEXT-TO-SPEECH", v_content)
+        tts_layout = QFormLayout(tts_group)
+        tts_layout.setContentsMargins(8, 16, 8, 8)
+
+        tts_backend_combo = QComboBox(tts_group)
+        tts_backend_combo.addItems(["pyttsx3", "edge-tts", "fallback"])
+        tts_backend_combo.setCurrentText(self.config.get("tts_backend", "pyttsx3"))
+        tts_layout.addRow("Backend:", tts_backend_combo)
+
+        tts_voice_input = QLineEdit(tts_group)
+        tts_voice_input.setPlaceholderText("default")
+        tts_voice_input.setText(self.config.get("tts_voice", "default"))
+        tts_layout.addRow("Voice:", tts_voice_input)
+
+        tts_gender_combo = QComboBox(tts_group)
+        tts_gender_combo.addItems(["female", "male"])
+        tts_gender_combo.setCurrentText(self.config.get("tts_gender", "female"))
+        tts_layout.addRow("Gender:", tts_gender_combo)
+
+        tts_rate_slider = QSlider(Qt.Orientation.Horizontal, tts_group)
+        tts_rate_slider.setRange(50, 300)
+        tts_rate_slider.setValue(self.config.get("tts_rate", 175))
+        tts_rate_label = QLabel(f"{self.config.get('tts_rate', 175)} WPM", tts_group)
+        tts_rate_slider.valueChanged.connect(lambda v: tts_rate_label.setText(f"{v} WPM"))
+        tts_layout.addRow("Rate (WPM):", tts_rate_slider)
+        tts_layout.addRow("", tts_rate_label)
+
+        tts_volume_slider = QSlider(Qt.Orientation.Horizontal, tts_group)
+        tts_volume_slider.setRange(0, 100)
+        tts_volume_slider.setValue(int(self.config.get("tts_volume", 1.0) * 100))
+        tts_volume_label = QLabel(f"{int(self.config.get('tts_volume', 1.0) * 100)}%", tts_group)
+        tts_volume_slider.valueChanged.connect(lambda v: tts_volume_label.setText(f"{v}%"))
+        tts_layout.addRow("Volume:", tts_volume_slider)
+        tts_layout.addRow("", tts_volume_label)
+
+        v_layout.addWidget(tts_group)
+
+        mode_group = QGroupBox("VOICE MODE", v_content)
+        mode_layout = QFormLayout(mode_group)
+        mode_layout.setContentsMargins(8, 16, 8, 8)
+
+        voice_enabled_check = QCheckBox("Enable voice features", mode_group)
+        voice_enabled_check.setChecked(self.config.get("voice_enabled", True))
+        mode_layout.addRow(voice_enabled_check)
+
+        hotword_input = QLineEdit(mode_group)
+        hotword_input.setPlaceholderText("cracked code")
+        hotword_input.setText(self.config.get("hotword", "cracked code"))
+        mode_layout.addRow("Hotword:", hotword_input)
+
+        v_layout.addWidget(mode_group)
+        v_layout.addStretch()
+
+        v_scroll.setWidget(v_content)
+        v_outer = QVBoxLayout(voice_tab)
+        v_outer.setContentsMargins(0, 0, 0, 0)
+        v_outer.addWidget(v_scroll)
+        settings_tabs.addTab(voice_tab, "VOICE")
+
+        # === APPEARANCE TAB ===
+        appearance_tab = QWidget()
+        a_layout = QVBoxLayout(appearance_tab)
+        a_layout.setContentsMargins(12, 12, 12, 12)
+        a_layout.setSpacing(8)
+
+        theme_group = QGroupBox("APPEARANCE", appearance_tab)
+        t_layout = QFormLayout(theme_group)
+        t_layout.setContentsMargins(8, 16, 8, 8)
+
+        theme_label = QLabel("Atlantean (Green) — Default theme")
+        theme_label.setStyleSheet(f"color: {ATLAN_GREEN};")
+        t_layout.addRow("Color Theme:", theme_label)
+
+        font_size_spin = QSpinBox(theme_group)
+        font_size_spin.setRange(8, 20)
+        font_size_spin.setSuffix(" pt")
+        font_size_spin.setValue(self.config.get("font_size", 11))
+        t_layout.addRow("Editor Font Size:", font_size_spin)
+
+        a_layout.addWidget(theme_group)
+
+        editor_group = QGroupBox("EDITOR", appearance_tab)
+        e_layout = QFormLayout(editor_group)
+        e_layout.setContentsMargins(8, 16, 8, 8)
+
+        auto_save_check = QCheckBox("Enable auto-save", editor_group)
+        auto_save_check.setChecked(self.config.get("auto_save", True))
+        e_layout.addRow(auto_save_check)
+
+        auto_save_delay = QSpinBox(editor_group)
+        auto_save_delay.setRange(500, 30000)
+        auto_save_delay.setSingleStep(500)
+        auto_save_delay.setSuffix(" ms")
+        auto_save_delay.setValue(self.config.get("auto_save_delay_ms", 3000))
+        e_layout.addRow("Auto-save Delay:", auto_save_delay)
+
+        line_numbers_check = QCheckBox("Show line numbers", editor_group)
+        line_numbers_check.setChecked(self.config.get("line_numbers", False))
+        e_layout.addRow(line_numbers_check)
+
+        a_layout.addWidget(editor_group)
+        a_layout.addStretch()
+        settings_tabs.addTab(appearance_tab, "APPEARANCE")
+
+        # === AUTONOMOUS TAB ===
+        autonomous_tab = QWidget()
+        au_layout = QVBoxLayout(autonomous_tab)
+        au_layout.setContentsMargins(12, 12, 12, 12)
+        au_layout.setSpacing(8)
+
+        ws_group = QGroupBox("WORKSPACE", autonomous_tab)
+        ws_layout = QFormLayout(ws_group)
+        ws_layout.setContentsMargins(8, 16, 8, 8)
+
+        ws_path = QLineEdit(ws_group)
+        ws_path.setText(self.config.get("autonomous_workspace", ".autonomous"))
+        ws_layout.addRow("Workspace Path:", ws_path)
+
+        ws_browse = QPushButton("BROWSE", ws_group)
+        def _browse():
+            p = QFileDialog.getExistingDirectory(container, "Select Workspace")
+            if p: ws_path.setText(p)
+        ws_browse.clicked.connect(_browse)
+        ws_layout.addRow(ws_browse)
+
+        au_layout.addWidget(ws_group)
+
+        limits_group = QGroupBox("LIMITS", autonomous_tab)
+        l_layout = QFormLayout(limits_group)
+        l_layout.setContentsMargins(8, 16, 8, 8)
+
+        max_corr_spin = QSpinBox(limits_group)
+        max_corr_spin.setRange(1, 10)
+        max_corr_spin.setValue(self.config.get("autonomous_max_corrections", 3))
+        l_layout.addRow("Max Corrections:", max_corr_spin)
+
+        debate_spin = QSpinBox(limits_group)
+        debate_spin.setRange(1, 10)
+        debate_spin.setValue(self.config.get("debate_rounds", 3))
+        l_layout.addRow("Debate Rounds:", debate_spin)
+
+        au_layout.addWidget(limits_group)
+        au_layout.addStretch()
+        settings_tabs.addTab(autonomous_tab, "AUTONOMOUS")
+
+        layout.addWidget(settings_tabs)
+
+        # Buttons
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+
+        discover_btn = QPushButton("DISCOVER MODELS", container)
+        discover_btn.setToolTip("Query Ollama for available models")
+        def _discover():
+            import subprocess
+            try:
+                result = subprocess.run(["ollama", "list"], capture_output=True, text=True, timeout=10)
+                if result.returncode == 0:
+                    models = []
+                    for line in result.stdout.strip().split("\n")[1:]:
+                        parts = line.split()
+                        if parts: models.append(parts[0])
+                    if models:
+                        model_combo.clear()
+                        model_combo.addItems(models)
+                        vision_combo.clear()
+                        vision_combo.addItems(models)
+                        secondary_combo.clear()
+                        secondary_combo.addItems(models)
+                        self.show_toast(f"Found {len(models)} models", ToastType.SUCCESS)
+                    else:
+                        self.show_toast("No models found", ToastType.WARNING)
+                else:
+                    self.show_toast("Ollama not responding", ToastType.ERROR)
+            except Exception as e:
+                self.show_toast(f"Could not discover models: {e}", ToastType.ERROR)
+        discover_btn.clicked.connect(_discover)
+        btn_layout.addWidget(discover_btn)
+
+        reset_btn = QPushButton("RESET", container)
+        def _reset():
+            reply = QMessageBox.question(container, "Reset", "Reset all settings to defaults?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            if reply == QMessageBox.StandardButton.Yes:
+                defaults = {
+                    "model": "qwen3:8b-gpu", "vision_model": "llava:13b-gpu",
+                    "secondary_model": "dolphin-llama3:8b-gpu", "streaming_enabled": True,
+                    "cache_enabled": True, "unified_mode": False, "autonomous_enabled": True,
+                    "voice_enabled": True, "auto_save": True,
+                    "ollama_host": "http://localhost:11434",
+                    "whisper_size": "base", "stt_language": "en", "stt_beam_size": 5,
+                    "tts_backend": "pyttsx3", "tts_voice": "default", "tts_gender": "female",
+                    "tts_rate": 175, "tts_volume": 1.0, "hotword": "cracked code",
+                    "max_context": 20, "temperature": 0.1, "font_size": 11,
+                    "auto_save_delay_ms": 3000, "line_numbers": False,
+                    "autonomous_workspace": ".autonomous", "autonomous_max_corrections": 3,
+                    "debate_rounds": 3,
+                }
+                self.config.update(defaults)
+                self._reload_settings_tab(container, settings_tabs)
+                self.show_toast("Settings reset to defaults", ToastType.INFO)
+        reset_btn.clicked.connect(_reset)
+        btn_layout.addWidget(reset_btn)
+
+        save_btn = QPushButton("SAVE", container)
+        save_btn.setStyleSheet(f"""
+            QPushButton {{ background-color: {ATLAN_GREEN}; color: {ATLAN_DARK}; border: none; }}
+            QPushButton:hover {{ background-color: #00CC33; }}
+        """)
+        def _save():
+            self.config["model"] = model_combo.currentText()
+            self.config["vision_model"] = vision_combo.currentText()
+            self.config["secondary_model"] = secondary_combo.currentText()
+            self.config["ollama_host"] = ollama_host.text()
+            self.config["streaming_enabled"] = streaming_check.isChecked()
+            self.config["cache_enabled"] = cache_check.isChecked()
+            self.config["unified_mode"] = unified_check.isChecked()
+            self.config["autonomous_enabled"] = autonomous_check.isChecked()
+            self.config["max_context"] = max_ctx_spin.value()
+            self.config["temperature"] = temp_spin.value() / 100.0
+
+            self.config["whisper_size"] = stt_combo.currentText()
+            self.config["stt_language"] = stt_lang.text() or "en"
+            self.config["stt_beam_size"] = stt_beam_spin.value()
+            self.config["tts_backend"] = tts_backend_combo.currentText()
+            self.config["tts_voice"] = tts_voice_input.text() or "default"
+            self.config["tts_gender"] = tts_gender_combo.currentText()
+            self.config["tts_rate"] = tts_rate_slider.value()
+            self.config["tts_volume"] = tts_volume_slider.value() / 100.0
+            self.config["voice_enabled"] = voice_enabled_check.isChecked()
+            self.config["hotword"] = hotword_input.text() or "cracked code"
+            self.config["font_size"] = font_size_spin.value()
+            self.config["auto_save"] = auto_save_check.isChecked()
+            self.config["auto_save_delay_ms"] = auto_save_delay.value()
+            self.config["line_numbers"] = line_numbers_check.isChecked()
+            self.config["autonomous_workspace"] = ws_path.text()
+            self.config["autonomous_max_corrections"] = max_corr_spin.value()
+            self.config["debate_rounds"] = debate_spin.value()
+
+            try:
+                with open("config.json", "w", encoding="utf-8") as f:
+                    json.dump(self.config, f, indent=2)
+                if self.engine:
+                    self.engine.config = self.config
+                self.term("Settings updated", level="success")
+                self.show_toast("Settings saved", ToastType.SUCCESS)
+            except Exception as e:
+                QMessageBox.critical(container, "Error", f"Could not save: {e}")
+        save_btn.clicked.connect(_save)
+        btn_layout.addWidget(save_btn)
+
+        close_btn = QPushButton("CLOSE", container)
+        def _close():
+            # Find and remove the settings tab
+            for i in range(self.tab_widget.count()):
+                if self.tab_widget.tabText(i) == "SETTINGS":
+                    self.tab_widget.removeTab(i)
+                    self.update_tab_count()
+                    break
+        close_btn.clicked.connect(_close)
+        btn_layout.addWidget(close_btn)
+
+        layout.addLayout(btn_layout)
+        return container
+
+    def _reload_settings_tab(self, container, settings_tabs):
+        """Reload settings tab after reset."""
+        idx = settings_tabs.currentIndex()
+        layout = container.layout()
+        # Remove old tabs widget
+        for i in reversed(range(layout.count())):
+            item = layout.itemAt(i)
+            if item.widget() and isinstance(item.widget(), QTabWidget):
+                layout.removeWidget(item.widget())
+                item.widget().deleteLater()
+                break
+
+        # Create new settings widget
+        new_settings = self._create_settings_tab_widget()
+        layout.insertWidget(0, new_settings)
+
+    def show_settings_dialog(self):
+        """Open the legacy settings dialog (fallback)."""
         if not SETTINGS_AVAILABLE:
             QMessageBox.warning(self, "Settings", "Settings dialog not available")
             return
         dlg = SettingsDialog(self.config, self)
         if dlg.exec() == QDialog.DialogCode.Accepted:
-            # Reload config
             self.load_config()
-            # Re-initialize affected subsystems
             if self.engine:
                 self.engine.config = self.config
             self.term("Settings updated", level="success")
