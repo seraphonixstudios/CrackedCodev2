@@ -3077,17 +3077,10 @@ class CrackedCodeGUI(QMainWindow):
     def scroll_tabs_left(self):
         idx = max(0, self.tab_widget.currentIndex() - 1)
         self.tab_widget.setCurrentIndex(idx)
-        self.ensure_tab_visible(idx)
 
     def scroll_tabs_right(self):
         idx = min(self.tab_widget.count() - 1, self.tab_widget.currentIndex() + 1)
         self.tab_widget.setCurrentIndex(idx)
-        self.ensure_tab_visible(idx)
-
-    def ensure_tab_visible(self, index):
-        tabBar = self.tab_widget.tabBar()
-        if tabBar:
-            tabBar.ensureVisible(index)
 
     def show_tab_context_menu(self, pos):
         from PyQt6.QtWidgets import QMenu
