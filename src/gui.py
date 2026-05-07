@@ -3892,6 +3892,25 @@ class CrackedCodeGUI(QMainWindow):
             self.term("[VOICE: not available]")
             return
 
+        if not self.voice.stt.is_available:
+            self.term("[VOICE: STT not available - install faster-whisper and sounddevice]")
+            self.show_toast("Speech-to-Text not available", ToastType.ERROR)
+            return
+
+        if not self.voice.stt.is_loaded:
+            self.term("[VOICE: Loading Whisper model...]")
+            self.show_toast("Loading speech recognition...", ToastType.INFO)
+            try:
+                if not self.voice.stt.load():
+                    self.term("[VOICE: Failed to load Whisper model]")
+                    self.show_toast("Failed to load speech recognition", ToastType.ERROR)
+                    return
+                self.term("[VOICE: Whisper model loaded]")
+            except Exception as e:
+                self.term(f"[VOICE: Error loading model: {e}]")
+                self.show_toast(f"Error: {e}", ToastType.ERROR)
+                return
+
         if self.voice_recording:
             self.voice_recording = False
             self.voice_btn.setChecked(False)
