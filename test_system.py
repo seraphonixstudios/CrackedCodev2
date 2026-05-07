@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CRACKEDCODE v2.9.4 - Comprehensive End-to-End Test Suite
+CRACKEDCODE v2.9.5 - Comprehensive End-to-End Test Suite
 Full coverage with real operations, no placeholders
 """
 
@@ -595,11 +595,11 @@ def test_version_info() -> bool:
         PASS(f"Engine version: {status.get('version', 'unknown')}")
         
         version_checks = 0
-        if CrackedCode.VERSION == "2.9.4":
+        if CrackedCode.VERSION == "2.9.5":
             version_checks += 1
-        if MatrixUI.VERSION == "2.9.4":
+        if MatrixUI.VERSION == "2.9.5":
             version_checks += 1
-        if status.get("version") == "2.9.4":
+        if status.get("version") == "2.9.5":
             version_checks += 1
         
         PASS(f"Version consistency: {version_checks}/3")
@@ -709,10 +709,10 @@ def test_cli_integration_e2e() -> bool:
             version = result.stdout.strip()
             PASS(f"CLI import: version {version}")
             
-            if version == "2.9.4":
+            if version == "2.9.5":
                 PASS("CLI version correct")
             else:
-                FAIL("CLI version", f"Expected 2.9.4, got {version}")
+                FAIL("CLI version", f"Expected 2.9.5, got {version}")
                 return False
         else:
             FAIL("CLI import", result.stderr[:50])
@@ -1663,7 +1663,7 @@ def test_voice_hotword_detection() -> bool:
 
 
 def main() -> int:
-    print(f"\n{'='*60}\n  CRACKEDCODE v2.9.4 - E2E TEST SUITE\n{'='*60}\n")
+    print(f"\n{'='*60}\n  CRACKEDCODE v2.9.5 - E2E TEST SUITE\n{'='*60}\n")
     
     tests = [
         ("Modules", test_modules),
@@ -1780,6 +1780,9 @@ def main() -> int:
         ("Memory Viz", test_memory_viz),
         ("Execution Tracer", test_execution_tracer),
         ("Doctor", test_doctor),
+        ("GUI v2.9.5", test_gui_v295_fixes),
+        ("Intent HELP/CHAT", test_intent_help_chat),
+        ("Version Consistency", test_version_consistency),
     ]
     
     results: list[tuple[str, bool]] = []
@@ -4361,8 +4364,8 @@ def test_import_export() -> bool:
             PASS("ImportExportManager created")
             
             # Test export manifest
-            manifest = ExportManifest(version="2.9.4", items=["config"])
-            if manifest.version == "2.9.4":
+            manifest = ExportManifest(version="2.9.5", items=["config"])
+            if manifest.version == "2.9.5":
                 PASS("ExportManifest dataclass")
             else:
                 return FAIL("ExportManifest wrong")
@@ -5705,6 +5708,156 @@ def test_doctor() -> bool:
         import traceback
         traceback.print_exc()
         return FAIL("Doctor", str(e)[:50])
+
+
+def test_gui_v295_fixes() -> bool:
+    """Test GUI fixes from v2.9.5: missing methods, tab navigation, paste handling."""
+    try:
+        from src.gui import CrackedCodeGUI, ENHANCEMENTS_AVAILABLE
+        
+        if not ENHANCEMENTS_AVAILABLE:
+            return True  # Skip if enhancements not available
+        
+        import os
+        os.environ['QT_QPA_PLATFORM'] = 'offscreen'
+        from PyQt6.QtWidgets import QApplication
+        import sys
+        sys.argv = ['gui.py']
+        
+        app = QApplication(sys.argv)
+        gui = CrackedCodeGUI()
+        
+        # Test all previously missing methods now exist
+        methods = [
+            'new_file', 'close_current_tab', 'show_help', 'show_quick_actions',
+            'scroll_tabs_left', 'scroll_tabs_right', 'close_other_tabs',
+            'close_tabs_right', 'show_tab_context_menu', 'copy_tab_path',
+            'reveal_tab_in_explorer', 'update_tab_count', 'handle_paste',
+            '_is_code_snippet',
+        ]
+        
+        for method in methods:
+            if hasattr(gui, method) and callable(getattr(gui, method)):
+                PASS(f"Method {method} exists")
+            else:
+                return FAIL(f"Missing method: {method}")
+        
+        # Test tab navigation UI elements
+        if hasattr(gui, 'tab_scroll_left') and hasattr(gui, 'tab_scroll_right'):
+            PASS("Tab scroll buttons exist")
+        else:
+            return FAIL("Tab scroll buttons missing")
+        
+        if hasattr(gui, 'tab_count_lbl'):
+            PASS("Tab count label exists")
+        else:
+            return FAIL("Tab count label missing")
+        
+        # Test _is_code_snippet detection
+        assert gui._is_code_snippet("def hello():\n    return 'world'")
+        PASS("Code snippet detection works")
+        
+        assert not gui._is_code_snippet("hello world this is just plain text")
+        PASS("Plain text not detected as code")
+        
+        # Test new_tab creates with count
+        gui.new_tab("test_v295")
+        if "test_v295" in gui.open_files:
+            PASS("New tab creation works")
+        else:
+            return FAIL("Tab not in open_files")
+        
+        # Test tab count updates
+        count = gui.tab_widget.count()
+        gui.update_tab_count()
+        if gui.tab_count_lbl.text() == str(count):
+            PASS("Tab count updates correctly")
+        else:
+            return FAIL("Tab count mismatch")
+        
+        # Test scroll navigation
+        gui.scroll_tabs_right()
+        gui.scroll_tabs_left()
+        PASS("Tab scrolling works without crash")
+        
+        # Test close_other_tabs
+        gui.close_other_tabs(0)
+        PASS("close_other_tabs works")
+        
+        # Test show_help doesn't crash
+        gui.show_help()
+        PASS("show_help dialog opens without crash")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("GUI v2.9.5", str(e)[:50])
+
+
+def test_intent_help_chat() -> bool:
+    """Test HELP and CHAT intent detection from v2.9.5."""
+    try:
+        from src.engine import CrackedCodeEngine, Intent
+        
+        engine = CrackedCodeEngine()
+        
+        # Test HELP intent
+        help_cases = [
+            "help me with Python",
+            "how do I install this",
+            "guide me through the setup",
+        ]
+        for prompt in help_cases:
+            result = engine.parse_intent(prompt)
+            actual = result.intent if hasattr(result, 'intent') else result
+            if actual == Intent.HELP:
+                PASS(f"HELP intent: '{prompt[:40]}'")
+            else:
+                return FAIL(f"HELP intent failed: '{prompt}' -> {actual}")
+        
+        # Test CHAT intent
+        chat_cases = [
+            "explain how decorators work",
+            "what is a closure",
+            "tell me about async",
+        ]
+        for prompt in chat_cases:
+            result = engine.parse_intent(prompt)
+            actual = result.intent if hasattr(result, 'intent') else result
+            if actual == Intent.CHAT:
+                PASS(f"CHAT intent: '{prompt[:40]}'")
+            else:
+                return FAIL(f"CHAT intent failed: '{prompt}' -> {actual}")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Intent HELP/CHAT", str(e)[:50])
+
+
+def test_version_consistency() -> bool:
+    """Test all version numbers are consistent at 2.9.5."""
+    try:
+        from src.main import CrackedCode
+        from src.atlan_ui import MatrixUI
+        
+        if CrackedCode.VERSION == "2.9.5":
+            PASS("main.py version: 2.9.5")
+        else:
+            return FAIL(f"main.py version: {CrackedCode.VERSION}")
+        
+        if MatrixUI.VERSION == "2.9.5":
+            PASS("atlan_ui.py version: 2.9.5")
+        else:
+            return FAIL(f"atlan_ui.py version: {MatrixUI.VERSION}")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Version check", str(e)[:50])
 
 
 if __name__ == "__main__":

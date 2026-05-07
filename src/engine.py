@@ -531,6 +531,16 @@ Question: {prompt}
         "phrases": ["go to website", "open this url", "browse to", "visit website", "check this site", "look at this page", "web page", "screenshot of", "what's on this website", "extract from page", "scrape this"],
         "negative": ["code", "write", "build", "create", "local"],
     }
+    HELP_KEYWORDS = {
+        "direct": ["help", "support", "guide", "tutorial", "howto", "how-to", "instructions", "manual", "docs", "documentation", "usage", "quickstart"],
+        "phrases": ["help me", "help with", "how do i", "how to", "how can i", "guide me", "show me how", "walk me through", "step by step guide", "get started", "beginner guide"],
+        "negative": ["debug", "fix", "review", "deploy", "execute", "build", "create"],
+    }
+    CHAT_KEYWORDS = {
+        "direct": ["chat", "talk", "discuss", "explain", "describe", "tell", "what", "why", "when", "who", "conversation", "opinion", "thought", "idea"],
+        "phrases": ["tell me about", "what is", "what are", "explain to me", "can you explain", "tell me why", "let's talk", "discuss about", "what do you think", "how does", "what does"],
+        "negative": ["code", "write", "build", "create", "debug", "run", "execute", "deploy"],
+    }
 
     # Multi-model auto-routing: which model handles which intent best
     INTENT_TO_MODEL = {
@@ -727,7 +737,7 @@ Question: {prompt}
                 pass
         
         return {
-            "version": "2.9.4",
+            "version": "2.9.5",
             "model": self.model,
             "vision_model": self.vision_model,
             "secondary_model": self.secondary_model,
@@ -787,6 +797,8 @@ Question: {prompt}
             Intent.VISION: self.VISION_KEYWORDS,
             Intent.SECURITY: self.SECURITY_KEYWORDS,
             Intent.BROWSE: self.BROWSE_KEYWORDS,
+            Intent.HELP: self.HELP_KEYWORDS,
+            Intent.CHAT: self.CHAT_KEYWORDS,
         }
         
         intent_scores = {}
@@ -816,8 +828,6 @@ Question: {prompt}
             
             intent_scores[intent] = max(score, 0)
         
-        intent_scores[Intent.CHAT] = 0
-        
         max_score = max(intent_scores.values())
         top_intents = [i for i, s in intent_scores.items() if s == max_score]
         
@@ -830,6 +840,7 @@ Question: {prompt}
             Intent.REVIEW,
             Intent.BUILD,
             Intent.CODE,
+            Intent.HELP,
             Intent.CHAT,
         ]
         

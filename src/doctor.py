@@ -1,4 +1,4 @@
-"""Doctor / Health Check v2.9.4 - System diagnostics and component testing.
+"""Doctor / Health Check v2.9.5 - System diagnostics and component testing.
 
 Automatically test every component and report exactly what's broken.
 
@@ -72,7 +72,7 @@ class Doctor:
         "files": ["config", "storage"],
     }
     
-    def __init__(self, version: str = "2.9.4"):
+    def __init__(self, version: str = "2.9.5"):
         self.version = version
         self.results: List[HealthCheck] = []
     
@@ -440,7 +440,7 @@ class Doctor:
         return "\n".join(lines)
 
 
-def run_health_check(component: Optional[str] = None, json_output: bool = False, version: str = "2.9.4") -> HealthReport:
+def run_health_check(component: Optional[str] = None, json_output: bool = False, version: str = "2.9.5") -> HealthReport:
     """Run health check and return report."""
     doctor = Doctor(version=version)
     

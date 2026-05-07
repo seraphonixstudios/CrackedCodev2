@@ -347,13 +347,13 @@ class SettingsDialog(QDialog):
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(8)
 
-        theme_group = QGroupBox("THEME", tab)
+        theme_group = QGroupBox("APPEARANCE", tab)
         theme_layout = QFormLayout(theme_group)
         theme_layout.setContentsMargins(8, 16, 8, 8)
 
-        self.theme_combo = QComboBox(theme_group)
-        self.theme_combo.addItems(["Atlantean (Green)", "Matrix (Dark)", "Ocean (Blue)"])
-        theme_layout.addRow("Color Theme:", self.theme_combo)
+        theme_label = QLabel("Atlantean (Green) — Default theme")
+        theme_label.setStyleSheet(f"color: #00FF41;")
+        theme_layout.addRow("Color Theme:", theme_label)
 
         self.font_size_spin = QSpinBox(theme_group)
         self.font_size_spin.setRange(8, 20)

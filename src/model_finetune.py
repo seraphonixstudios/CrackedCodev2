@@ -1,4 +1,4 @@
-"""Model Fine-tuning Pipeline v2.9.4 - Local model fine-tuning with Ollama.
+"""Model Fine-tuning Pipeline v2.9.5 - Local model fine-tuning with Ollama.
 
 Prepare training data from conversations, code reviews, and agent outputs.
 Create a custom Ollama model with a Modelfile for domain-specific tasks.

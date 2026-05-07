@@ -12,7 +12,7 @@ import re
 import base64
 import hashlib
 from pathlib import Path
-from typing import Optional, Dict, List, Any, Tuple, Callable
+from typing import Optional, Dict, List, Any, Tuple, Callable, Set
 from dataclasses import dataclass, field
 from enum import Enum
 from PyQt6.QtWidgets import (
@@ -200,84 +200,6 @@ class AgentTask:
             "error": self.error,
             "duration": self.duration,
         }
-
-
-class NotificationWidget(QFrame):
-    def __init__(self, message: str, ntype: NotificationType = NotificationType.INFO, parent=None):
-        super().__init__(parent)
-        self.ntype = ntype
-        self.setAutoFillBackground(True)
-        self.setFixedHeight(40)
-        
-        self.opacity = 1.0
-        
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(12, 4, 12, 4)
-        
-        colors = {
-            NotificationType.INFO: ATLAN_CYAN,
-            NotificationType.SUCCESS: ATLAN_GREEN,
-            NotificationType.WARNING: ATLAN_GOLD,
-            NotificationType.ERROR: ATLAN_RED,
-        }
-        icons = {
-            NotificationType.INFO: "i",
-            NotificationType.SUCCESS: "+",
-            NotificationType.WARNING: "!",
-            NotificationType.ERROR: "x",
-        }
-        
-        color = colors.get(ntype, ATLAN_CYAN)
-        icon = icons.get(ntype, "i")
-        
-        icon_lbl = QLabel(icon)
-        icon_lbl.setStyleSheet(f"""
-            background-color: {color};
-            color: {ATLAN_DARK};
-            font-weight: bold;
-            border-radius: 10px;
-            min-width: 20px;
-            min-height: 20px;
-            max-width: 20px;
-            max-height: 20px;
-            qproperty-alignment: AlignCenter;
-        """)
-        layout.addWidget(icon_lbl)
-        
-        msg_lbl = QLabel(message)
-        msg_lbl.setStyleSheet(f"color: {color}; font-size: 11px;")
-        layout.addWidget(msg_lbl)
-        
-        close_btn = QPushButton("x")
-        close_btn.setFixedWidth(20)
-        close_btn.setStyleSheet(f"color: {color}; border: none; font-weight: bold;")
-        close_btn.clicked.connect(self.close_notification)
-        layout.addWidget(close_btn)
-        
-        self.setStyleSheet(f"""
-            NotificationWidget {{
-                background-color: {ATLAN_MEDIUM};
-                border: 1px solid {color};
-                border-radius: 6px;
-            }}
-        """)
-        
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.fade_out)
-        self.timer.start(5000)
-
-    def fade_out(self):
-        self.opacity -= 0.1
-        if self.opacity <= 0:
-            self.close_notification()
-        else:
-            self.setGraphicsEffect(None)
-            self.repaint()
-
-    def close_notification(self):
-        self.timer.stop()
-        self.setParent(None)
-        self.deleteLater()
 
 
 class AgentOrchestrator:
@@ -1471,7 +1393,7 @@ class CrackedCodeGUI(QMainWindow):
         self.restore_state()
         self.setup_paste_handler()
         
-        logger.info("CrackedCode GUI v2.9.4 started")
+        logger.info("CrackedCode GUI v2.9.5 started")
 
     def init_orchestrator(self):
         self.orchestrator = AgentOrchestrator(gui_ref=self)
@@ -1589,7 +1511,7 @@ class CrackedCodeGUI(QMainWindow):
                 tts_rate=self.config.get("tts_rate", 175),
             )
             self.voice = UnifiedVoiceEngine(voice_cfg)
-            self.voice.initialize(load_stt=True, load_tts=True)
+            self.voice.initialize(load_stt=False, load_tts=True)
 
             # Register command handlers that map to GUI actions
             self._register_voice_command_handlers()
@@ -1636,7 +1558,7 @@ class CrackedCodeGUI(QMainWindow):
             self.config = {"model": "qwen3:8b-gpu", "project_root": "."}
 
     def setup_atlan_theme(self):
-        self.setWindowTitle("CRACKEDCODE v2.9.4 // AUTONOMOUS NEURAL SYSTEM")
+        self.setWindowTitle("CRACKEDCODE v2.9.5 // AUTONOMOUS NEURAL SYSTEM")
         self.setMinimumSize(1400, 900)
         
         self.atlan_font = QFont("Consolas", 11)
@@ -1917,12 +1839,40 @@ class CrackedCodeGUI(QMainWindow):
         
         self.create_toolbar()
         
+        # Tab container with scroll buttons
+        tab_container = QWidget()
+        tab_layout = QHBoxLayout(tab_container)
+        tab_layout.setContentsMargins(0, 0, 0, 0)
+        tab_layout.setSpacing(2)
+        
+        self.tab_scroll_left = QPushButton("◀")
+        self.tab_scroll_left.setFixedWidth(30)
+        self.tab_scroll_left.setToolTip("Scroll tabs left")
+        self.tab_scroll_left.clicked.connect(self.scroll_tabs_left)
+        tab_layout.addWidget(self.tab_scroll_left)
+        
         self.tab_widget = QTabWidget()
         self.tab_widget.setTabsClosable(True)
         self.tab_widget.setMovable(True)
+        self.tab_widget.setUsesScrollButtons(True)
         self.tab_widget.tabCloseRequested.connect(self.close_tab)
         self.tab_widget.currentChanged.connect(self.on_tab_changed)
         self.tab_widget.tabBarDoubleClicked.connect(self.rename_tab)
+        self.tab_widget.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.tab_widget.customContextMenuRequested.connect(self.show_tab_context_menu)
+        tab_layout.addWidget(self.tab_widget, 1)
+        
+        self.tab_scroll_right = QPushButton("▶")
+        self.tab_scroll_right.setFixedWidth(30)
+        self.tab_scroll_right.setToolTip("Scroll tabs right")
+        self.tab_scroll_right.clicked.connect(self.scroll_tabs_right)
+        tab_layout.addWidget(self.tab_scroll_right)
+        
+        self.tab_count_lbl = QLabel("0")
+        self.tab_count_lbl.setStyleSheet(f"color: {ATLAN_GREEN}; font-size: 10px;")
+        self.tab_count_lbl.setToolTip("Total open tabs")
+        self.tab_count_lbl.setFixedWidth(20)
+        tab_layout.addWidget(self.tab_count_lbl)
         
         self.editor = QTextEdit()
         self.editor.setPlaceholderText("Enter code here...")
@@ -1930,8 +1880,9 @@ class CrackedCodeGUI(QMainWindow):
         self.editor.document().modificationChanged.connect(self.on_modification_changed)
         self.tab_widget.addTab(self.editor, "untitled")
         self.open_files["untitled"] = self.editor
+        self.update_tab_count()
         
-        rl.addWidget(self.tab_widget, 3)
+        rl.addWidget(tab_container, 3)
         
         term_group = QGroupBox("TERMINAL")
         term_layout = QVBoxLayout(term_group)
@@ -2061,6 +2012,19 @@ class CrackedCodeGUI(QMainWindow):
         # Close tab
         close_tab_shortcut = QShortcut(QKeySequence("Ctrl+W"), self)
         close_tab_shortcut.activated.connect(self.close_current_tab)
+        
+        # Tab navigation: Ctrl+Tab / Ctrl+Shift+Tab / Ctrl+PgUp / Ctrl+PgDn
+        next_tab = QShortcut(QKeySequence("Ctrl+Tab"), self)
+        next_tab.activated.connect(self.scroll_tabs_right)
+        
+        prev_tab = QShortcut(QKeySequence("Ctrl+Shift+Tab"), self)
+        prev_tab.activated.connect(self.scroll_tabs_left)
+        
+        next_tab_pg = QShortcut(QKeySequence("Ctrl+PgDown"), self)
+        next_tab_pg.activated.connect(self.scroll_tabs_right)
+        
+        prev_tab_pg = QShortcut(QKeySequence("Ctrl+PgUp"), self)
+        prev_tab_pg.activated.connect(self.scroll_tabs_left)
     
     def show_quick_actions(self):
         """Show the command palette."""
@@ -2148,6 +2112,40 @@ class CrackedCodeGUI(QMainWindow):
         
         view_menu = menubar.addMenu("VIEW")
         
+        # Tab navigation
+        tab_menu = view_menu.addMenu("TAB NAVIGATION")
+        
+        next_tab_action = QAction("NEXT TAB ▶", self)
+        next_tab_action.setShortcut(QKeySequence("Ctrl+Tab"))
+        next_tab_action.setToolTip("Switch to next tab (Ctrl+Tab, Ctrl+PgDn)")
+        next_tab_action.triggered.connect(self.scroll_tabs_right)
+        tab_menu.addAction(next_tab_action)
+        
+        prev_tab_action = QAction("PREV TAB ◀", self)
+        prev_tab_action.setShortcut(QKeySequence("Ctrl+Shift+Tab"))
+        prev_tab_action.setToolTip("Switch to previous tab (Ctrl+Shift+Tab, Ctrl+PgUp)")
+        prev_tab_action.triggered.connect(self.scroll_tabs_left)
+        tab_menu.addAction(prev_tab_action)
+        
+        close_tab_action = QAction("CLOSE TAB", self)
+        close_tab_action.setShortcut(QKeySequence("Ctrl+W"))
+        close_tab_action.setToolTip("Close current tab (Ctrl+W)")
+        close_tab_action.triggered.connect(self.close_current_tab)
+        tab_menu.addAction(close_tab_action)
+        
+        tab_menu.addSeparator()
+        
+        close_others_action = QAction("CLOSE OTHER TABS", self)
+        close_others_action.setToolTip("Close all tabs except current")
+        close_others_action.triggered.connect(lambda: self.close_other_tabs(self.tab_widget.currentIndex()))
+        tab_menu.addAction(close_others_action)
+        
+        close_right_action = QAction("CLOSE TABS TO RIGHT", self)
+        close_right_action.setToolTip("Close all tabs to the right of current")
+        close_right_action.triggered.connect(lambda: self.close_tabs_right(self.tab_widget.currentIndex()))
+        tab_menu.addAction(close_right_action)
+        
+        view_menu.addSeparator()
         palette_action = QAction("COMMAND PALETTE", self)
         palette_action.setShortcut(QKeySequence("Ctrl+Shift+P"))
         palette_action.setToolTip("Open command palette (Ctrl+Shift+P)")
@@ -2314,77 +2312,132 @@ class CrackedCodeGUI(QMainWindow):
         dialog.exec()
 
     def create_left_panel(self):
-        dock = QDockWidget("CONTROL CENTER", self)
+        dock = QDockWidget("WORKSPACE", self)
         dock.setAllowedAreas(Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea)
+        dock.setObjectName("workspace_dock")
         
-        container = QWidget()
-        layout = QVBoxLayout(container)
-        layout.setContentsMargins(4, 4, 4, 4)
-        layout.setSpacing(4)
+        # Use a tabbed interface for left panel to organize many widgets
+        panel_tabs = QTabWidget()
+        panel_tabs.setTabPosition(QTabWidget.TabPosition.North)
+        panel_tabs.setStyleSheet(f"""
+            QTabWidget::pane {{
+                border: 1px solid {ATLAN_BORDER};
+                border-radius: 4px;
+            }}
+            QTabBar::tab {{
+                background-color: {ATLAN_MEDIUM};
+                color: {ATLAN_GREEN};
+                padding: 6px 10px;
+                border: 1px solid {ATLAN_BORDER};
+                border-bottom: none;
+                font-size: 10px;
+                font-weight: bold;
+            }}
+            QTabBar::tab:selected {{
+                background-color: {ATLAN_GREEN};
+                color: {ATLAN_DARK};
+            }}
+            QTabBar::tab:hover {{
+                background-color: {ATLAN_LIGHT};
+            }}
+        """)
         
-        project_group = QGroupBox("PROJECT")
-        project_layout = QVBoxLayout(project_group)
-        project_layout.setContentsMargins(4, 10, 4, 4)
+        # --- Tab 1: FILES & GIT ---
+        files_tab = QWidget()
+        files_layout = QVBoxLayout(files_tab)
+        files_layout.setContentsMargins(4, 4, 4, 4)
+        files_layout.setSpacing(4)
         
+        # File tree
         self.files_tree = QTreeWidget()
-        self.files_tree.setHeaderLabel("Files")
+        self.files_tree.setHeaderLabel("")
         self.files_tree.itemDoubleClicked.connect(self.on_file_clicked)
-        self.files_tree.setToolTip("Project files - double-click to open")
+        self.files_tree.setToolTip("Project files — double-click to open")
         self.files_tree.setSortingEnabled(True)
-        project_layout.addWidget(self.files_tree)
+        self.files_tree.setMinimumHeight(200)
+        files_layout.addWidget(self.files_tree)
         
-        btn_layout = QHBoxLayout()
-        new_btn = QPushButton("NEW")
-        new_btn.setToolTip("Create new project")
-        new_btn.clicked.connect(self.new_proj)
-        open_btn = QPushButton("OPEN")
-        open_btn.setToolTip("Open project folder")
-        open_btn.clicked.connect(self.open_proj)
+        # File actions
+        file_btn_layout = QHBoxLayout()
+        new_proj_btn = QPushButton("NEW PROJECT")
+        new_proj_btn.setToolTip("Create a new project from a folder")
+        new_proj_btn.clicked.connect(self.new_proj)
+        open_proj_btn = QPushButton("OPEN")
+        open_proj_btn.setToolTip("Open an existing project folder")
+        open_proj_btn.clicked.connect(self.open_proj)
         refresh_btn = QPushButton("REFRESH")
-        refresh_btn.setToolTip("Refresh file tree")
+        refresh_btn.setToolTip("Refresh the file tree")
         refresh_btn.clicked.connect(self.refresh_file_tree)
-        btn_layout.addWidget(new_btn)
-        btn_layout.addWidget(open_btn)
-        btn_layout.addWidget(refresh_btn)
-        project_layout.addLayout(btn_layout)
+        file_btn_layout.addWidget(new_proj_btn)
+        file_btn_layout.addWidget(open_proj_btn)
+        file_btn_layout.addWidget(refresh_btn)
+        files_layout.addLayout(file_btn_layout)
         
-        layout.addWidget(project_group)
-        
-        # Git panel
+        # Git panel (if available)
         if GIT_PANEL_AVAILABLE:
             self.git_panel = GitPanelWidget(parent=self)
             self.git_panel.file_clicked.connect(self.open_file_from_git)
-            layout.addWidget(self.git_panel, 1)
+            files_layout.addWidget(self.git_panel)
         else:
             self.git_panel = None
         
+        panel_tabs.addTab(files_tab, "FILES")
+        
+        # --- Tab 2: AGENTS & TASKS ---
+        agents_tab = QWidget()
+        agents_layout = QVBoxLayout(agents_tab)
+        agents_layout.setContentsMargins(4, 4, 4, 4)
+        agents_layout.setSpacing(4)
+        
         self.agent_panel = AgentPanelWidget(self.orchestrator)
-        layout.addWidget(self.agent_panel)
+        self.agent_panel.setToolTip("Available AI agents and their status")
+        agents_layout.addWidget(self.agent_panel)
         
         self.task_queue = TaskQueueWidget(self.orchestrator)
-        layout.addWidget(self.task_queue)
+        self.task_queue.setToolTip("Current task queue with status and priority")
+        agents_layout.addWidget(self.task_queue)
         
-        # Reasoning panel
+        # Progress bar
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setToolTip("Current task progress")
+        self.progress_bar.setFixedHeight(18)
+        agents_layout.addWidget(self.progress_bar)
+        
+        panel_tabs.addTab(agents_tab, "AGENTS")
+        
+        # --- Tab 3: REASONING ---
+        reasoning_tab = QWidget()
+        reasoning_layout = QVBoxLayout(reasoning_tab)
+        reasoning_layout.setContentsMargins(4, 4, 4, 4)
+        reasoning_layout.setSpacing(0)
+        
         self.reasoning_panel = ReasoningPanelWidget(gui_ref=self)
-        layout.addWidget(self.reasoning_panel)
+        self.reasoning_panel.setToolTip("AI reasoning chains and coherence analysis")
+        reasoning_layout.addWidget(self.reasoning_panel)
         
-        # Conversation history panel
+        panel_tabs.addTab(reasoning_tab, "REASONING")
+        
+        # --- Tab 4: HISTORY ---
+        history_tab = QWidget()
+        history_layout = QVBoxLayout(history_tab)
+        history_layout.setContentsMargins(4, 4, 4, 4)
+        history_layout.setSpacing(4)
+        
+        # Conversation history
         self.conversation_panel = self.create_conversation_panel()
-        layout.addWidget(self.conversation_panel)
+        history_layout.addWidget(self.conversation_panel)
         
-        # Tool execution log
+        # Tool log (if available)
         if TOOLS_AVAILABLE:
             self.tool_log = ToolLogWidget(gui_ref=self)
-            layout.addWidget(self.tool_log)
+            self.tool_log.setToolTip("Tool execution history")
+            history_layout.addWidget(self.tool_log)
         else:
             self.tool_log = None
         
-        self.progress_bar = QProgressBar()
-        self.progress_bar.setToolTip("Task progress")
-        self.progress_bar.setFixedHeight(20)
-        layout.addWidget(self.progress_bar)
+        panel_tabs.addTab(history_tab, "HISTORY")
         
-        dock.setWidget(container)
+        dock.setWidget(panel_tabs)
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, dock)
         
         return dock
@@ -2462,48 +2515,75 @@ class CrackedCodeGUI(QMainWindow):
         tb.setMovable(False)
         tb.setIconSize(QSize(24, 24))
         tb.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
+        tb.setFloatable(False)
+        tb.setStyleSheet(f"""
+            QToolBar {{
+                background-color: {ATLAN_DARK};
+                border-bottom: 2px solid {ATLAN_GREEN};
+                padding: 2px;
+                spacing: 4px;
+            }}
+            QToolBar::separator {{
+                width: 2px;
+                background-color: {ATLAN_BORDER};
+                margin: 4px 2px;
+            }}
+        """)
         self.addToolBar(tb)
+        
+        # --- MODE GROUP: Plan / Build ---
+        mode_label = QLabel("MODE:")
+        mode_label.setStyleSheet(f"color: {ATLAN_GOLD}; font-weight: bold; font-size: 10px; padding-right: 4px;")
+        tb.addWidget(mode_label)
         
         self.plan_btn = QPushButton("PLAN")
         self.plan_btn.setCheckable(True)
         self.plan_btn.setChecked(True)
-        self.plan_btn.setToolTip("Toggle PLAN mode (Ctrl+P)")
+        self.plan_btn.setToolTip("Analyze prompt and plan response before generating (Ctrl+P)")
         self.plan_btn.clicked.connect(lambda: self.set_mode("plan"))
         tb.addWidget(self.plan_btn)
         
         self.build_btn = QPushButton("BUILD")
         self.build_btn.setCheckable(True)
         self.build_btn.setChecked(True)
-        self.build_btn.setToolTip("Toggle BUILD mode (Ctrl+B)")
+        self.build_btn.setToolTip("Execute the planned actions and generate code (Ctrl+B)")
         self.build_btn.clicked.connect(lambda: self.set_mode("build"))
         tb.addWidget(self.build_btn)
         
         tb.addSeparator()
         
+        # --- ACTION GROUP: Execute / Voice ---
+        action_label = QLabel("ACTION:")
+        action_label.setStyleSheet(f"color: {ATLAN_GOLD}; font-weight: bold; font-size: 10px; padding-right: 4px;")
+        tb.addWidget(action_label)
+        
         exec_btn = QPushButton("EXECUTE")
-        exec_btn.setToolTip("Execute code in editor (Ctrl+Enter)")
+        exec_btn.setToolTip("Run code from the active editor tab (Ctrl+Enter)")
         exec_btn.clicked.connect(self.exec_code)
         tb.addWidget(exec_btn)
         
         self.voice_btn = QPushButton("VOICE")
         self.voice_btn.setCheckable(True)
-        self.voice_btn.setToolTip("Toggle voice input (Ctrl+Shift+V)")
+        self.voice_btn.setToolTip("Listen for voice commands (Ctrl+Shift+V)")
         self.voice_btn.clicked.connect(self.toggle_voice)
         tb.addWidget(self.voice_btn)
         
         tb.addSeparator()
         
+        # --- TERMINAL GROUP: Copy / Clear / Stop ---
+        terminal_label = QLabel("TERMINAL:")
+        terminal_label.setStyleSheet(f"color: {ATLAN_GOLD}; font-weight: bold; font-size: 10px; padding-right: 4px;")
+        tb.addWidget(terminal_label)
+        
         copy_btn = QPushButton("COPY")
-        copy_btn.setToolTip("Copy terminal output")
+        copy_btn.setToolTip("Copy all terminal output to clipboard")
         copy_btn.clicked.connect(self.copy_output)
         tb.addWidget(copy_btn)
         
         clear_btn = QPushButton("CLEAR")
-        clear_btn.setToolTip("Clear terminal")
+        clear_btn.setToolTip("Clear terminal output (Ctrl+L)")
         clear_btn.clicked.connect(self.clear_terminal)
         tb.addWidget(clear_btn)
-        
-        tb.addSeparator()
         
         stop_btn = QPushButton("STOP")
         stop_btn.setToolTip("Stop current operation (Esc)")
@@ -2519,40 +2599,39 @@ class CrackedCodeGUI(QMainWindow):
             }}
         """)
         tb.addWidget(stop_btn)
-
+        
         tb.addSeparator()
+        
+        # --- FEATURES GROUP: Unified / Stream / Autonomous / Matrix ---
+        feature_label = QLabel("FEATURES:")
+        feature_label.setStyleSheet(f"color: {ATLAN_GOLD}; font-weight: bold; font-size: 10px; padding-right: 4px;")
+        tb.addWidget(feature_label)
 
         self.unified_btn = QPushButton("UNIFIED")
         self.unified_btn.setCheckable(True)
         self.unified_btn.setChecked(self.config.get("unified_mode", False))
-        self.unified_btn.setToolTip("Toggle Unified Intelligence Mode (all models combined)")
+        self.unified_btn.setToolTip("Combine all models for maximum intelligence")
         self.unified_btn.clicked.connect(self.toggle_unified_mode)
         tb.addWidget(self.unified_btn)
-
-        tb.addSeparator()
 
         self.stream_btn = QPushButton("STREAM")
         self.stream_btn.setCheckable(True)
         self.stream_btn.setChecked(self.config.get("streaming_enabled", True))
-        self.stream_btn.setToolTip("Toggle streaming responses (character by character)")
+        self.stream_btn.setToolTip("Show AI responses in real-time as they're generated")
         self.stream_btn.clicked.connect(self.toggle_streaming)
         tb.addWidget(self.stream_btn)
-        
-        tb.addSeparator()
         
         self.autonomous_btn = QPushButton("AUTONOMOUS")
         self.autonomous_btn.setCheckable(True)
         self.autonomous_btn.setChecked(self.config.get("autonomous_enabled", True))
-        self.autonomous_btn.setToolTip("Toggle autonomous production mode (Ctrl+A)")
+        self.autonomous_btn.setToolTip("Let AI plan, code, test, and fix autonomously (Ctrl+A)")
         self.autonomous_btn.clicked.connect(self.toggle_autonomous_mode)
         tb.addWidget(self.autonomous_btn)
-        
-        tb.addSeparator()
         
         self.matrix_btn = QPushButton("MATRIX")
         self.matrix_btn.setCheckable(True)
         self.matrix_btn.setChecked(False)
-        self.matrix_btn.setToolTip("Toggle matrix rain effect (Ctrl+M)")
+        self.matrix_btn.setToolTip("Toggle matrix rain background effect (Ctrl+M)")
         self.matrix_btn.clicked.connect(self.toggle_matrix)
         tb.addWidget(self.matrix_btn)
 
@@ -2627,9 +2706,12 @@ class CrackedCodeGUI(QMainWindow):
                 pass
         
     def update_stats(self):
-        if self.engine and hasattr(self.engine, 'ollama'):
-            stats = self.engine.ollama.get_cache_stats()
-            self.cache_lbl.setText(f"Cache: {stats['size']}")
+        if self.engine and hasattr(self.engine, 'ollama') and self.engine.ollama:
+            try:
+                stats = self.engine.ollama.get_cache_stats()
+                self.cache_lbl.setText(f"Cache: {stats['size']}")
+            except Exception:
+                pass
 
     def update_status(self, status: Dict):
         if hasattr(self, 'ollama_lbl'):
@@ -2940,25 +3022,18 @@ class CrackedCodeGUI(QMainWindow):
             self.term(f"[SEARCH ERROR] {e}", level="error")
 
     def show_notification(self, message: str, ntype: NotificationType = NotificationType.INFO):
-        if not hasattr(self, 'notification_area'):
-            self.notification_area = QVBoxLayout()
-            self.notification_area.setContentsMargins(10, 10, 10, 10)
-            self.notification_area.addStretch()
-            
-            notif_widget = QWidget()
-            notif_widget.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
-            notif_widget.setLayout(self.notification_area)
-            notif_widget.setFixedWidth(300)
-            
-            stack = self.findChild(QStackedWidget)
-            if not stack:
-                self.setCentralWidget(notif_widget)
-        
-        notif = NotificationWidget(message, ntype)
-        self.notification_area.insertWidget(0, notif)
-        
-        if self.notification_area.count() > 5:
-            self.notification_area.takeAt(0)
+        """Show an in-app notification via toast system."""
+        if ENHANCEMENTS_AVAILABLE:
+            from src.gui_enhancements import ToastType
+            type_map = {
+                NotificationType.INFO: ToastType.INFO,
+                NotificationType.SUCCESS: ToastType.SUCCESS,
+                NotificationType.WARNING: ToastType.WARNING,
+                NotificationType.ERROR: ToastType.ERROR,
+            }
+            self.show_toast(message, type_map.get(ntype, ToastType.INFO))
+        else:
+            self.term(f"[NOTIFY] {message}")
 
     def close_tab(self, index):
         if self.tab_widget.count() > 1:
@@ -2969,6 +3044,10 @@ class CrackedCodeGUI(QMainWindow):
                 self.modified_tabs.remove(tab_name)
             self.tab_widget.removeTab(index)
             self.term(f"[TAB] Closed {tab_name}")
+
+    def close_current_tab(self):
+        index = self.tab_widget.currentIndex()
+        self.close_tab(index)
 
     def rename_tab(self, index):
         tab_name = self.tab_widget.tabText(index)
@@ -2989,6 +3068,97 @@ class CrackedCodeGUI(QMainWindow):
             self.editor.installEventFilter(self)
             self.editor._has_event_filter = True
         self.set_status(f"Editing: {tab_name}")
+        self.update_tab_count()
+
+    def update_tab_count(self):
+        if hasattr(self, 'tab_count_lbl'):
+            self.tab_count_lbl.setText(str(self.tab_widget.count()))
+
+    def scroll_tabs_left(self):
+        idx = max(0, self.tab_widget.currentIndex() - 1)
+        self.tab_widget.setCurrentIndex(idx)
+        self.ensure_tab_visible(idx)
+
+    def scroll_tabs_right(self):
+        idx = min(self.tab_widget.count() - 1, self.tab_widget.currentIndex() + 1)
+        self.tab_widget.setCurrentIndex(idx)
+        self.ensure_tab_visible(idx)
+
+    def ensure_tab_visible(self, index):
+        tabBar = self.tab_widget.tabBar()
+        if tabBar:
+            tabBar.ensureVisible(index)
+
+    def show_tab_context_menu(self, pos):
+        from PyQt6.QtWidgets import QMenu
+        menu = QMenu(self)
+        menu.setStyleSheet(f"""
+            QMenu {{ background-color: {ATLAN_MEDIUM}; color: {ATLAN_GREEN}; border: 1px solid {ATLAN_GREEN}; }}
+            QMenu::item:selected {{ background-color: {ATLAN_GREEN}; color: #000; }}
+        """)
+        
+        index = self.tab_widget.tabBar().tabAt(pos)
+        if index < 0:
+            return
+        
+        tab_name = self.tab_widget.tabText(index)
+        
+        rename_action = menu.addAction(f"Rename: {tab_name}")
+        rename_action.triggered.connect(lambda: self.rename_tab(index))
+        
+        menu.addSeparator()
+        
+        close_action = menu.addAction("Close Tab")
+        close_action.triggered.connect(lambda: self.close_tab(index))
+        
+        close_others = menu.addAction("Close Other Tabs")
+        close_others.triggered.connect(lambda: self.close_other_tabs(index))
+        
+        close_right = menu.addAction("Close Tabs to Right")
+        close_right.triggered.connect(lambda: self.close_tabs_right(index))
+        
+        menu.addSeparator()
+        
+        copy_path = menu.addAction("Copy File Path")
+        copy_path.triggered.connect(lambda: self.copy_tab_path(index))
+        
+        reveal = menu.addAction("Reveal in File Manager")
+        reveal.triggered.connect(lambda: self.reveal_tab_in_explorer(index))
+        
+        menu.exec(self.tab_widget.mapToGlobal(pos))
+
+    def close_other_tabs(self, keep_index):
+        for i in range(self.tab_widget.count() - 1, -1, -1):
+            if i != keep_index and self.tab_widget.count() > 1:
+                self.close_tab(i)
+
+    def close_tabs_right(self, from_index):
+        for i in range(self.tab_widget.count() - 1, from_index, -1):
+            if self.tab_widget.count() > 1:
+                self.close_tab(i)
+
+    def copy_tab_path(self, index):
+        tab_name = self.tab_widget.tabText(index)
+        if self.project_path and tab_name in self.open_files:
+            from PyQt6.QtGui import QGuiApplication
+            full_path = str(self.project_path / tab_name)
+            QGuiApplication.clipboard().setText(full_path)
+            self.term(f"[TAB] Path copied: {full_path}")
+            self.show_toast("Path copied", ToastType.SUCCESS)
+        else:
+            self.term(f"[TAB] File not saved yet: {tab_name}")
+            self.show_toast("File not saved yet", ToastType.WARNING)
+
+    def reveal_tab_in_explorer(self, index):
+        tab_name = self.tab_widget.tabText(index)
+        if self.project_path and tab_name in self.open_files:
+            import subprocess
+            full_path = str(self.project_path / tab_name)
+            subprocess.Popen(f'explorer /select,"{full_path}"')
+            self.term(f"[TAB] Opened in Explorer: {tab_name}")
+        else:
+            self.term(f"[TAB] File not saved yet: {tab_name}")
+            self.show_toast("File not saved yet", ToastType.WARNING)
 
     def on_modification_changed(self, modified: bool):
         current = self.tab_widget.currentIndex()
@@ -3017,6 +3187,54 @@ class CrackedCodeGUI(QMainWindow):
         self.tab_widget.setCurrentWidget(editor)
         self.editor = editor
         self.term(f"[TAB] Created {name}")
+
+    def new_file(self):
+        """Create a new file with user-provided name."""
+        name, ok = QInputDialog.getText(self, "New File", "File name:")
+        if ok and name.strip():
+            name = name.strip()
+            self.new_tab(name)
+            self.show_notification(f"Created {name}", NotificationType.SUCCESS)
+
+    def show_help(self):
+        """Show help dialog with keyboard shortcuts and usage info."""
+        dlg = QMessageBox(self)
+        dlg.setWindowTitle("CrackedCode Help")
+        dlg.setTextFormat(Qt.TextFormat.RichText)
+        dlg.setText("""
+        <h2 style='color: #00FF41;'>CrackedCode v2.9.5</h2>
+        <b>Keyboard Shortcuts:</b><br>
+        <table>
+        <tr><td><b>Ctrl+N</b></td><td>New File</td></tr>
+        <tr><td><b>Ctrl+O</b></td><td>Open Project</td></tr>
+        <tr><td><b>Ctrl+S</b></td><td>Save File</td></tr>
+        <tr><td><b>Ctrl+Enter</b></td><td>Execute Code</td></tr>
+        <tr><td><b>Ctrl+P</b></td><td>Toggle Plan Mode</td></tr>
+        <tr><td><b>Ctrl+B</b></td><td>Toggle Build Mode</td></tr>
+        <tr><td><b>Ctrl+Shift+V</b></td><td>Toggle Voice</td></tr>
+        <tr><td><b>Ctrl+T</b></td><td>New Tab</td></tr>
+        <tr><td><b>Ctrl+W</b></td><td>Close Tab</td></tr>
+        <tr><td><b>Ctrl+Tab / Ctrl+PgDn</b></td><td>Next Tab ▶</td></tr>
+        <tr><td><b>Ctrl+Shift+Tab / Ctrl+PgUp</b></td><td>Prev Tab ◀</td></tr>
+        <tr><td><b>Ctrl+Shift+P</b></td><td>Command Palette</td></tr>
+        <tr><td><b>Ctrl+Shift+F</b></td><td>Search Codebase</td></tr>
+        <tr><td><b>Ctrl+Shift+S</b></td><td>Save As / Analyze Screen</td></tr>
+        <tr><td><b>Ctrl+A</b></td><td>Autonomous Produce</td></tr>
+        <tr><td><b>Ctrl+V</b></td><td>Paste (auto-detects code vs text)</td></tr>
+        <tr><td><b>Right-click tab</b></td><td>Tab Context Menu</td></tr>
+        <tr><td><b>F1</b></td><td>This Help</td></tr>
+        <tr><td><b>F11</b></td><td>Toggle Fullscreen</td></tr>
+        <tr><td><b>F12</b></td><td>Dev Console</td></tr>
+        <tr><td><b>Esc</b></td><td>Stop Current Operation</td></tr>
+        </table>
+        <br>
+        <b>Left Panel Tabs:</b> FILES &nbsp;|&nbsp; AGENTS &nbsp;|&nbsp; REASONING &nbsp;|&nbsp; HISTORY<br>
+        <b>Toolbar Groups:</b> MODE &nbsp;|&nbsp; ACTION &nbsp;|&nbsp; TERMINAL &nbsp;|&nbsp; FEATURES<br>
+        <br>
+        <b>Models:</b> qwen3:8b-gpu (Code) | dolphin-llama3:8b-gpu (Chat) | llava:13b-gpu (Vision)<br>
+        <b>100% Local</b> — All AI processing runs via Ollama on your machine.
+        """)
+        dlg.exec()
 
     def open_file_in_tab(self, filepath: Path):
         name = filepath.name
@@ -3144,12 +3362,6 @@ class CrackedCodeGUI(QMainWindow):
             self.toggle_full()
         elif event.key() == Qt.Key.Key_Escape:
             self.stop_current_operation()
-        elif event.matches(QKeySequence.StandardKey.Copy):
-            self.copy_output()
-        elif event.matches(QKeySequence.StandardKey.Paste):
-            self.handle_paste()
-        elif event.matches(QKeySequence.StandardKey.SelectAll):
-            self.editor.selectAll()
         elif event.key() == Qt.Key.Key_Return and event.modifiers() == Qt.KeyboardModifier.ControlModifier:
             self.run_term()
         elif event.key() == Qt.Key.Key_M and event.modifiers() == Qt.KeyboardModifier.ControlModifier:
@@ -3185,6 +3397,12 @@ class CrackedCodeGUI(QMainWindow):
             if event.modifiers() == Qt.KeyboardModifier.ControlModifier and event.key() == Qt.Key.Key_V:
                 self.handle_paste()
                 return True
+            elif event.modifiers() == Qt.KeyboardModifier.ControlModifier and event.key() == Qt.Key.Key_Shift and event.key() == Qt.Key.Key_V:
+                # Ctrl+Shift+V: paste as prompt text
+                mime = self.clipboard.mimeData()
+                if mime.hasText():
+                    self.term_input.setText(mime.text())
+                return True
         return super().eventFilter(obj, event)
 
     def handle_paste(self):
@@ -3202,8 +3420,28 @@ class CrackedCodeGUI(QMainWindow):
                     self.editor.append(text)
                     self.term(f"[PASTE: {len(text)} chars added to editor]")
                 else:
-                    self.term_input.setText(text)
-                    self.term("[PASTE: text to command input]")
+                    self.editor.insertPlainText(text)
+                    self.term(f"[PASTE: {len(text)} chars inserted]")
+
+    def _is_code_snippet(self, text: str) -> bool:
+        """Heuristic: is this text likely to be code?"""
+        code_indicators = [
+            'def ', 'class ', 'import ', 'from ', 'function ', 'const ', 'let ', 'var ',
+            'if ', 'else', 'for ', 'while ', 'return ', 'try:', 'except', 'catch',
+            '#include', '#pragma', 'package ', 'using namespace',
+            '{', '}', '(', ')', ';',
+            'fn ', 'impl ', 'trait ', 'pub ',
+            'SELECT ', 'INSERT ', 'CREATE ', 'ALTER ',
+        ]
+        lines = text.strip().split('\n')
+        # Single line with clear code syntax
+        if len(lines) <= 2:
+            return any(ind in text for ind in code_indicators)
+        # Multi-line: check if any line starts with indentation or has code syntax
+        indented_lines = sum(1 for line in lines if line.startswith(('    ', '\t', '  ')) and line.strip())
+        code_lines = sum(1 for line in lines if any(ind in line for ind in code_indicators))
+        return indented_lines > 0 or code_lines >= 2
+
 
     def handle_dropped_image(self, image: QImage or QPixmap):
         buffer = io.BytesIO()
@@ -3311,17 +3549,20 @@ class CrackedCodeGUI(QMainWindow):
         
         self.term(f"[SCANNING: {root}]")
         
-        root_item = QTreeWidgetItem([root])
+        root_item = QTreeWidgetItem([Path(root).name])
         root_icon = self.get_folder_icon()
         root_item.setIcon(0, root_icon)
         self.files_tree.addTopLevelItem(root_item)
         
         count = [0]
+        truncated = [False]
+        max_items = 500
         try:
             def add_items(parent_item, path):
                 try:
                     for p in sorted(path.iterdir()):
-                        if count[0] > 100:
+                        if count[0] >= max_items:
+                            truncated[0] = True
                             return
                         if p.is_file() and not p.name.startswith('.'):
                             child = QTreeWidgetItem([p.name])
@@ -3339,6 +3580,11 @@ class CrackedCodeGUI(QMainWindow):
             
             add_items(root_item, self.project_path)
             root_item.setExpanded(True)
+            
+            if truncated[0]:
+                more_item = QTreeWidgetItem([f"... ({max_items}+ items, showing first {max_items})"])
+                more_item.setForeground(0, QColor(ATLAN_GOLD))
+                root_item.addChild(more_item)
             
         except Exception as e:
             self.term(f"[ERROR: {e}]")
@@ -3486,7 +3732,7 @@ class CrackedCodeGUI(QMainWindow):
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
 
-        subtitle = QLabel("AUTONOMOUS NEURAL SYSTEM v2.9.4")
+        subtitle = QLabel("AUTONOMOUS NEURAL SYSTEM v2.9.5")
         subtitle.setStyleSheet(f"font-size: 12px; color: {ATLAN_GOLD}; font-family: Consolas;")
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(subtitle)
@@ -3745,6 +3991,8 @@ class CrackedCodeGUI(QMainWindow):
             self.progress_bar.setValue(0)
             return
 
+        assigned_task = None
+
         try:
             import asyncio
             
@@ -3752,7 +4000,7 @@ class CrackedCodeGUI(QMainWindow):
             self.progress_bar.setValue(20)
             
             if self.orchestrator:
-                agent, task = self.orchestrator.delegate(intent, text)
+                agent, assigned_task = self.orchestrator.delegate(intent, text)
                 self.term(f"[INTENT] {intent.value} -> [AGENT] {agent}")
                 self.update_orchestrator_display()
 
@@ -3762,8 +4010,6 @@ class CrackedCodeGUI(QMainWindow):
             full_response = ""
             
             if streaming:
-                self.term("< ", end="")
-                
                 def stream_callback(chunk):
                     nonlocal full_response
                     full_response += chunk
@@ -3772,27 +4018,29 @@ class CrackedCodeGUI(QMainWindow):
                     QApplication.processEvents()
                 
                 response = asyncio.run(self.engine.process(text, streaming=True, callback=stream_callback))
-                self.term("")
             else:
                 response = asyncio.run(self.engine.process(text))
-                full_response = response.text
+                full_response = getattr(response, 'text', '')
             
             self.progress_bar.setValue(80)
             
-            if response.success:
+            if hasattr(response, 'success') and response.success:
                 if not streaming:
-                    self.term(f"< {response.text[:800]}")
-                    if len(response.text) > 800:
-                        self.term(f"< ... [{len(response.text) - 800} more chars]")
+                    resp_text = getattr(response, 'text', '')
+                    self.term(f"< {resp_text[:800]}")
+                    if len(resp_text) > 800:
+                        self.term(f"< ... [{len(resp_text) - 800} more chars]")
                 self.show_notification("Response complete", NotificationType.SUCCESS)
             else:
-                self.term(f"[ERROR] {response.error}")
-                self.show_notification(f"Error: {response.error}", NotificationType.ERROR)
+                error_msg = getattr(response, 'error', 'Unknown error')
+                self.term(f"[ERROR] {error_msg}")
+                self.show_notification(f"Error: {error_msg}", NotificationType.ERROR)
             
-            self.term(f"[COMPLETED in {response.execution_time:.2f}s]")
+            exec_time = getattr(response, 'execution_time', 0)
+            self.term(f"[COMPLETED in {exec_time:.2f}s]")
             
-            if self.orchestrator and 'task' in locals():
-                self.orchestrator.complete_task(task.task_id, full_response or response.text)
+            if self.orchestrator and assigned_task is not None:
+                self.orchestrator.complete_task(assigned_task.task_id, full_response or getattr(response, 'text', ''))
                 self.update_orchestrator_display()
             
             self.set_status("READY")
@@ -3801,8 +4049,8 @@ class CrackedCodeGUI(QMainWindow):
             self.term(f"[ERROR] {type(e).__name__}: {e}")
             self.set_status("ERROR")
             self.show_notification(f"Error: {e}", NotificationType.ERROR)
-            if 'task' in locals():
-                self.orchestrator.fail_task(task.task_id, str(e))
+            if self.orchestrator and assigned_task is not None:
+                self.orchestrator.fail_task(assigned_task.task_id, str(e))
                 self.update_orchestrator_display()
         
         self.progress_bar.setValue(100)
@@ -3879,17 +4127,14 @@ def main():
         app.setOrganizationName("SeraphonixStudios")
         
         # Check single instance AFTER QApplication exists
-        sock = QLocalSocket()
-        sock.connectToServer("CrackedCode_SingleInstance")
-        if sock.state() == QLocalSocket.LocalSocketState.ConnectedState:
-            QMessageBox.warning(None, "CrackedCode", "Already running!")
-            return
-        
-        # Clean up stale socket from previous crash, then create server
+        # Remove stale socket from previous crash first
         QLocalServer.removeServer("CrackedCode_SingleInstance")
+        
         server = QLocalServer()
         if not server.listen("CrackedCode_SingleInstance"):
-            logger.warning(f"Single instance server failed: {server.errorString()}")
+            # If we can't listen, another instance is running
+            QMessageBox.warning(None, "CrackedCode", "Already running!")
+            return
         
         win = CrackedCodeGUI()
         win.show()

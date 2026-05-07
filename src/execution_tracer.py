@@ -1,4 +1,4 @@
-"""Execution Tracer v2.9.4 - Capture and replay every system decision.
+"""Execution Tracer v2.9.5 - Capture and replay every system decision.
 
 Trace every engine call, agent decision, tool invocation, memory injection,
 and reasoning step. Searchable, filterable, and replayable.

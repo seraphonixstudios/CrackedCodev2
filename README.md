@@ -3,7 +3,7 @@
 Local AI Coding Assistant with Sci-Fi Neural Interface
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.9.4-blue?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Version-2.9.5-blue?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License">
   <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-orange?style=for-the-badge" alt="Platform">
   <img src="https://img.shields.io/badge/Python-3.10%2B-yellow?style=for-the-badge" alt="Python">
@@ -38,6 +38,13 @@ python test_system.py
 
 | Version | Features |
 |---------|----------|
+| 2.9.5 | **Complete UI Overhaul** - Redesigned left panel with tabbed workspace (FILES, AGENTS, REASONING, HISTORY), grouped toolbar (MODE, ACTION, TERMINAL, FEATURES) with labels |
+| 2.9.5 | **Tab Navigation** - Scroll buttons (◀/▶), tab count badge, right-click context menu (rename, close, close others, copy path, reveal in explorer) |
+| 2.9.5 | **Keyboard Shortcuts** - Ctrl+Tab/Ctrl+PgDn for next tab, Ctrl+Shift+Tab/Ctrl+PgUp for prev tab, Ctrl+W to close tab |
+| 2.9.5 | **HELP/CHAT Intent Detection** - Added keyword matching for help requests and general conversation |
+| 2.9.5 | **Smart Paste** - Auto-detects code snippets vs plain text on Ctrl+V; falls back to normal paste |
+| 2.9.5 | **Critical Bug Fixes** - Fixed show_notification destroying UI, process_prompt variable scoping, keyPressEvent intercepting Ctrl+C/V, update_stats crash, NotificationWidget broken fade |
+| 2.9.5 | **File Tree** - Increased scan limit from 100→500 with visual indicator when truncated |
 | 2.9.4 | **Execution Tracer** - Capture and replay every engine call, agent decision, tool invocation with tree view |
 | 2.9.4 | **Doctor / Health Check** - Automated diagnostics for all components with JSON and pretty-print output |
 | 2.9.4 | **Git Pre-commit Hook** - Auto-run code review on every commit, block critical issues |
