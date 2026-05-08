@@ -1,7 +1,7 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 CrackedCode - Local AI Coding Assistant
-Version: 2.9.5
+Version: 2.9.6
 """
 
 import os
@@ -717,7 +717,7 @@ class NaturalPromptEngine:
         context_parts = []
         
         for i, turn in enumerate(turns):
-            role_emoji = "👤" if turn["role"] == "user" else "🤖"
+            role_emoji = "ðŸ‘¤" if turn["role"] == "user" else "ðŸ¤–"
             content = turn["content"]
             
             if len(content) > 150:
@@ -726,7 +726,7 @@ class NaturalPromptEngine:
             context_parts.append(f"{role_emoji} {content}")
             
             if turn.get("intent"):
-                context_parts.append(f"  └─ Intent: {turn['intent']}")
+                context_parts.append(f"  â””â”€ Intent: {turn['intent']}")
             
         return "\n".join(context_parts)
         
@@ -955,16 +955,16 @@ class EnhancedInterface:
     }
     
     THOUGHT_ICONS = {
-        'analyzing': '🔍',
-        'planning': '📋',
-        'designing': '🏗️',
-        'writing': '✍️',
-        'executing': '⚡',
-        'reviewing': '🔎',
-        'thinking': '💭',
-        'reasoning': '🧠',
-        'debating': '⚖️',
-        'learning': '📚',
+        'analyzing': 'ðŸ”',
+        'planning': 'ðŸ“‹',
+        'designing': 'ðŸ—ï¸',
+        'writing': 'âœï¸',
+        'executing': 'âš¡',
+        'reviewing': 'ðŸ”Ž',
+        'thinking': 'ðŸ’­',
+        'reasoning': 'ðŸ§ ',
+        'debating': 'âš–ï¸',
+        'learning': 'ðŸ“š',
     }
     
     @staticmethod
@@ -981,19 +981,19 @@ class EnhancedInterface:
     
     def print_agent_thought(self, thought: AgentThought):
         agent_color = self.COLORS.get(thought.agent, Fore.WHITE)
-        icon = self.THOUGHT_ICONS.get(thought.step, '💭')
+        icon = self.THOUGHT_ICONS.get(thought.step, 'ðŸ’­')
         
         ts = thought.timestamp.strftime("%H:%M:%S")
         header = f"{icon} [{ts}] {agent_color}{thought.agent.upper()}{Style.RESET_ALL}"
         
         print(f"\n{self.bold(header)}")
-        print(f"  └─ {self.dim('Step:')} {thought.step}")
-        print(f"  └─ {self.dim('Reasoning:')} {thought.reasoning[:200]}")
+        print(f"  â””â”€ {self.dim('Step:')} {thought.step}")
+        print(f"  â””â”€ {self.dim('Reasoning:')} {thought.reasoning[:200]}")
         
         if thought.confidence > 0:
             bar_len = int(thought.confidence * 10)
-            bar = '█' * bar_len + '░' * (10 - bar_len)
-            print(f"  └─ {self.dim('Confidence:')} [{agent_color}{bar}{Style.RESET_ALL}] {thought.confidence:.0%}")
+            bar = 'â–ˆ' * bar_len + 'â–‘' * (10 - bar_len)
+            print(f"  â””â”€ {self.dim('Confidence:')} [{agent_color}{bar}{Style.RESET_ALL}] {thought.confidence:.0%}")
     
     def print_thinking(self, agent: str, message: str):
         agent_color = self.COLORS.get(agent, Fore.WHITE)
@@ -1013,35 +1013,35 @@ class EnhancedInterface:
         icon = self.THOUGHT_ICONS['reasoning']
         
         print(f"\n{self.bold(f'{icon} {agent.upper()} - Reasoning Chain')}")
-        print(f"  {self.dim('─' * 40)}")
+        print(f"  {self.dim('â”€' * 40)}")
         
         for i, step in enumerate(chain, 1):
             print(f"  {agent_color}{i}.{Style.RESET_ALL} {step}")
         
-        print(f"  {self.dim('─' * 40)}")
+        print(f"  {self.dim('â”€' * 40)}")
     
     def print_agent_state(self, agent: str, state: str, details: str = ""):
         agent_color = self.COLORS.get(agent, Fore.WHITE)
         
         if state == "active":
-            state_text = self.color(f"● {agent.upper()}", agent_color)
-            anim = ['│', '▌', '▀', '▐']
+            state_text = self.color(f"â— {agent.upper()}", agent_color)
+            anim = ['â”‚', 'â–Œ', 'â–€', 'â–']
             for frame in anim:
                 print(f"\r{self.color(frame, agent_color)} {state_text}", end='\r')
                 time.sleep(0.1)
             print(f"\r  {state_text}")
         elif state == "thinking":
-            print(f"\n💭 {agent_color}{agent.upper()}{Style.RESET_ALL} thinking...")
+            print(f"\nðŸ’­ {agent_color}{agent.upper()}{Style.RESET_ALL} thinking...")
         elif state == "complete":
-            print(f"\n✓ {agent_color}{agent.upper()}{Style.RESET_ALL} complete")
+            print(f"\nâœ“ {agent_color}{agent.upper()}{Style.RESET_ALL} complete")
         elif state == "error":
-            print(f"\n✗ {self.COLORS['error']}{agent.upper()}{Style.RESET_ALL} error: {details}")
+            print(f"\nâœ— {self.COLORS['error']}{agent.upper()}{Style.RESET_ALL} error: {details}")
     
     def print_conversation_turn(self, role: str, message: str, context: str = ""):
         if role == "user":
-            print(f"\n{self.bold('👤 You:')} {message}")
+            print(f"\n{self.bold('ðŸ‘¤ You:')} {message}")
         elif role == "assistant":
-            icon = '🤖'
+            icon = 'ðŸ¤–'
             print(f"\n{self.bold(f'{icon} CrackedCode:')} {message}")
         
         if context:
@@ -1051,36 +1051,36 @@ class EnhancedInterface:
         agent_color = self.COLORS.get(agent, Fore.WHITE)
         bar_width = 30
         filled = int(bar_width * progress)
-        bar = '█' * filled + '░' * (bar_width - filled)
+        bar = 'â–ˆ' * filled + 'â–‘' * (bar_width - filled)
         
         print(f"\r  {agent_color}{agent.upper()}{Style.RESET_ALL}: [{agent_color}{bar}{Style.RESET_ALL}] {int(progress * 100)}%", end='', flush=True)
     
     def print_debate_visual(self, round_num: int, coder_claim: str, reviewer_critique: str, consensus: float):
-        print(f"\n{self.bold('⚖️  Debate Round')} #{round_num}")
-        print(f"  {self.dim('─' * 50)}")
+        print(f"\n{self.bold('âš–ï¸  Debate Round')} #{round_num}")
+        print(f"  {self.dim('â”€' * 50)}")
         print(f"  {self.COLORS['coder']}Coder:{Style.RESET_ALL} {coder_claim[:80]}...")
         print(f"  {self.COLORS['reviewer']}Reviewer:{Style.RESET_ALL} {reviewer_critique[:80]}...")
         
         bar_width = 20
         filled = int(bar_width * consensus)
-        bar = '█' * filled + '░' * (bar_width - filled)
+        bar = 'â–ˆ' * filled + 'â–‘' * (bar_width - filled)
         print(f"  {self.bold('Consensus:')} [{self.COLORS['success']}{bar}{Style.RESET_ALL}] {consensus:.0%}")
-        print(f"  {self.dim('─' * 50)}")
+        print(f"  {self.dim('â”€' * 50)}")
     
     def print_banner(self, version: str):
         banner = f"""
-{self.bold(self.color('╔' + '═' * 68 + '╗', Fore.CYAN))}
-{self.bold(self.color('║', Fore.CYAN))}                                                                              {self.bold(self.color('║', Fore.CYAN))}
-{self.bold(self.color('║', Fore.CYAN))}   █████╗  ██████╗  ██████╗ ████████╗    ██████╗  ██╗     ██╗ ██████╗ ██████╗  █████╗   {self.bold(self.color('║', Fore.CYAN))}
-{self.bold(self.color('║', Fore.CYAN))}  ██╔══██╗██╔═══██╗██╔═══██╗╚══██╔══╝    ██╔══██╗ ██║     ██║██╔════╝ ██╔══██╗██╔══██╗   {self.bold(self.color('║', Fore.CYAN))}
-{self.bold(self.color('║', Fore.CYAN))}  ███████║██║   ██║██║   ██║   ██║       ██████╔╝ ██║     ██║██║  ███╗██████╔╝███████║   {self.bold(self.color('║', Fore.CYAN))}
-{self.bold(self.color('║', Fore.CYAN))}  ██╔══██║██║   ██║██║   ██║   ██║       ██╔══██╗ ██║     ██║██║   ██║██╔══██╗██╔══██║   {self.bold(self.color('║', Fore.CYAN))}
-{self.bold(self.color('║', Fore.CYAN))}  ██║  ██║╚██████╔╝╚██████╔╝   ██║       ██║  ██║ ███████╗██║██║   ██║██║  ██║██║  ██║   {self.bold(self.color('║', Fore.CYAN))}
-{self.bold(self.color('║', Fore.CYAN))}  ╚═╝  ╚═╝ ╚═════╝  ╚═════╝    ╚═╝       ╚═╝  ╚═╝ ╚══════╝╚═╝╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝   {self.bold(self.color('║', Fore.CYAN))}
-{self.bold(self.color('║', Fore.CYAN))}                                                                              {self.bold(self.color('║', Fore.CYAN))}
-{self.bold(self.color('║', Fore.CYAN))}              {self.bold(self.color('CrackedCode', Fore.GREEN))} {self.bold(self.color('Enhanced Interface', Fore.WHITE))}                                   {self.bold(self.color('║', Fore.CYAN))}
-{self.bold(self.color('║', Fore.CYAN))}         {self.bold(self.color('SOTA Local Multi-Agent Coding Swarm', Fore.YELLOW))}                    {self.bold(self.color('║', Fore.CYAN))}
-{self.bold(self.color('╚' + '═' * 68 + '╝', Fore.CYAN))}
+{self.bold(self.color('â•”' + 'â•' * 68 + 'â•—', Fore.CYAN))}
+{self.bold(self.color('â•‘', Fore.CYAN))}                                                                              {self.bold(self.color('â•‘', Fore.CYAN))}
+{self.bold(self.color('â•‘', Fore.CYAN))}   â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•—  â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•—  â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•— â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•—    â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•—  â–ˆâ–ˆâ•—     â–ˆâ–ˆâ•— â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•— â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•—  â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•—   {self.bold(self.color('â•‘', Fore.CYAN))}
+{self.bold(self.color('â•‘', Fore.CYAN))}  â–ˆâ–ˆâ•”â•â•â–ˆâ–ˆâ•—â–ˆâ–ˆâ•”â•â•â•â–ˆâ–ˆâ•—â–ˆâ–ˆâ•”â•â•â•â–ˆâ–ˆâ•—â•šâ•â•â–ˆâ–ˆâ•”â•â•â•    â–ˆâ–ˆâ•”â•â•â–ˆâ–ˆâ•— â–ˆâ–ˆâ•‘     â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•”â•â•â•â•â• â–ˆâ–ˆâ•”â•â•â–ˆâ–ˆâ•—â–ˆâ–ˆâ•”â•â•â–ˆâ–ˆâ•—   {self.bold(self.color('â•‘', Fore.CYAN))}
+{self.bold(self.color('â•‘', Fore.CYAN))}  â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘   â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘   â–ˆâ–ˆâ•‘   â–ˆâ–ˆâ•‘       â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•”â• â–ˆâ–ˆâ•‘     â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘  â–ˆâ–ˆâ–ˆâ•—â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•”â•â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•‘   {self.bold(self.color('â•‘', Fore.CYAN))}
+{self.bold(self.color('â•‘', Fore.CYAN))}  â–ˆâ–ˆâ•”â•â•â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘   â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘   â–ˆâ–ˆâ•‘   â–ˆâ–ˆâ•‘       â–ˆâ–ˆâ•”â•â•â–ˆâ–ˆâ•— â–ˆâ–ˆâ•‘     â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘   â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•”â•â•â–ˆâ–ˆâ•—â–ˆâ–ˆâ•”â•â•â–ˆâ–ˆâ•‘   {self.bold(self.color('â•‘', Fore.CYAN))}
+{self.bold(self.color('â•‘', Fore.CYAN))}  â–ˆâ–ˆâ•‘  â–ˆâ–ˆâ•‘â•šâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•”â•â•šâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•”â•   â–ˆâ–ˆâ•‘       â–ˆâ–ˆâ•‘  â–ˆâ–ˆâ•‘ â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•—â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘   â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘  â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘  â–ˆâ–ˆâ•‘   {self.bold(self.color('â•‘', Fore.CYAN))}
+{self.bold(self.color('â•‘', Fore.CYAN))}  â•šâ•â•  â•šâ•â• â•šâ•â•â•â•â•â•  â•šâ•â•â•â•â•â•    â•šâ•â•       â•šâ•â•  â•šâ•â• â•šâ•â•â•â•â•â•â•â•šâ•â•â•šâ•â•â•â•â•â•â•šâ•â•  â•šâ•â•â•šâ•â•  â•šâ•â•   {self.bold(self.color('â•‘', Fore.CYAN))}
+{self.bold(self.color('â•‘', Fore.CYAN))}                                                                              {self.bold(self.color('â•‘', Fore.CYAN))}
+{self.bold(self.color('â•‘', Fore.CYAN))}              {self.bold(self.color('CrackedCode', Fore.GREEN))} {self.bold(self.color('Enhanced Interface', Fore.WHITE))}                                   {self.bold(self.color('â•‘', Fore.CYAN))}
+{self.bold(self.color('â•‘', Fore.CYAN))}         {self.bold(self.color('SOTA Local Multi-Agent Coding Swarm', Fore.YELLOW))}                    {self.bold(self.color('â•‘', Fore.CYAN))}
+{self.bold(self.color('â•š' + 'â•' * 68 + 'â•', Fore.CYAN))}
 
 {self.dim(f'Version: {version}')} | {self.dim('Platform: ' + platform.system())} | {self.dim('Python: ' + platform.python_version())}
 """
@@ -1088,20 +1088,20 @@ class EnhancedInterface:
     
     def print_help(self):
         help_text = f"""
-{self.bold('📖 Commands:')}
-  {self.COLORS['supervisor']}• 'architect X'{Style.RESET_ALL}     → Design system architecture
-  {self.COLORS['coder']}• 'write code for X'{Style.RESET_ALL}   → Generate production code
-  {self.COLORS['executor']}• 'run X'{Style.RESET_ALL}           → Execute shell commands
-  {self.COLORS['reviewer']}• 'review X'{Style.RESET_ALL}        → Critique code
-  {self.COLORS['system']}• 'show blackboard'{Style.RESET_ALL} → View swarm memory
-  {self.COLORS['system']}• 'show history'{Style.RESET_ALL}   → View task history
-  {self.COLORS['system']}• 'show thinking'{Style.RESET_ALL}  → View reasoning chain
-  {self.dim('• exit/quit')}               → Quit
+{self.bold('ðŸ“– Commands:')}
+  {self.COLORS['supervisor']}â€¢ 'architect X'{Style.RESET_ALL}     â†’ Design system architecture
+  {self.COLORS['coder']}â€¢ 'write code for X'{Style.RESET_ALL}   â†’ Generate production code
+  {self.COLORS['executor']}â€¢ 'run X'{Style.RESET_ALL}           â†’ Execute shell commands
+  {self.COLORS['reviewer']}â€¢ 'review X'{Style.RESET_ALL}        â†’ Critique code
+  {self.COLORS['system']}â€¢ 'show blackboard'{Style.RESET_ALL} â†’ View swarm memory
+  {self.COLORS['system']}â€¢ 'show history'{Style.RESET_ALL}   â†’ View task history
+  {self.COLORS['system']}â€¢ 'show thinking'{Style.RESET_ALL}  â†’ View reasoning chain
+  {self.dim('â€¢ exit/quit')}               â†’ Quit
 
-{self.bold('🎛️  Hotkeys:')}
-  {self.dim('Ctrl+C')}  → Interrupt current task
-  {self.dim('Ctrl+L')}  → Clear screen
-  {self.dim('Ctrl+H')}  → Show help
+{self.bold('ðŸŽ›ï¸  Hotkeys:')}
+  {self.dim('Ctrl+C')}  â†’ Interrupt current task
+  {self.dim('Ctrl+L')}  â†’ Clear screen
+  {self.dim('Ctrl+H')}  â†’ Show help
 """
         print(help_text)
 
@@ -1903,7 +1903,7 @@ class AgentSwarm:
 
 
 class CrackedCode:
-    VERSION = "2.9.5"
+    VERSION = "2.9.6"
     BANNER = """
 ============================================================
   CRACKEDCODE v{version} - Local AI Coding Assistant
@@ -1948,12 +1948,12 @@ class CrackedCode:
 
         self.running = True
         logger.info("CrackedCode ready")
-        print("\n🎯 CrackedCode is ready!")
+        print("\nðŸŽ¯ CrackedCode is ready!")
         print("\nCommands:")
-        print("  • 'exit' - Quit")
-        print("  • 'show blackboard' - View memory")
-        print("  • 'show history' - View task history")
-        print("  • 'help' - Show this help")
+        print("  â€¢ 'exit' - Quit")
+        print("  â€¢ 'show blackboard' - View memory")
+        print("  â€¢ 'show history' - View task history")
+        print("  â€¢ 'help' - Show this help")
         print()
 
         return True
@@ -1987,8 +1987,8 @@ class CrackedCode:
                     break
 
                 if transcript.lower() == "show blackboard":
-                    print("\n" + interface.bold("📌 BLACKBOARD STATE"))
-                    print(interface.dim("─" * 50))
+                    print("\n" + interface.bold("ðŸ“Œ BLACKBOARD STATE"))
+                    print(interface.dim("â”€" * 50))
                     print(json.dumps({
                         "project_context": BLACKBOARD.PROJECT_CONTEXT,
                         "files_tracked": len(BLACKBOARD.FILES),
@@ -1999,17 +1999,17 @@ class CrackedCode:
                     continue
 
                 if transcript.lower() == "show history":
-                    print("\n" + interface.bold("📜 TASK HISTORY"))
-                    print(interface.dim("─" * 50))
+                    print("\n" + interface.bold("ðŸ“œ TASK HISTORY"))
+                    print(interface.dim("â”€" * 50))
                     for task in BLACKBOARD.TASK_HISTORY[-10:]:
-                        status_icon = "✓" if task.status == "completed" else "✗"
+                        status_icon = "âœ“" if task.status == "completed" else "âœ—"
                         status_color = interface.COLORS['success'] if task.status == "completed" else interface.COLORS['error']
                         print(f"  {status_icon} {task.agent}: {task.description[:40]}... [{status_color}{task.status}{Style.RESET_ALL}]")
                     continue
 
                 if transcript.lower() == "show thinking" or transcript.lower() == "thinking":
-                    print("\n" + interface.bold("💭 REASONING CHAINS"))
-                    print(interface.dim("─" * 50))
+                    print("\n" + interface.bold("ðŸ’­ REASONING CHAINS"))
+                    print(interface.dim("â”€" * 50))
                     for task in BLACKBOARD.TASK_HISTORY[-5:]:
                         reasoning_chain = [
                             "Analyzing task requirements",
@@ -2050,10 +2050,10 @@ class CrackedCode:
                 ]
                 interface.print_reasoning_chain("SUPERVISOR", reasoning_chain)
                 
-                print(f"\n{interface.color('📋 Supervisor:', interface.COLORS['supervisor'])} Created {len(plan)} subtasks")
+                print(f"\n{interface.color('ðŸ“‹ Supervisor:', interface.COLORS['supervisor'])} Created {len(plan)} subtasks")
                 self.swarm.voice.speak(f"Executing {len(plan)} subtasks")
 
-                print(interface.dim("─" * 50))
+                print(interface.dim("â”€" * 50))
                 
                 reasoning_thought = AgentThought(
                     agent="supervisor",
@@ -2109,14 +2109,14 @@ class CrackedCode:
                 
                 conversation_context = f"Last task: {transcript[:30]}... | {completed} completed"
 
-                print(f"\n{interface.COLORS['success']}✓{Style.RESET_ALL} {summary}")
+                print(f"\n{interface.COLORS['success']}âœ“{Style.RESET_ALL} {summary}")
                 self.swarm.voice.speak(summary)
 
             except KeyboardInterrupt:
                 print(f"\n\n{interface.color('Interrupted. Type exit to quit.', Fore.YELLOW)}")
             except Exception as e:
                 logger.error(f"Error: {e}")
-                print(f"\n{interface.COLORS['error']}✗ Error:{Style.RESET_ALL} {e}")
+                print(f"\n{interface.COLORS['error']}âœ— Error:{Style.RESET_ALL} {e}")
 
         self.running = False
 
@@ -2302,7 +2302,7 @@ def main():
             api_key=api_key,
         )
         
-        print(f"Starting CrackedCode API Server v2.9.5")
+        print(f"Starting CrackedCode API Server v2.9.6")
         print(f"URL: {api.url}")
         print(f"Docs: {api.url}/docs")
         if api.api_key:
@@ -2412,3 +2412,4 @@ def _load_config_from_path(path: str | None) -> dict:
 
 if __name__ == "__main__":
     main()
+

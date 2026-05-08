@@ -1,4 +1,4 @@
-"""Browser Automation - Web browsing agent for CrackedCode.
+﻿"""Browser Automation - Web browsing agent for CrackedCode.
 
 Features:
 - Navigate to URLs
@@ -194,3 +194,4 @@ class BrowserAgent:
 def get_browser_agent(headless: bool = True) -> BrowserAgent:
     """Get a BrowserAgent instance."""
     return BrowserAgent(headless=headless)
+

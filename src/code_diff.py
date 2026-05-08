@@ -1,4 +1,4 @@
-"""Code Diff / Patch Generation v2.9.5 - Generate and apply git-style diffs.
+﻿"""Code Diff / Patch Generation v2.9.6 - Generate and apply git-style diffs.
 
 Instead of outputting entire files, the AI can generate unified diffs
 for precise modifications to existing code.
@@ -19,7 +19,7 @@ from src.logger_config import get_logger
 logger = get_logger("CodeDiff")
 
 
-# ── Data Models ────────────────────────────────────────────────────────────
+# â”€â”€ Data Models â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @dataclass
 class Hunk:
@@ -40,7 +40,7 @@ class Diff:
     hunks: List[Hunk]
 
 
-# ── Patch Generation ───────────────────────────────────────────────────────
+# â”€â”€ Patch Generation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def generate_patch(old_text: str, new_text: str, old_file: str = "a/file.py",
                    new_file: str = "b/file.py", context: int = 3) -> str:
@@ -177,7 +177,7 @@ def _format_hunk_header(hunk: Hunk) -> str:
     return f"@@ -{old_range} +{new_range} @@"
 
 
-# ── Patch Application ──────────────────────────────────────────────────────
+# â”€â”€ Patch Application â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def apply_patch(original_text: str, patch_text: str) -> str:
     """Apply a unified diff patch to original text.
@@ -234,7 +234,7 @@ def _apply_hunk(lines: List[str], hunk: Hunk) -> List[str]:
     return new_lines
 
 
-# ── Diff Parsing ───────────────────────────────────────────────────────────
+# â”€â”€ Diff Parsing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def parse_diff(patch_text: str) -> Optional[Diff]:
     """Parse a unified diff into a Diff object."""
@@ -301,7 +301,7 @@ def _parse_hunk(lines: List[str], start_idx: int) -> Tuple[Optional[Hunk], int]:
     ), i - 1
 
 
-# ── High-Level Helpers ─────────────────────────────────────────────────────
+# â”€â”€ High-Level Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def generate_patch_from_files(old_path: str, new_path: str) -> str:
     """Generate a patch from two file paths."""
@@ -336,3 +336,4 @@ def apply_patch_to_file(file_path: str, patch_text: str) -> bool:
 
 # Import Path for type hints
 from pathlib import Path
+

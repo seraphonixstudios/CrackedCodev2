@@ -1,4 +1,4 @@
-import sys
+﻿import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -458,7 +458,7 @@ class MatrixOverlay(QWidget):
         super().__init__(parent)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.matrix_chars = "アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン0123456789@#$%&*"
+        self.matrix_chars = "ã‚¢ã‚¤ã‚¦ã‚¨ã‚ªã‚«ã‚­ã‚¯ã‚±ã‚³ã‚µã‚·ã‚¹ã‚»ã‚½ã‚¿ãƒãƒ„ãƒ†ãƒˆãƒŠãƒ‹ãƒŒãƒãƒŽãƒãƒ’ãƒ•ãƒ˜ãƒ›ãƒžãƒŸãƒ ãƒ¡ãƒ¢ãƒ¤ãƒ¦ãƒ¨ãƒ©ãƒªãƒ«ãƒ¬ãƒ­ãƒ¯ãƒ²ãƒ³0123456789@#$%&*"
         self.drops = []
         self.cols = 80
         for _ in range(self.cols):
@@ -706,8 +706,8 @@ class TaskQueueWidget(QWidget):
         for task in tasks:
             status_icon = {
                 TaskStatus.PENDING: "",
-                TaskStatus.RUNNING: "◐",
-                TaskStatus.COMPLETED: "●",
+                TaskStatus.RUNNING: "â—",
+                TaskStatus.COMPLETED: "â—",
                 TaskStatus.FAILED: "x",
                 TaskStatus.CANCELLED: "o",
             }.get(task.status, "?")
@@ -856,9 +856,9 @@ class ReasoningPanelWidget(QWidget):
         # Stream to terminal if GUI reference available
         if self.gui and hasattr(self.gui, 'term'):
             if event_type == "chain_started":
-                self.gui.term(f"[🧠 {agent_id}] Starting: {data.get('title', 'reasoning')}", level="reasoning")
+                self.gui.term(f"[ðŸ§  {agent_id}] Starting: {data.get('title', 'reasoning')}", level="reasoning")
             elif event_type == "chain_completed":
-                self.gui.term(f"[🧠 {agent_id}] Decision: {data.get('decision', 'completed')[:60]}...", level="reasoning")
+                self.gui.term(f"[ðŸ§  {agent_id}] Decision: {data.get('decision', 'completed')[:60]}...", level="reasoning")
         
         # Add to recent events
         self._add_event(event)
@@ -872,11 +872,11 @@ class ReasoningPanelWidget(QWidget):
         color = self.REASONING_COLORS.get(event_type.replace("_", ""), ATLAN_GREEN)
         
         if event_type == "chain_started":
-            text = f"🧠 {agent_id}: {data.get('title', 'chain')}"
+            text = f"ðŸ§  {agent_id}: {data.get('title', 'chain')}"
         elif event_type == "chain_completed":
-            text = f"✓ {agent_id}: {data.get('decision', 'done')[:40]}"
+            text = f"âœ“ {agent_id}: {data.get('decision', 'done')[:40]}"
         else:
-            text = f"• {agent_id}: {event_type}"
+            text = f"â€¢ {agent_id}: {event_type}"
         
         item = QListWidgetItem(text)
         item.setForeground(QColor(color))
@@ -972,7 +972,7 @@ class ReasoningPanelWidget(QWidget):
             
             for dec in recent[-3:]:
                 child = QTreeWidgetItem()
-                child.setText(0, f"→ {dec.get('decision', '')[:30]} ({dec.get('confidence', 0):.2f})")
+                child.setText(0, f"â†’ {dec.get('decision', '')[:30]} ({dec.get('confidence', 0):.2f})")
                 conf = dec.get("confidence", 0)
                 if conf >= 0.7:
                     child.setForeground(0, QColor(ATLAN_GREEN))
@@ -1100,13 +1100,13 @@ class ToolLogWidget(QWidget):
                 # Add details as child
                 if observation:
                     child = QTreeWidgetItem()
-                    child.setText(0, f"📋 {observation[:100]}")
+                    child.setText(0, f"ðŸ“‹ {observation[:100]}")
                     child.setForeground(0, QColor(ATLAN_CYAN))
                     item.addChild(child)
                 
                 if error:
                     child = QTreeWidgetItem()
-                    child.setText(0, f"⚠ {error[:100]}")
+                    child.setText(0, f"âš  {error[:100]}")
                     child.setForeground(0, QColor(ATLAN_RED))
                     item.addChild(child)
                 
@@ -1396,7 +1396,7 @@ class CrackedCodeGUI(QMainWindow):
         self.restore_state()
         self.setup_paste_handler()
         
-        logger.info("CrackedCode GUI v2.9.5 started")
+        logger.info("CrackedCode GUI v2.9.6 started")
 
     def init_orchestrator(self):
         self.orchestrator = AgentOrchestrator(gui_ref=self)
@@ -1579,7 +1579,7 @@ class CrackedCodeGUI(QMainWindow):
             self.config = {"model": "qwen3:8b-gpu", "project_root": "."}
 
     def setup_atlan_theme(self):
-        self.setWindowTitle("CRACKEDCODE v2.9.5 // AUTONOMOUS NEURAL SYSTEM")
+        self.setWindowTitle("CRACKEDCODE v2.9.6 // AUTONOMOUS NEURAL SYSTEM")
         self.setMinimumSize(1400, 900)
         
         self.atlan_font = QFont("Consolas", 11)
@@ -1866,7 +1866,7 @@ class CrackedCodeGUI(QMainWindow):
         tab_layout.setContentsMargins(0, 0, 0, 0)
         tab_layout.setSpacing(2)
         
-        self.tab_scroll_left = QPushButton("◀")
+        self.tab_scroll_left = QPushButton("â—€")
         self.tab_scroll_left.setFixedWidth(30)
         self.tab_scroll_left.setToolTip("Scroll tabs left")
         self.tab_scroll_left.clicked.connect(self.scroll_tabs_left)
@@ -1883,7 +1883,7 @@ class CrackedCodeGUI(QMainWindow):
         self.tab_widget.customContextMenuRequested.connect(self.show_tab_context_menu)
         tab_layout.addWidget(self.tab_widget, 1)
         
-        self.tab_scroll_right = QPushButton("▶")
+        self.tab_scroll_right = QPushButton("â–¶")
         self.tab_scroll_right.setFixedWidth(30)
         self.tab_scroll_right.setToolTip("Scroll tabs right")
         self.tab_scroll_right.clicked.connect(self.scroll_tabs_right)
@@ -2174,13 +2174,13 @@ class CrackedCodeGUI(QMainWindow):
         # Tab navigation
         tab_menu = view_menu.addMenu("TAB NAVIGATION")
         
-        next_tab_action = QAction("NEXT TAB ▶", self)
+        next_tab_action = QAction("NEXT TAB â–¶", self)
         next_tab_action.setShortcut(QKeySequence("Ctrl+Tab"))
         next_tab_action.setToolTip("Switch to next tab (Ctrl+Tab, Ctrl+PgDn)")
         next_tab_action.triggered.connect(self.scroll_tabs_right)
         tab_menu.addAction(next_tab_action)
         
-        prev_tab_action = QAction("PREV TAB ◀", self)
+        prev_tab_action = QAction("PREV TAB â—€", self)
         prev_tab_action.setShortcut(QKeySequence("Ctrl+Shift+Tab"))
         prev_tab_action.setToolTip("Switch to previous tab (Ctrl+Shift+Tab, Ctrl+PgUp)")
         prev_tab_action.triggered.connect(self.scroll_tabs_left)
@@ -2411,7 +2411,7 @@ class CrackedCodeGUI(QMainWindow):
         self.files_tree = QTreeWidget()
         self.files_tree.setHeaderLabel("")
         self.files_tree.itemDoubleClicked.connect(self.on_file_clicked)
-        self.files_tree.setToolTip("Project files — double-click to open")
+        self.files_tree.setToolTip("Project files â€” double-click to open")
         self.files_tree.setSortingEnabled(True)
         self.files_tree.setMinimumHeight(200)
         files_layout.addWidget(self.files_tree)
@@ -3052,7 +3052,7 @@ class CrackedCodeGUI(QMainWindow):
                 lines.append(f"\nIndexed: {stats['chunks']} chunks | Backend: {stats['backend']} | Duration: {stats['index_time']}s")
                 results_area.setText("\n".join(lines))
                 
-                self.term(f"[SEARCH] '{query}' → {len(results)} results", level="success")
+                self.term(f"[SEARCH] '{query}' â†’ {len(results)} results", level="success")
             except Exception as e:
                 results_area.setText(f"Search error: {e}")
                 self.term(f"[SEARCH ERROR] {e}", level="error")
@@ -3078,7 +3078,7 @@ class CrackedCodeGUI(QMainWindow):
             if indexer:
                 result = indexer.index(force=True)
                 self.term(
-                    f"[SEARCH] Indexed {result.get('files', 0)} files → {result.get('chunks', 0)} chunks "
+                    f"[SEARCH] Indexed {result.get('files', 0)} files â†’ {result.get('chunks', 0)} chunks "
                     f"({result.get('duration', 0)}s) via {result.get('backend', 'unknown')}",
                     level="success"
                 )
@@ -3259,7 +3259,7 @@ class CrackedCodeGUI(QMainWindow):
         dlg.setWindowTitle("CrackedCode Help")
         dlg.setTextFormat(Qt.TextFormat.RichText)
         dlg.setText("""
-        <h2 style='color: #00FF41;'>CrackedCode v2.9.5</h2>
+        <h2 style='color: #00FF41;'>CrackedCode v2.9.6</h2>
         <b>Keyboard Shortcuts:</b><br>
         <table>
         <tr><td><b>Ctrl+N</b></td><td>New File</td></tr>
@@ -3271,8 +3271,8 @@ class CrackedCodeGUI(QMainWindow):
         <tr><td><b>Ctrl+Shift+V</b></td><td>Toggle Voice</td></tr>
         <tr><td><b>Ctrl+T</b></td><td>New Tab</td></tr>
         <tr><td><b>Ctrl+W</b></td><td>Close Tab</td></tr>
-        <tr><td><b>Ctrl+Tab / Ctrl+PgDn</b></td><td>Next Tab ▶</td></tr>
-        <tr><td><b>Ctrl+Shift+Tab / Ctrl+PgUp</b></td><td>Prev Tab ◀</td></tr>
+        <tr><td><b>Ctrl+Tab / Ctrl+PgDn</b></td><td>Next Tab â–¶</td></tr>
+        <tr><td><b>Ctrl+Shift+Tab / Ctrl+PgUp</b></td><td>Prev Tab â—€</td></tr>
         <tr><td><b>Ctrl+Shift+P</b></td><td>Command Palette</td></tr>
         <tr><td><b>Ctrl+Shift+F</b></td><td>Search Codebase</td></tr>
         <tr><td><b>Ctrl+Shift+S</b></td><td>Save As / Analyze Screen</td></tr>
@@ -3289,7 +3289,7 @@ class CrackedCodeGUI(QMainWindow):
         <b>Toolbar Groups:</b> MODE &nbsp;|&nbsp; ACTION &nbsp;|&nbsp; TERMINAL &nbsp;|&nbsp; FEATURES<br>
         <br>
         <b>Models:</b> qwen3:8b-gpu (Code) | dolphin-llama3:8b-gpu (Chat) | llava:13b-gpu (Vision)<br>
-        <b>100% Local</b> — All AI processing runs via Ollama on your machine.
+        <b>100% Local</b> â€” All AI processing runs via Ollama on your machine.
         """)
         dlg.exec()
 
@@ -3789,7 +3789,7 @@ class CrackedCodeGUI(QMainWindow):
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
 
-        subtitle = QLabel("AUTONOMOUS NEURAL SYSTEM v2.9.5")
+        subtitle = QLabel("AUTONOMOUS NEURAL SYSTEM v2.9.6")
         subtitle.setStyleSheet(f"font-size: 12px; color: {ATLAN_GOLD}; font-family: Consolas;")
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(subtitle)
@@ -4145,7 +4145,7 @@ class CrackedCodeGUI(QMainWindow):
         th_layout = QFormLayout(theme_group)
         th_layout.setContentsMargins(8, 16, 8, 8)
 
-        theme_label = QLabel("Atlantean (Green) — Default theme")
+        theme_label = QLabel("Atlantean (Green) â€” Default theme")
         theme_label.setStyleSheet(f"color: {G};")
         th_layout.addRow("Color Theme:", theme_label)
 
@@ -4693,12 +4693,12 @@ class CrackedCodeGUI(QMainWindow):
             # Color-code based on level
             prefixes = {
                 "info":      f"[{timestamp}]",
-                "success":   f"[{timestamp}] ✓",
-                "warning":   f"[{timestamp}] ⚠",
-                "error":     f"[{timestamp}] ✗",
-                "voice":     f"[{timestamp}] 🎤",
-                "ai":        f"[{timestamp}] 🤖",
-                "reasoning": f"[{timestamp}] 🧠",
+                "success":   f"[{timestamp}] âœ“",
+                "warning":   f"[{timestamp}] âš ",
+                "error":     f"[{timestamp}] âœ—",
+                "voice":     f"[{timestamp}] ðŸŽ¤",
+                "ai":        f"[{timestamp}] ðŸ¤–",
+                "reasoning": f"[{timestamp}] ðŸ§ ",
             }
             prefix = prefixes.get(level, f"[{timestamp}]")
             
@@ -4776,3 +4776,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

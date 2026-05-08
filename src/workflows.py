@@ -1,4 +1,4 @@
-"""Workflow Builder v2.9.5 - Multi-step AI automation pipelines.
+﻿"""Workflow Builder v2.9.6 - Multi-step AI automation pipelines.
 
 Define workflows via YAML/JSON in the workflows/ directory:
   workflows/security_audit.yaml
@@ -29,7 +29,7 @@ from src.logger_config import get_logger
 logger = get_logger("Workflows")
 
 
-# ── Data Models ────────────────────────────────────────────────────────────
+# â”€â”€ Data Models â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class StepStatus(Enum):
     PENDING = "pending"
@@ -100,7 +100,7 @@ class WorkflowResult:
     completed_at: str = ""
 
 
-# ── Workflow Engine ────────────────────────────────────────────────────────
+# â”€â”€ Workflow Engine â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class WorkflowEngine:
     """Execute workflow definitions with dependency resolution."""
@@ -543,3 +543,4 @@ class WorkflowEngine:
 def get_workflow_engine(workflows_dir: str = "workflows") -> WorkflowEngine:
     """Get the global workflow engine."""
     return WorkflowEngine(workflows_dir=workflows_dir)
+

@@ -1,4 +1,4 @@
-"""Memory Visualization v2.9.5 - CLI visualization for agent memories.
+﻿"""Memory Visualization v2.9.6 - CLI visualization for agent memories.
 
 Pretty-print agent memory profiles, patterns, and statistics.
 
@@ -19,7 +19,7 @@ from src.logger_config import get_logger
 logger = get_logger("MemoryViz")
 
 
-# ── Visual Components ──────────────────────────────────────────────────────
+# â”€â”€ Visual Components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 SEVERITY_COLORS = {
     "critical": "\033[91m",  # Red
@@ -42,25 +42,25 @@ def _bar(value: float, max_width: int = 40) -> str:
     """Draw an ASCII bar."""
     filled = int(value * max_width)
     empty = max_width - filled
-    return f"[{'█' * filled}{'░' * empty}] {value*100:.0f}%"
+    return f"[{'â–ˆ' * filled}{'â–‘' * empty}] {value*100:.0f}%"
 
 
 def _box(title: str, content: str, width: int = 70) -> str:
     """Draw a box around content."""
     lines = content.strip().split("\n")
-    result = [f"┌{'─' * (width - 2)}┐"]
-    result.append(f"│ {BOLD}{title}{RESET}{' ' * (width - len(title) - 3)}│")
-    result.append(f"├{'─' * (width - 2)}┤")
+    result = [f"â”Œ{'â”€' * (width - 2)}â”"]
+    result.append(f"â”‚ {BOLD}{title}{RESET}{' ' * (width - len(title) - 3)}â”‚")
+    result.append(f"â”œ{'â”€' * (width - 2)}â”¤")
     for line in lines:
         # Truncate long lines
         if len(line) > width - 4:
             line = line[:width - 7] + "..."
-        result.append(f"│ {line}{' ' * (width - len(line) - 3)}│")
-    result.append(f"└{'─' * (width - 2)}┘")
+        result.append(f"â”‚ {line}{' ' * (width - len(line) - 3)}â”‚")
+    result.append(f"â””{'â”€' * (width - 2)}â”˜")
     return "\n".join(result)
 
 
-# ── Visualizers ────────────────────────────────────────────────────────────
+# â”€â”€ Visualizers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class MemoryVisualizer:
     """Visualize agent memory in the terminal."""
@@ -84,10 +84,10 @@ class MemoryVisualizer:
         parts = []
         
         # Header
-        parts.append(f"\n{_color('═' * 70, BOLD)}")
-        parts.append(f"{_color('  🤖 AGENT MEMORY PROFILE', BOLD)}")
+        parts.append(f"\n{_color('â•' * 70, BOLD)}")
+        parts.append(f"{_color('  ðŸ¤– AGENT MEMORY PROFILE', BOLD)}")
         parts.append(f"{_color('     ' + agent.upper(), UNDERLINE)}")
-        parts.append(f"{_color('═' * 70, BOLD)}\n")
+        parts.append(f"{_color('â•' * 70, BOLD)}\n")
         
         # Stats
         if profile:
@@ -106,7 +106,7 @@ Common Mistakes: {', '.join(profile.common_mistakes) or 'None'}
                 by_category[e.category] = by_category.get(e.category, 0) + 1
             
             parts.append("\n" + _box("Memory Distribution", "\n".join(
-                f"{cat:12} {'▓' * count} {count}"
+                f"{cat:12} {'â–“' * count} {count}"
                 for cat, count in sorted(by_category.items())
             )))
         
@@ -115,10 +115,10 @@ Common Mistakes: {', '.join(profile.common_mistakes) or 'None'}
             recent = sorted(entries, key=lambda e: e.timestamp, reverse=True)[:limit]
             entry_lines = []
             for e in recent:
-                emoji = {"fact": "📌", "preference": "⭐", "decision": "🎯",
-                         "error": "❌", "fix": "🔧", "interaction": "💬"}.get(e.category, "📝")
+                emoji = {"fact": "ðŸ“Œ", "preference": "â­", "decision": "ðŸŽ¯",
+                         "error": "âŒ", "fix": "ðŸ”§", "interaction": "ðŸ’¬"}.get(e.category, "ðŸ“")
                 entry_lines.append(f"{emoji} [{e.category}] {str(e.content)[:50]}...")
-                entry_lines.append(f"    📅 {e.timestamp[:19]} | Importance: {e.importance}")
+                entry_lines.append(f"    ðŸ“… {e.timestamp[:19]} | Importance: {e.importance}")
             
             parts.append("\n" + _box(f"Recent Memories (last {limit})", "\n".join(entry_lines)))
         
@@ -135,7 +135,7 @@ Common Mistakes: {', '.join(profile.common_mistakes) or 'None'}
         if profile and profile.summary:
             parts.append("\n" + _box("Auto-Generated Summary", profile.summary[:500]))
         
-        parts.append(f"\n{_color('═' * 70, BOLD)}\n")
+        parts.append(f"\n{_color('â•' * 70, BOLD)}\n")
         
         return "\n".join(parts)
     
@@ -151,9 +151,9 @@ Common Mistakes: {', '.join(profile.common_mistakes) or 'None'}
             return "No agent memories found."
         
         parts = []
-        parts.append(f"\n{_color('═' * 70, BOLD)}")
-        parts.append(f"{_color('  🤖 AGENT MEMORY DASHBOARD', BOLD)}")
-        parts.append(f"{_color('═' * 70, BOLD)}\n")
+        parts.append(f"\n{_color('â•' * 70, BOLD)}")
+        parts.append(f"{_color('  ðŸ¤– AGENT MEMORY DASHBOARD', BOLD)}")
+        parts.append(f"{_color('â•' * 70, BOLD)}\n")
         
         # Overall stats
         parts.append(_box("System Overview", f"""
@@ -168,7 +168,7 @@ Storage: {stats['storage_dir']}
             agent_name = agent_info["agent"]
             entries = agent_info["entries"]
             interactions = agent_info["interactions"]
-            bar = "█" * min(entries, 30)
+            bar = "â–ˆ" * min(entries, 30)
             agent_lines.append(f"{agent_name:15} {bar:30} {entries:4} entries | {interactions} interactions")
         
         parts.append("\n" + _box("Agents", "\n".join(agent_lines)))
@@ -178,11 +178,11 @@ Storage: {stats['storage_dir']}
         if by_cat:
             cat_lines = []
             for cat, count in sorted(by_cat.items(), key=lambda x: x[1], reverse=True):
-                bar = "▓" * min(count, 30)
+                bar = "â–“" * min(count, 30)
                 cat_lines.append(f"{cat:12} {bar:30} {count}")
             parts.append("\n" + _box("Categories", "\n".join(cat_lines)))
         
-        parts.append(f"\n{_color('═' * 70, BOLD)}\n")
+        parts.append(f"\n{_color('â•' * 70, BOLD)}\n")
         
         return "\n".join(parts)
     
@@ -194,9 +194,9 @@ Storage: {stats['storage_dir']}
         stats = memory.get_stats()
         
         parts = []
-        parts.append(f"\n{_color('═' * 70, BOLD)}")
-        parts.append(f"{_color('  📊 AGENT MEMORY STATISTICS', BOLD)}")
-        parts.append(f"{_color('═' * 70, BOLD)}\n")
+        parts.append(f"\n{_color('â•' * 70, BOLD)}")
+        parts.append(f"{_color('  ðŸ“Š AGENT MEMORY STATISTICS', BOLD)}")
+        parts.append(f"{_color('â•' * 70, BOLD)}\n")
         
         parts.append(f"Total Agents: {stats['total_agents']}")
         parts.append(f"Total Entries: {stats['total_entries']}")
@@ -207,7 +207,7 @@ Storage: {stats['storage_dir']}
             for cat, count in sorted(stats["by_category"].items()):
                 parts.append(f"  {cat:12}: {count}")
         
-        parts.append(f"\n{_color('═' * 70, BOLD)}\n")
+        parts.append(f"\n{_color('â•' * 70, BOLD)}\n")
         
         return "\n".join(parts)
 
@@ -229,9 +229,10 @@ def show_agent_memory(agent: Optional[str] = None, all_agents: bool = False,
         return "Use --agent <name>, --all, or --stats"
 
 
-# ── CLI helpers ────────────────────────────────────────────────────────────
+# â”€â”€ CLI helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def print_memory(agent: Optional[str] = None, **kwargs):
     """Print memory visualization to stdout."""
     output = show_agent_memory(agent=agent, **kwargs)
     print(output)
+

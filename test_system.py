@@ -1,6 +1,6 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
-CRACKEDCODE v2.9.5 - Comprehensive End-to-End Test Suite
+CRACKEDCODE v2.9.6 - Comprehensive End-to-End Test Suite
 Full coverage with real operations, no placeholders
 """
 
@@ -595,11 +595,11 @@ def test_version_info() -> bool:
         PASS(f"Engine version: {status.get('version', 'unknown')}")
         
         version_checks = 0
-        if CrackedCode.VERSION == "2.9.5":
+        if CrackedCode.VERSION == "2.9.6":
             version_checks += 1
-        if MatrixUI.VERSION == "2.9.5":
+        if MatrixUI.VERSION == "2.9.6":
             version_checks += 1
-        if status.get("version") == "2.9.5":
+        if status.get("version") == "2.9.6":
             version_checks += 1
         
         PASS(f"Version consistency: {version_checks}/3")
@@ -709,10 +709,10 @@ def test_cli_integration_e2e() -> bool:
             version = result.stdout.strip()
             PASS(f"CLI import: version {version}")
             
-            if version == "2.9.5":
+            if version == "2.9.6":
                 PASS("CLI version correct")
             else:
-                FAIL("CLI version", f"Expected 2.9.5, got {version}")
+                FAIL("CLI version", f"Expected 2.9.6, got {version}")
                 return False
         else:
             FAIL("CLI import", result.stderr[:50])
@@ -1663,7 +1663,7 @@ def test_voice_hotword_detection() -> bool:
 
 
 def main() -> int:
-    print(f"\n{'='*60}\n  CRACKEDCODE v2.9.5 - E2E TEST SUITE\n{'='*60}\n")
+    print(f"\n{'='*60}\n  CRACKEDCODE v2.9.6 - E2E TEST SUITE\n{'='*60}\n")
     
     tests = [
         ("Modules", test_modules),
@@ -1780,7 +1780,7 @@ def main() -> int:
         ("Memory Viz", test_memory_viz),
         ("Execution Tracer", test_execution_tracer),
         ("Doctor", test_doctor),
-        ("GUI v2.9.5", test_gui_v295_fixes),
+        ("GUI v2.9.6", test_gui_v295_fixes),
         ("Intent HELP/CHAT", test_intent_help_chat),
         ("Version Consistency", test_version_consistency),
     ]
@@ -4364,8 +4364,8 @@ def test_import_export() -> bool:
             PASS("ImportExportManager created")
             
             # Test export manifest
-            manifest = ExportManifest(version="2.9.5", items=["config"])
-            if manifest.version == "2.9.5":
+            manifest = ExportManifest(version="2.9.6", items=["config"])
+            if manifest.version == "2.9.6":
                 PASS("ExportManifest dataclass")
             else:
                 return FAIL("ExportManifest wrong")
@@ -5459,13 +5459,13 @@ def test_memory_viz() -> bool:
         
         # Test helper functions
         bar = _bar(0.5)
-        if "█" in bar and "%" in bar:
+        if "â–ˆ" in bar and "%" in bar:
             PASS("Bar chart works")
         else:
             return FAIL("Bar chart failed")
         
         box = _box("Test", "Hello\nWorld")
-        if "┌" in box and "└" in box:
+        if "â”Œ" in box and "â””" in box:
             PASS("Box drawing works")
         else:
             return FAIL("Box drawing failed")
@@ -5711,7 +5711,7 @@ def test_doctor() -> bool:
 
 
 def test_gui_v295_fixes() -> bool:
-    """Test GUI fixes from v2.9.5: missing methods, tab navigation, paste handling."""
+    """Test GUI fixes from v2.9.6: missing methods, tab navigation, paste handling."""
     try:
         from src.gui import CrackedCodeGUI, ENHANCEMENTS_AVAILABLE
         
@@ -5792,11 +5792,11 @@ def test_gui_v295_fixes() -> bool:
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return FAIL("GUI v2.9.5", str(e)[:50])
+        return FAIL("GUI v2.9.6", str(e)[:50])
 
 
 def test_intent_help_chat() -> bool:
-    """Test HELP and CHAT intent detection from v2.9.5."""
+    """Test HELP and CHAT intent detection from v2.9.6."""
     try:
         from src.engine import CrackedCodeEngine, Intent
         
@@ -5838,18 +5838,18 @@ def test_intent_help_chat() -> bool:
 
 
 def test_version_consistency() -> bool:
-    """Test all version numbers are consistent at 2.9.5."""
+    """Test all version numbers are consistent at 2.9.6."""
     try:
         from src.main import CrackedCode
         from src.atlan_ui import MatrixUI
         
-        if CrackedCode.VERSION == "2.9.5":
-            PASS("main.py version: 2.9.5")
+        if CrackedCode.VERSION == "2.9.6":
+            PASS("main.py version: 2.9.6")
         else:
             return FAIL(f"main.py version: {CrackedCode.VERSION}")
         
-        if MatrixUI.VERSION == "2.9.5":
-            PASS("atlan_ui.py version: 2.9.5")
+        if MatrixUI.VERSION == "2.9.6":
+            PASS("atlan_ui.py version: 2.9.6")
         else:
             return FAIL(f"atlan_ui.py version: {MatrixUI.VERSION}")
         
@@ -5863,3 +5863,4 @@ def test_version_consistency() -> bool:
 if __name__ == "__main__":
     success = main()
     sys.exit(0 if success >= 28 else 1)
+

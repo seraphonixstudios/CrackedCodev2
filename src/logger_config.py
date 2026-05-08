@@ -1,4 +1,4 @@
-"""Centralized logging configuration for CrackedCode.
+﻿"""Centralized logging configuration for CrackedCode.
 
 Provides colored console output, rotating file handlers, and structured JSON logging.
 All modules should use `get_logger(name)` instead of `logging.getLogger()` directly.
@@ -212,3 +212,4 @@ def get_logger(name: str) -> logging.Logger:
     if not CrackedCodeLogger._initialized:
         setup_logging()
     return CrackedCodeLogger._instance.get_logger(name)
+

@@ -1,4 +1,4 @@
-"""REST API Server - Expose CrackedCode capabilities via HTTP.
+﻿"""REST API Server - Expose CrackedCode capabilities via HTTP.
 
 Endpoints:
 - POST /process      - Process a prompt with the engine
@@ -51,7 +51,7 @@ logger = get_logger("APIServer")
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 
-# ── Request/Response Models ────────────────────────────────────────────────
+# â”€â”€ Request/Response Models â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class ProcessRequest(BaseModel):
     prompt: str
@@ -302,7 +302,7 @@ class AgentMemoryResponse(BaseModel):
     error: str = ""
 
 
-# ── Rate Limiting ──────────────────────────────────────────────────────────
+# â”€â”€ Rate Limiting â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class RateLimiter:
     """Simple in-memory rate limiter."""
@@ -358,7 +358,7 @@ class RateLimiter:
             return max(0.0, reset)
 
 
-# ── API Server ─────────────────────────────────────────────────────────────
+# â”€â”€ API Server â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class CrackedCodeAPI:
     """REST API server for CrackedCode."""
@@ -383,7 +383,7 @@ class CrackedCodeAPI:
         self._app = FastAPI(
             title="CrackedCode API",
             description="REST API for the CrackedCode local AI coding assistant",
-            version="2.9.5",
+            version="2.9.6",
         )
         
         # CORS
@@ -435,7 +435,7 @@ class CrackedCodeAPI:
     def _verify_api_key(self, api_key: Optional[str] = Security(api_key_header)):
         """Verify API key if one is configured."""
         if not self.api_key:
-            # No API key configured — auth disabled
+            # No API key configured â€” auth disabled
             return True
         
         if not api_key:
@@ -459,7 +459,7 @@ class CrackedCodeAPI:
         async def root():
             return {
                 "name": "CrackedCode API",
-                "version": "2.9.5",
+                "version": "2.9.6",
                 "docs": "/docs",
                 "auth_required": bool(self.api_key),
                 "endpoints": [
@@ -636,7 +636,7 @@ class CrackedCodeAPI:
         async def status():
             """Get system status."""
             if not self.engine:
-                return StatusResponse(version="2.9.5")
+                return StatusResponse(version="2.9.6")
             
             try:
                 status_data = self.engine.get_status()
@@ -655,7 +655,7 @@ class CrackedCodeAPI:
                     conv_count = self.engine.conversation_manager.get_stats().get('total_conversations', 0)
                 
                 return StatusResponse(
-                    version=status_data.get('version', '2.9.5'),
+                    version=status_data.get('version', '2.9.6'),
                     model=status_data.get('model', ''),
                     vision_model=status_data.get('vision_model', ''),
                     secondary_model=status_data.get('secondary_model', ''),
@@ -1810,7 +1810,7 @@ def create_api_server(engine=None, host: str = "0.0.0.0", port: int = 8080, api_
     return CrackedCodeAPI(engine=engine, host=host, port=port, api_key=api_key)
 
 
-# ── CLI Entry Point ────────────────────────────────────────────────────────
+# â”€â”€ CLI Entry Point â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 if __name__ == "__main__":
     from src.engine import CrackedCodeEngine
@@ -1819,7 +1819,7 @@ if __name__ == "__main__":
     api_key = engine.config.get("api_key") if hasattr(engine, 'config') else None
     api = create_api_server(engine=engine, api_key=api_key)
     
-    print(f"Starting CrackedCode API Server v2.9.5")
+    print(f"Starting CrackedCode API Server v2.9.6")
     print(f"URL: {api.url}")
     print(f"Docs: {api.url}/docs")
     if api.api_key:
@@ -1836,3 +1836,4 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         api.stop()
         print("\nAPI server stopped")
+

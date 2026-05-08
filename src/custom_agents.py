@@ -1,4 +1,4 @@
-"""Custom Agent Definition - Load user-defined agents from YAML/JSON configs.
+﻿"""Custom Agent Definition - Load user-defined agents from YAML/JSON configs.
 
 Features:
 - Define new agents without touching Python code
@@ -196,3 +196,4 @@ def get_custom_agent_registry(config_dir: str = "agents") -> CustomAgentRegistry
     if not hasattr(get_custom_agent_registry, "_instance"):
         get_custom_agent_registry._instance = CustomAgentRegistry(config_dir)
     return get_custom_agent_registry._instance
+

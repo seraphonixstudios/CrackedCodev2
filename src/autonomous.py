@@ -1,4 +1,4 @@
-import os
+﻿import os
 import json
 import time
 import threading
@@ -2685,10 +2685,10 @@ python -m pytest tests/
             entries = [e for e in entries if not e.name.startswith(".")]
             for i, entry in enumerate(entries):
                 is_last = i == len(entries) - 1
-                connector = "└── " if is_last else "├── "
+                connector = "â””â”€â”€ " if is_last else "â”œâ”€â”€ "
                 tree_lines.append(f"{prefix_str}{connector}{entry.name}")
                 if entry.is_dir():
-                    extension = "    " if is_last else "│   "
+                    extension = "    " if is_last else "â”‚   "
                     _add_dir(entry, prefix_str + extension)
 
         tree_lines.append(f"{p.name}/")
@@ -2766,3 +2766,4 @@ python -m pytest tests/
             "reasoning_steps": len(self._reasoning_log),
             "current_phase_reasoning": len(self._phase_reasoning.get(self.current_phase.value, [])),
         }
+

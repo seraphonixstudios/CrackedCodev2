@@ -1,4 +1,4 @@
-"""A2A (Agent-to-Agent) Protocol - Multi-agent communication.
+﻿"""A2A (Agent-to-Agent) Protocol - Multi-agent communication.
 
 Lightweight implementation of Google's A2A protocol for agent interoperability.
 
@@ -318,3 +318,4 @@ def get_a2a_registry() -> A2ARegistry:
     if _a2a_registry is None:
         _a2a_registry = A2ARegistry()
     return _a2a_registry
+

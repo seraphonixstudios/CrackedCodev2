@@ -1,4 +1,4 @@
-"""Persistent Long-Term Memory - Vector store of all agent experiences.
+﻿"""Persistent Long-Term Memory - Vector store of all agent experiences.
 
 Stores conversations, decisions, code patterns, errors, and fixes for
 retrieval during future tasks. Uses existing RAG infrastructure.
@@ -250,3 +250,4 @@ def get_long_term_memory(storage_path: str = ".crackedcode/memory", model: str =
     if _memory_instance is None:
         _memory_instance = LongTermMemory(storage_path=storage_path, model=model)
     return _memory_instance
+

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 CrackedCode Syntax Highlighter - Code highlighting for the editor
 Supports Python, JavaScript, JSON, HTML, CSS with extensible architecture.
@@ -263,3 +263,4 @@ __all__ = [
     "get_highlighter",
     "HIGHLIGHTERS",
 ]
+

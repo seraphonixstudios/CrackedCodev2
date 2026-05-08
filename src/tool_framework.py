@@ -1,13 +1,13 @@
-"""Tool Calling Framework - ReAct-style agent tools with safety and JSON schema.
+﻿"""Tool Calling Framework - ReAct-style agent tools with safety and JSON schema.
 
 Provides a decorator-based tool registry with:
 - Automatic JSON schema generation from type hints
 - Permission levels (READ, WRITE, EXECUTE, DANGEROUS)
-- ReAct loop: Thought → Action → Observation → Reflection
+- ReAct loop: Thought â†’ Action â†’ Observation â†’ Reflection
 - Built-in tools for file system, shell, git, code analysis
 
 Architecture:
-    @tool decorator → ToolRegistry → ReActLoop → AgentWorker
+    @tool decorator â†’ ToolRegistry â†’ ReActLoop â†’ AgentWorker
 """
 
 import os
@@ -172,7 +172,7 @@ def _python_type_to_json_schema(annotation: Any) -> Dict[str, Any]:
     elif annotation == dict or annotation == "dict" or getattr(annotation, "__origin__", None) == dict:
         return {"type": "object"}
     elif hasattr(annotation, "__args__") and len(annotation.__args__) == 2 and type(None) in annotation.__args__:
-        # Optional[X] → nullable
+        # Optional[X] â†’ nullable
         inner = [a for a in annotation.__args__ if a is not type(None)][0]
         schema = _python_type_to_json_schema(inner)
         schema["nullable"] = True
@@ -344,9 +344,9 @@ class ToolRegistry:
             "success_rate": round(successful / total_exec, 3) if total_exec > 0 else 1.0,
         }
     
-    # ─────────────────────────────────────────────────────────────────────────
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     # MCP INTEGRATION
-    # ─────────────────────────────────────────────────────────────────────────
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     
     def sync_mcp_tools(self, mcp_client=None) -> int:
         """Sync MCP tools into the registry.
@@ -412,9 +412,9 @@ class ToolRegistry:
         }
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # BUILT-IN TOOLS
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @tool(description="Read contents of a file", permission=ToolPermission.READ, category=ToolCategory.FILESYSTEM,
       examples=["read_file(path='src/main.py')"])
@@ -773,9 +773,9 @@ def list_tools() -> Dict[str, Any]:
     }
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # DEVOPS TOOLS
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @tool(description="Build a Docker image", permission=ToolPermission.DANGEROUS, category=ToolCategory.SHELL,
       examples=["docker_build(dockerfile_path='.', tag='myapp:latest')"])
@@ -981,9 +981,9 @@ def run_ci_pipeline(pipeline_type: str = "local", script: str = None, workflow: 
         return {"success": False, "error": str(e)}
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # SECURITY TOOLS
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @tool(description="Scan Python dependencies for known CVEs", permission=ToolPermission.READ, category=ToolCategory.SYSTEM,
       examples=["scan_dependencies(requirements_path='requirements.txt')"])
@@ -1213,9 +1213,9 @@ def analyze_vulnerabilities(file_path: str = None, scan_path: str = ".") -> Dict
         return {"success": False, "error": str(e)}
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # SCREEN CAPTURE / VISION TOOLS
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @tool(description="Capture a screenshot of the entire screen", permission=ToolPermission.READ, category=ToolCategory.SYSTEM,
       examples=["screen_capture(save_path='screenshot.png')"])
@@ -1284,9 +1284,9 @@ def ocr_screen() -> Dict[str, Any]:
         return {"success": False, "error": str(e)}
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # BROWSER AUTOMATION TOOLS
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @tool(description="Navigate to a URL in the browser", permission=ToolPermission.EXECUTE, category=ToolCategory.SYSTEM,
       examples=["browse_url(url='https://example.com')"])
@@ -1421,12 +1421,12 @@ def scroll_page(direction: str = "down", amount: int = 500) -> Dict[str, Any]:
         return {"success": False, "error": str(e)}
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # ReAct LOOP
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class ReActLoop:
-    """ReAct reasoning loop: Thought → Action → Observation → Reflection."""
+    """ReAct reasoning loop: Thought â†’ Action â†’ Observation â†’ Reflection."""
     
     def __init__(self, agent_id: str = "react_agent", max_iterations: int = 10):
         self.agent_id = agent_id
@@ -1552,3 +1552,4 @@ class ReActLoop:
 def get_tool_registry() -> ToolRegistry:
     """Get the global tool registry."""
     return ToolRegistry.get_instance()
+

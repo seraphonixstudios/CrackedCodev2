@@ -4,7 +4,7 @@
 
 CrackedCode is a 100% local AI coding assistant featuring autonomous application production (OpenClaw-style), multi-agent orchestration, voice I/O, screen capture/vision analysis, web browser automation, security auditing, persistent long-term memory, MCP integration, A2A protocol support, and a sci-fi neural interface.
 
-**Current Version:** 2.9.5
+**Current Version:** 2.9.6
 **Branch:** main
 **License:** MIT
 **Tests:** 125+ (99/99 E2E + 18 GUI + voice engine)
@@ -61,6 +61,7 @@ crackedcode/
 - Orchestrator integration: process_via_orchestrator(), create_pipeline()
 - Long-term memory integration: automatic context injection
 - MCP client integration: auto-connect on startup
+- **Simplified prompt templates**: PROMPT_TEMPLATES reduced ~70% — concise, focused system prompts for better LLM adherence
 
 ### UnifiedOrchestrator (src/orchestrator.py)
 - Task lifecycle: PENDING -> QUEUED -> RUNNING -> VERIFYING -> COMPLETED/FAILED/RETRYING
@@ -93,14 +94,14 @@ crackedcode/
 - 7-phase pipeline: Analyze -> Architect -> Scaffold -> Code -> Test -> Correct -> Deliver
 - 7 architecture templates: MVC, Clean, Layered, CLI, Web API, Desktop GUI, Microservices
 - Persistent workspace (IDENTITY.md, MEMORY.md, PROJECT.md, TASKS.md, STANDING_INSTRUCTIONS.md, REASONING.md)
-- SkillRegistry with 6 composable skills
+- SkillRegistry with 6 composable skills (simplified prompts for better LLM focus)
 - HeartbeatScheduler for background tasks
 
 ### UnifiedVoiceEngine (src/voice_engine.py)
 - STTEngine: faster-whisper with **subprocess worker isolation** (avoids ctranslate2 segfault on Python 3.14/Windows)
 - TTSEngine: Multi-backend router (pyttsx3 -> edge-tts -> fallback)
 - VoiceActivityDetector: Energy-based VAD with adaptive noise floor
-- VoiceCommandProcessor: 17 command types with fuzzy matching and parameter extraction
+- VoiceCommandProcessor: 17 command types with fuzzy matching and parameter extraction (simplified keywords)
 - VoiceSession: Complete listen -> process -> respond cycle
 - UnifiedVoiceEngine: Singleton orchestrator with hotword detection
 - **auto_load_stt**: config key (default true) loads Whisper in isolated subprocess 2s after GUI start
@@ -112,7 +113,7 @@ crackedcode/
 - CoherenceTracker: Cross-agent coherence measurement and conflict detection
 - ReasoningEngine: Singleton coordinating all reasoning across the system
 - **Persistent memory**: save_reasoning_log() / load_reasoning_log() JSON + REASONING.md
-- **LLM meta-reasoning**: analyze_with_llm() feeds coherence report to Ollama for insights
+- **LLM meta-reasoning**: analyze_with_llm() feeds concise coherence report to Ollama for insights
 
 ### Codebase RAG (src/codebase_rag.py)
 - CodeChunker: Semantic chunking by function/class/module for 15+ languages
@@ -197,11 +198,15 @@ crackedcode/
 - PyQt6-based with Atlantean theme (#00FF41 on black)
 - Tabbed editor with syntax highlighting (Python, JSON), searchable terminal
 - Task queue, agent panel, Git panel with diff viewer and AI commit messages
-- Toast notifications, command palette (Ctrl+Shift+P), welcome screen
+- Toast notifications (with slide-in animation), command palette (Ctrl+Shift+P), welcome screen
 - Enhanced status bar with activity pulse and model/mode display
 - Autonomous production dialog (Ctrl+A)
 - File watcher with auto-save and external change detection
 - **Reasoning Panel** (left sidebar): per-agent thought chains, coherence bar, recent events stream, live terminal integration
+- **Color-coded terminal**: Per-level text colors via QTextCharFormat — info/success→green, warning→gold, error→red, voice→cyan, ai→purple, reasoning→blue
+- **Smooth progress bar**: QPropertyAnimation with OutCubic easing replaces all setValue() calls
+- **Glow effects**: QGraphicsDropShadowEffect on terminal group box (green, blur 12), SEND button (green, blur 10), progress bar (cyan, blur 8), prompt label (cyan)
+- **Error visibility**: All silent except blocks patched with show_toast()/term()/logger calls
 
 ### Logger (src/logger_config.py)
 - Centralized logging with get_logger(name)
@@ -280,6 +285,20 @@ Key settings in config.json:
 2. Add widgets in init_ui()
 3. Connect signals in relevant methods
 4. Test with python src/gui.py
+
+### Adding GUI Visual Effects
+1. For color-coded terminal: Use QTextCharFormat + QTextCursor.insertText() in term() method
+2. For animations: Use QPropertyAnimation with QEasingCurve (e.g. OutCubic) on target properties
+3. For glow effects: Use QGraphicsDropShadowEffect with appropriate blur radius (8-12) and color
+4. Add QGraphicsDropShadowEffect import from PyQt6.QtWidgets
+5. Test with python src/gui.py
+
+### Simplifying Prompts
+1. Identify repetitive or verbose system prompts (PROMPT_TEMPLATES, AGENT_SYSTEM_PROMPTS, skill prompts, phase prompts)
+2. Keep essential instructions only — respect user, be concise, answer accurately, no roleplaying
+3. Reduce persona/backstory text to 1-2 sentences
+4. Remove example conversations and multi-paragraph explanations
+5. Test with python test_system.py to ensure intent parsing and routing still work
 
 ### Adding a New Voice Command
 1. Add keywords to VoiceCommandProcessor.COMMAND_MAP in src/voice_engine.py

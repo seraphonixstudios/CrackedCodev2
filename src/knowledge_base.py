@@ -1,4 +1,4 @@
-"""Knowledge Base / RAG Upload v2.9.5 - Upload documents to augment RAG.
+﻿"""Knowledge Base / RAG Upload v2.9.6 - Upload documents to augment RAG.
 
 Upload PDFs, markdown files, text files, and code documentation to extend
 the semantic search capabilities beyond just the codebase.
@@ -22,7 +22,7 @@ from src.logger_config import get_logger
 logger = get_logger("KnowledgeBase")
 
 
-# ── Data Models ────────────────────────────────────────────────────────────
+# â”€â”€ Data Models â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @dataclass
 class Document:
@@ -49,7 +49,7 @@ class SearchResult:
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 
-# ── Knowledge Base ─────────────────────────────────────────────────────────
+# â”€â”€ Knowledge Base â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class KnowledgeBase:
     """Document upload and semantic search for RAG augmentation."""
@@ -409,3 +409,4 @@ class KnowledgeBase:
 def get_knowledge_base(storage_dir: str = ".crackedcode/knowledge") -> KnowledgeBase:
     """Get the global knowledge base."""
     return KnowledgeBase(storage_dir=storage_dir)
+

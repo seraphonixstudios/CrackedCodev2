@@ -1,4 +1,4 @@
-"""Agent Collaboration / Multi-Agent Chat v2.9.5 - Multi-agent debate and consensus.
+﻿"""Agent Collaboration / Multi-Agent Chat v2.9.6 - Multi-agent debate and consensus.
 
 Multiple specialized agents (ARCHITECT, SECURITY, CODER) collaborate on a task
 through structured debate. The SUPERVISOR coordinates and synthesizes consensus.
@@ -24,7 +24,7 @@ from src.logger_config import get_logger
 logger = get_logger("AgentCollaboration")
 
 
-# ── Data Models ────────────────────────────────────────────────────────────
+# â”€â”€ Data Models â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class AgentStance(Enum):
     SUPPORT = "support"
@@ -76,7 +76,7 @@ class AgentPersona:
     system_prompt: str = ""
 
 
-# ── Agent Parliament ───────────────────────────────────────────────────────
+# â”€â”€ Agent Parliament â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class AgentParliament:
     """Multi-agent debate and consensus building."""
@@ -428,3 +428,4 @@ ANALYSIS: Your detailed reasoning
 def get_agent_parliament(engine=None, memory=None) -> AgentParliament:
     """Get the global agent parliament."""
     return AgentParliament(engine=engine, memory=memory)
+

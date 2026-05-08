@@ -1,4 +1,4 @@
-import sys
+﻿import sys
 import os
 import json
 import re
@@ -544,17 +544,17 @@ Question: {prompt}
 
     # Multi-model auto-routing: which model handles which intent best
     INTENT_TO_MODEL = {
-        Intent.CODE: "model",           # primary model (qwen3) — reasoning, coding
+        Intent.CODE: "model",           # primary model (qwen3) â€” reasoning, coding
         Intent.DEBUG: "model",          # primary model
         Intent.BUILD: "model",          # primary model
-        Intent.REVIEW: "secondary_model",  # dolphin — creative conversation
+        Intent.REVIEW: "secondary_model",  # dolphin â€” creative conversation
         Intent.SECURITY: "model",       # primary model
         Intent.SEARCH: "model",         # primary model
         Intent.EXECUTE: "model",        # primary model
-        Intent.VISION: "vision_model",  # llava — image analysis
+        Intent.VISION: "vision_model",  # llava â€” image analysis
         Intent.BROWSE: "model",         # primary model
-        Intent.CHAT: "secondary_model",    # dolphin — conversation
-        Intent.HELP: "secondary_model",    # dolphin — helpful responses
+        Intent.CHAT: "secondary_model",    # dolphin â€” conversation
+        Intent.HELP: "secondary_model",    # dolphin â€” helpful responses
     }
 
     def __init__(self, config: Dict = None):
@@ -737,7 +737,7 @@ Question: {prompt}
                 pass
         
         return {
-            "version": "2.9.5",
+            "version": "2.9.6",
             "model": self.model,
             "vision_model": self.vision_model,
             "secondary_model": self.secondary_model,
@@ -773,7 +773,7 @@ Question: {prompt}
         if preferred in available:
             return preferred
         
-        # Fallback chain: preferred → primary → any available → default
+        # Fallback chain: preferred â†’ primary â†’ any available â†’ default
         if self.model in available:
             return self.model
         if available:
@@ -1576,7 +1576,7 @@ Requirements:
                 if tool_calls:
                     text += "**Tool Calls:**\n"
                     for tc in tool_calls:
-                        text += f"- {tc['tool']} → {'success' if tc['success'] else 'failed'}: {tc['observation'][:80]}...\n"
+                        text += f"- {tc['tool']} â†’ {'success' if tc['success'] else 'failed'}: {tc['observation'][:80]}...\n"
                 
                 return AgentResponse(
                     success=True,
@@ -1954,3 +1954,4 @@ def get_engine(config: Dict = None) -> CrackedCodeEngine:
     if _engine is None:
         _engine = CrackedCodeEngine(config)
     return _engine
+

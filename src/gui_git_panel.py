@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 CrackedCode Git Panel - Sidebar widget for Git integration
 Shows branch status, file states, diffs, and commit operations.
@@ -133,7 +133,7 @@ class GitPanelWidget(QWidget):
         layout.setSpacing(6)
 
         # Branch / status header
-        self.branch_label = QLabel("BRANCH: —", self)
+        self.branch_label = QLabel("BRANCH: â€”", self)
         self.branch_label.setFont(QFont("Consolas", 10, QFont.Weight.Bold))
         self.branch_label.setStyleSheet(f"color: {ATLAN_CYAN};")
         layout.addWidget(self.branch_label)
@@ -239,7 +239,7 @@ class GitPanelWidget(QWidget):
         self.push_btn.clicked.connect(self._push)
         actions_row.addWidget(self.push_btn)
 
-        self.refresh_btn = QPushButton("↻", self)
+        self.refresh_btn = QPushButton("â†»", self)
         self.refresh_btn.setToolTip("Refresh git status")
         self.refresh_btn.setFixedWidth(32)
         self.refresh_btn.clicked.connect(self.refresh)
@@ -257,7 +257,7 @@ class GitPanelWidget(QWidget):
         """Refresh the git status display."""
         if not self.git.is_repo:
             self.status_label.setText("Not a git repository")
-            self.branch_label.setText("BRANCH: —")
+            self.branch_label.setText("BRANCH: â€”")
             self.sync_label.setText("")
             self.files_tree.clear()
             self.commit_btn.setEnabled(False)
@@ -272,9 +272,9 @@ class GitPanelWidget(QWidget):
 
             sync_text = ""
             if info.commits_ahead > 0:
-                sync_text += f"↑{info.commits_ahead} "
+                sync_text += f"â†‘{info.commits_ahead} "
             if info.commits_behind > 0:
-                sync_text += f"↓{info.commits_behind}"
+                sync_text += f"â†“{info.commits_behind}"
             self.sync_label.setText(sync_text)
 
             # Update file tree
@@ -519,3 +519,4 @@ Commit message:"""
 
 
 __all__ = ["GitPanelWidget", "DiffViewerDialog"]
+

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 CrackedCode Voice Typing Module (Compatibility Wrapper)
 
@@ -50,3 +50,4 @@ __all__ = [
     "VOICE_COMMANDS",
     "get_voice_engine",
 ]
+

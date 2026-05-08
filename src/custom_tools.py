@@ -1,4 +1,4 @@
-"""Custom Tool Builder v2.8.2 - Define tools via JSON/YAML without Python code.
+﻿"""Custom Tool Builder v2.8.2 - Define tools via JSON/YAML without Python code.
 
 Define new tools by creating JSON/YAML files in the tools/ directory:
   tools/weather_lookup.yaml
@@ -36,7 +36,7 @@ from src.logger_config import get_logger
 logger = get_logger("CustomTools")
 
 
-# ── Data Models ────────────────────────────────────────────────────────────
+# â”€â”€ Data Models â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @dataclass
 class ToolParameter:
@@ -73,7 +73,7 @@ class CustomToolDef:
     tags: List[str] = field(default_factory=list)
 
 
-# ── Action Executors ───────────────────────────────────────────────────────
+# â”€â”€ Action Executors â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class ActionExecutor:
     """Base class for action executors."""
@@ -287,7 +287,7 @@ class PythonExecutor(ActionExecutor):
         return result
 
 
-# ── Custom Tool Registry ───────────────────────────────────────────────────
+# â”€â”€ Custom Tool Registry â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class CustomToolRegistry:
     """Registry for custom tools defined via JSON/YAML."""
@@ -478,3 +478,4 @@ class CustomToolRegistry:
 def get_custom_tool_registry(tools_dir: str = "tools") -> CustomToolRegistry:
     """Get the global custom tool registry."""
     return CustomToolRegistry(tools_dir=tools_dir)
+

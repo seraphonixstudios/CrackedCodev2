@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 CrackedCode Settings Dialog - GUI preferences editor
 """
@@ -473,7 +473,7 @@ class SettingsDialog(QDialog):
         theme_layout = QFormLayout(theme_group)
         theme_layout.setContentsMargins(8, 16, 8, 8)
 
-        theme_label = QLabel("Atlantean (Green) — Default theme")
+        theme_label = QLabel("Atlantean (Green) â€” Default theme")
         theme_label.setStyleSheet(f"color: #00FF41;")
         theme_layout.addRow("Color Theme:", theme_label)
 
@@ -844,3 +844,4 @@ NAVIGATION
 
 
 __all__ = ["SettingsDialog"]
+

@@ -1,4 +1,4 @@
-"""Conversation Manager - Persistent chat history with search and export.
+﻿"""Conversation Manager - Persistent chat history with search and export.
 
 Features:
 - SQLite-backed chat storage
@@ -458,3 +458,4 @@ def get_conversation_manager(db_path: str = ".crackedcode/conversations.db") -> 
     if _manager_instance is None:
         _manager_instance = ConversationManager(db_path=db_path)
     return _manager_instance
+

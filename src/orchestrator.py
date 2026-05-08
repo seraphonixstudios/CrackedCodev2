@@ -1,4 +1,4 @@
-"""Unified Orchestrator - Production-grade multi-agent task orchestration.
+﻿"""Unified Orchestrator - Production-grade multi-agent task orchestration.
 
 Integrates GUI task tracking, parallel execution, CLI swarm, and autonomous
 production into a single cohesive system with proper lifecycle management.
@@ -1240,3 +1240,4 @@ def get_orchestrator(engine=None, max_workers: int = 4) -> UnifiedOrchestrator:
     if _orchestrator is None:
         _orchestrator = UnifiedOrchestrator(engine, max_workers)
     return _orchestrator
+

@@ -1,4 +1,4 @@
-"""Model Fine-tuning Pipeline v2.9.5 - Local model fine-tuning with Ollama.
+﻿"""Model Fine-tuning Pipeline v2.9.6 - Local model fine-tuning with Ollama.
 
 Prepare training data from conversations, code reviews, and agent outputs.
 Create a custom Ollama model with a Modelfile for domain-specific tasks.
@@ -28,7 +28,7 @@ from src.logger_config import get_logger
 logger = get_logger("ModelFinetune")
 
 
-# ── Data Models ────────────────────────────────────────────────────────────
+# â”€â”€ Data Models â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @dataclass
 class TrainingExample:
@@ -66,7 +66,7 @@ class FinetuneJob:
     error: str = ""
 
 
-# ── Fine-tuning Pipeline ───────────────────────────────────────────────────
+# â”€â”€ Fine-tuning Pipeline â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class FinetunePipeline:
     """Local model fine-tuning pipeline with Ollama."""
@@ -382,3 +382,4 @@ class FinetunePipeline:
 def get_finetune_pipeline(data_dir: str = ".crackedcode/finetune") -> FinetunePipeline:
     """Get the global fine-tuning pipeline."""
     return FinetunePipeline(data_dir=data_dir)
+

@@ -1,4 +1,4 @@
-"""Agent Reasoning Engine - Full thought process and coherence tracking.
+﻿"""Agent Reasoning Engine - Full thought process and coherence tracking.
 
 Provides chain-of-thought reasoning for all agent decisions, enabling:
 - Transparent decision-making with step-by-step logic
@@ -249,7 +249,7 @@ class ThoughtChain:
         lines.append("")
         
         for i, step in enumerate(self.steps, 1):
-            confidence_bar = "█" * int(step.confidence * 10) + "░" * (10 - int(step.confidence * 10))
+            confidence_bar = "â–ˆ" * int(step.confidence * 10) + "â–‘" * (10 - int(step.confidence * 10))
             lines.append(f"  {i}. [{step.type.value.upper():12}] [{confidence_bar}] {step.confidence:.2f}")
             lines.append(f"     {step.content}")
             if step.evidence:
@@ -257,7 +257,7 @@ class ThoughtChain:
             lines.append("")
         
         if self.final_decision:
-            lines.append(f"  → DECISION: {self.final_decision} (confidence: {self.final_confidence:.2f})")
+            lines.append(f"  â†’ DECISION: {self.final_decision} (confidence: {self.final_confidence:.2f})")
         
         return "\n".join(lines)
     
@@ -844,3 +844,4 @@ def reset_reasoning_engine():
     """Reset the global reasoning engine."""
     global _reasoning_engine
     _reasoning_engine = ReasoningEngine()
+

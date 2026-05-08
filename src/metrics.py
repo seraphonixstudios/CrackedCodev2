@@ -1,4 +1,4 @@
-"""Metrics & Analytics - Request tracking and performance monitoring.
+﻿"""Metrics & Analytics - Request tracking and performance monitoring.
 
 Tracks request counts, latency, token estimates, model usage, agent tasks,
 and intent distribution. Persists to JSON for historical analysis.
@@ -23,7 +23,7 @@ from src.logger_config import get_logger
 logger = get_logger("Metrics")
 
 
-# ── Data Models ────────────────────────────────────────────────────────────
+# â”€â”€ Data Models â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @dataclass
 class RequestMetrics:
@@ -57,7 +57,7 @@ class AggregatedMetrics:
     daily_requests: Dict[str, int] = field(default_factory=dict)
 
 
-# ── Metrics Collector ──────────────────────────────────────────────────────
+# â”€â”€ Metrics Collector â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class MetricsCollector:
     """Collect and aggregate performance metrics."""
@@ -206,7 +206,7 @@ class MetricsCollector:
         logger.info(f"Metrics exported to {path}")
 
 
-# ── Singleton ──────────────────────────────────────────────────────────────
+# â”€â”€ Singleton â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 _metrics_collector: Optional[MetricsCollector] = None
 
@@ -219,7 +219,7 @@ def get_metrics_collector(data_dir: str = ".crackedcode/metrics") -> MetricsColl
     return _metrics_collector
 
 
-# ── Context Manager for Timing ─────────────────────────────────────────────
+# â”€â”€ Context Manager for Timing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class timed_request:
     """Context manager that times a request and records metrics.
@@ -258,3 +258,4 @@ class timed_request:
             token_estimate=self.token_estimate,
         )
         return False  # Don't suppress exceptions
+

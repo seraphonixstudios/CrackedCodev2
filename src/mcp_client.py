@@ -1,4 +1,4 @@
-"""MCP (Model Context Protocol) Client - Connect to external MCP servers.
+﻿"""MCP (Model Context Protocol) Client - Connect to external MCP servers.
 
 Lightweight implementation of Anthropic's MCP protocol.
 Supports stdio and SSE transports.
@@ -487,3 +487,4 @@ def get_mcp_client() -> MCPClient:
     if not hasattr(get_mcp_client, "_instance"):
         get_mcp_client._instance = MCPClient()
     return get_mcp_client._instance
+

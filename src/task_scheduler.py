@@ -1,4 +1,4 @@
-"""Task Scheduler v2.9.5 - Cron-based recurring AI task execution.
+﻿"""Task Scheduler v2.9.6 - Cron-based recurring AI task execution.
 
 Define recurring tasks that run on a schedule:
   schedules/weekly_security.yaml
@@ -27,7 +27,7 @@ from src.logger_config import get_logger
 logger = get_logger("TaskScheduler")
 
 
-# ── Data Models ────────────────────────────────────────────────────────────
+# â”€â”€ Data Models â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @dataclass
 class Schedule:
@@ -58,7 +58,7 @@ class ScheduledRun:
     duration: float = 0.0
 
 
-# ── Cron Parser ────────────────────────────────────────────────────────────
+# â”€â”€ Cron Parser â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def parse_cron(cron: str) -> Dict[str, List[int]]:
     """Parse a cron expression into minute/hour/day/month/dow lists.
@@ -120,7 +120,7 @@ def should_run_now(cron_spec: Dict[str, List[int]]) -> bool:
     )
 
 
-# ── Task Scheduler ─────────────────────────────────────────────────────────
+# â”€â”€ Task Scheduler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class TaskScheduler:
     """Cron-based recurring task scheduler using the orchestrator."""
@@ -376,7 +376,7 @@ def create_task_scheduler(engine=None, schedules_dir: str = "schedules") -> Task
     return TaskScheduler(engine=engine, schedules_dir=schedules_dir)
 
 
-# ── CLI Entry Point ────────────────────────────────────────────────────────
+# â”€â”€ CLI Entry Point â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 if __name__ == "__main__":
     from src.engine import CrackedCodeEngine
@@ -404,3 +404,4 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         scheduler.stop()
         print("\nTaskScheduler stopped")
+

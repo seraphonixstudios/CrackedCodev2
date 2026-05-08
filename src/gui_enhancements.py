@@ -1,6 +1,6 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
-CrackedCode GUI Enhancements v2.9.5
+CrackedCode GUI Enhancements v2.9.6
 UX Improvements: Toast notifications, Command Palette, Welcome Screen,
 Enhanced Status Bar, Animated transitions, Quick Actions
 """
@@ -93,13 +93,13 @@ class ToastNotification(QWidget):
     def show_message(self, text: str, toast_type: ToastType = ToastType.INFO, duration: int = 3000):
         """Show a toast message."""
         icons = {
-            ToastType.INFO: "ℹ",
-            ToastType.SUCCESS: "✓",
-            ToastType.WARNING: "⚠",
-            ToastType.ERROR: "✗",
-            ToastType.NEUTRAL: "→",
+            ToastType.INFO: "â„¹",
+            ToastType.SUCCESS: "âœ“",
+            ToastType.WARNING: "âš ",
+            ToastType.ERROR: "âœ—",
+            ToastType.NEUTRAL: "â†’",
         }
-        self.icon_label.setText(icons.get(toast_type, "→"))
+        self.icon_label.setText(icons.get(toast_type, "â†’"))
         self.text_label.setText(text)
         
         color = toast_type.value
@@ -227,7 +227,7 @@ class QuickActionsDialog(QDialog):
         layout.addWidget(self.results_list)
         
         # Shortcut hint
-        hint = QLabel("↑↓ Navigate  |  Enter Execute  |  Esc Close", container)
+        hint = QLabel("â†‘â†“ Navigate  |  Enter Execute  |  Esc Close", container)
         hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(hint)
         
@@ -345,7 +345,7 @@ class WelcomeWidget(QWidget):
         layout.setSpacing(20)
         
         # Title
-        title = QLabel("⚡ CRACKEDCODE v2.9.5", self)
+        title = QLabel("âš¡ CRACKEDCODE v2.9.6", self)
         title.setFont(QFont("Consolas", 24, QFont.Weight.Bold))
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setStyleSheet(f"color: {ATLAN_GREEN};")
@@ -362,10 +362,10 @@ class WelcomeWidget(QWidget):
         features.setSpacing(16)
         
         feature_data = [
-            ("🎯", "PLAN MODE", "Design before you build", ATLAN_CYAN),
-            ("🏗", "BUILD MODE", "Generate code instantly", ATLAN_GREEN),
-            ("🎤", "VOICE CONTROL", "Speak to code", ATLAN_PURPLE),
-            ("🤖", "AUTO PRODUCE", "Full apps from specs", ATLAN_GOLD),
+            ("ðŸŽ¯", "PLAN MODE", "Design before you build", ATLAN_CYAN),
+            ("ðŸ—", "BUILD MODE", "Generate code instantly", ATLAN_GREEN),
+            ("ðŸŽ¤", "VOICE CONTROL", "Speak to code", ATLAN_PURPLE),
+            ("ðŸ¤–", "AUTO PRODUCE", "Full apps from specs", ATLAN_GOLD),
         ]
         
         for i, (icon, title, desc, color) in enumerate(feature_data):
@@ -395,7 +395,7 @@ Ctrl+A          Autonomous Produce    F1              Help
         layout.addStretch()
         
         # Dismiss button
-        dismiss_btn = QPushButton("GET STARTED →", self)
+        dismiss_btn = QPushButton("GET STARTED â†’", self)
         dismiss_btn.clicked.connect(self._dismiss)
         layout.addWidget(dismiss_btn, alignment=Qt.AlignmentFlag.AlignCenter)
         
@@ -464,7 +464,7 @@ class EnhancedStatusBar(QStatusBar):
         layout.addStretch()
         
         # Center: Info panels
-        self.model_label = QLabel("Model: —")
+        self.model_label = QLabel("Model: â€”")
         self.model_label.setFont(QFont("Consolas", 9))
         layout.addWidget(self.model_label)
         
@@ -476,12 +476,12 @@ class EnhancedStatusBar(QStatusBar):
         self.files_label.setFont(QFont("Consolas", 9))
         layout.addWidget(self.files_label)
         
-        self.voice_label = QLabel("🎤")
+        self.voice_label = QLabel("ðŸŽ¤")
         self.voice_label.setFont(QFont("Consolas", 9))
         self.voice_label.setToolTip("Voice status")
         layout.addWidget(self.voice_label)
         
-        self.ollama_label = QLabel("● OLLAMA")
+        self.ollama_label = QLabel("â— OLLAMA")
         self.ollama_label.setFont(QFont("Consolas", 9))
         self.ollama_label.setToolTip("Ollama connection status")
         layout.addWidget(self.ollama_label)
@@ -489,7 +489,7 @@ class EnhancedStatusBar(QStatusBar):
         layout.addStretch()
         
         # Right: Activity indicator
-        self.activity_label = QLabel("●")
+        self.activity_label = QLabel("â—")
         self.activity_label.setFont(QFont("Consolas", 10))
         self.activity_label.setStyleSheet(f"color: {ATLAN_GREEN};")
         layout.addWidget(self.activity_label)
@@ -526,10 +526,10 @@ class EnhancedStatusBar(QStatusBar):
         """Update Ollama connection indicator in status bar."""
         from src.gui import ATLAN_GREEN
         if connected:
-            self.ollama_label.setText("● OLLAMA")
+            self.ollama_label.setText("â— OLLAMA")
             self.ollama_label.setStyleSheet(f"color: {ATLAN_GREEN};")
         else:
-            self.ollama_label.setText("● OLLAMA")
+            self.ollama_label.setText("â— OLLAMA")
             self.ollama_label.setStyleSheet("color: #FF4444;")
     
     def set_cursor_position(self, line: int, col: int):
@@ -642,3 +642,4 @@ __all__ = [
     "FloatingActionButton",
     "KeyboardShortcutHelper",
 ]
+

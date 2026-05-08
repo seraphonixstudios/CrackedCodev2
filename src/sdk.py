@@ -1,4 +1,4 @@
-"""CrackedCode Python SDK v2.9.5 - Official client for the CrackedCode API.
+﻿"""CrackedCode Python SDK v2.9.6 - Official client for the CrackedCode API.
 
 Provides a clean, typed interface to all API endpoints with automatic
 retries, error handling, and both sync/async support.
@@ -52,7 +52,7 @@ from src.logger_config import get_logger
 logger = get_logger("SDK")
 
 
-# ── Response Models ────────────────────────────────────────────────────────
+# â”€â”€ Response Models â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @dataclass
 class ChatResponse:
@@ -130,7 +130,7 @@ class HealingResponse:
     raw: Dict[str, Any] = field(default_factory=dict, repr=False)
 
 
-# ── Client ─────────────────────────────────────────────────────────────────
+# â”€â”€ Client â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class Client:
     """Official CrackedCode API client."""
@@ -191,7 +191,7 @@ class Client:
 
         raise last_error or requests.RequestException("Max retries exceeded")
 
-    # ── Core API ───────────────────────────────────────────────────────────
+    # â”€â”€ Core API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def chat(
         self,
@@ -260,7 +260,7 @@ class Client:
             return self._request("POST", "/import", files=files, data=data)
 
 
-# ── Sub-clients ────────────────────────────────────────────────────────────
+# â”€â”€ Sub-clients â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _WorkflowClient:
     def __init__(self, client: Client):
@@ -463,7 +463,7 @@ class _ToolClient:
         return self._client._request("POST", "/custom-tools/execute", json=payload)
 
 
-# ── Convenience functions ──────────────────────────────────────────────────
+# â”€â”€ Convenience functions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def create_client(
     api_key: Optional[str] = None,
@@ -471,3 +471,4 @@ def create_client(
 ) -> Client:
     """Create a new CrackedCode client."""
     return Client(api_key=api_key, base_url=base_url)
+

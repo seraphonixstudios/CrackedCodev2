@@ -1,4 +1,4 @@
-"""Plugin System - Extensible hooks for custom agent behavior.
+﻿"""Plugin System - Extensible hooks for custom agent behavior.
 
 Provides a lightweight plugin architecture with:
 - @plugin decorator for auto-registration
@@ -7,7 +7,7 @@ Provides a lightweight plugin architecture with:
 - Sandboxed execution with error isolation
 
 Architecture:
-    @plugin decorator → PluginRegistry → HookManager → (Engine/Orchestrator/GUI)
+    @plugin decorator â†’ PluginRegistry â†’ HookManager â†’ (Engine/Orchestrator/GUI)
 """
 
 import os
@@ -343,3 +343,4 @@ def get_plugin_registry() -> PluginRegistry:
 def execute_hook(hook_point: HookPoint, *args, **kwargs) -> List[Any]:
     """Execute all handlers for a hook point."""
     return PluginRegistry.get_instance().execute_hook(hook_point, *args, **kwargs)
+

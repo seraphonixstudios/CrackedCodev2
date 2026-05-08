@@ -1,4 +1,4 @@
-"""Codebase RAG - Semantic search over project files with local embeddings.
+﻿"""Codebase RAG - Semantic search over project files with local embeddings.
 
 Provides 100% local retrieval-augmented generation for codebases:
 - File indexing with Ollama embeddings or TF-IDF fallback
@@ -7,7 +7,7 @@ Provides 100% local retrieval-augmented generation for codebases:
 - Integration with reasoning engine for transparent search rationale
 
 Architecture:
-    CodeChunker → EmbeddingProvider → VectorStore → CodebaseIndexer
+    CodeChunker â†’ EmbeddingProvider â†’ VectorStore â†’ CodebaseIndexer
 """
 
 import os
@@ -599,3 +599,4 @@ def reset_codebase_indexers():
     """Reset all cached indexers."""
     global _indexers
     _indexers = {}
+

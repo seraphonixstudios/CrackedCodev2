@@ -3,7 +3,7 @@
 Local AI Coding Assistant with Sci-Fi Neural Interface
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.9.5-blue?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Version-2.9.6-blue?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License">
   <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-orange?style=for-the-badge" alt="Platform">
   <img src="https://img.shields.io/badge/Python-3.10%2B-yellow?style=for-the-badge" alt="Python">
@@ -38,6 +38,9 @@ python test_system.py
 
 | Version | Features |
 |---------|----------|
+| 2.9.6 | **Visual Enhancements** - Color-coded terminal output, smooth progress bar animation, QGraphicsDropShadowEffect glow on terminal/SEND/progress/prompt, toast slide-in animation |
+| 2.9.6 | **Prompt Simplification** - Simplified all PROMPT_TEMPLATES, agent system prompts, phase prompts, skill prompts, and voice command keywords for better LLM focus |
+| 2.9.6 | **Error Visibility** - Patched silent except blocks across GUI with proper toast/term/logger calls |
 | 2.9.5 | **Complete UI Overhaul** - Redesigned left panel with tabbed workspace (FILES, AGENTS, REASONING, HISTORY), grouped toolbar (MODE, ACTION, TERMINAL, FEATURES) with labels |
 | 2.9.5 | **Tab Navigation** - Scroll buttons (◀/▶), tab count badge, right-click context menu (rename, close, close others, copy path, reveal in explorer) |
 | 2.9.5 | **Keyboard Shortcuts** - Ctrl+Tab/Ctrl+PgDn for next tab, Ctrl+Shift+Tab/Ctrl+PgUp for prev tab, Ctrl+W to close tab |

@@ -1,4 +1,4 @@
-"""Advanced Agent Memory v2.9.5 - Per-agent persistent memory with summarization.
+﻿"""Advanced Agent Memory v2.9.6 - Per-agent persistent memory with summarization.
 
 Each agent role (architect, security, coder, etc.) maintains its own memory
 namespace with facts, preferences, decisions, errors, and fixes. Automatic
@@ -37,7 +37,7 @@ from src.logger_config import get_logger
 logger = get_logger("AgentMemory")
 
 
-# ── Data Models ────────────────────────────────────────────────────────────
+# â”€â”€ Data Models â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @dataclass
 class MemoryEntry:
@@ -81,7 +81,7 @@ class ExperiencePattern:
     examples: List[str] = field(default_factory=list)
 
 
-# ── Agent Memory System ────────────────────────────────────────────────────
+# â”€â”€ Agent Memory System â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class AgentMemorySystem:
     """Per-agent persistent memory with automatic summarization."""
@@ -556,7 +556,7 @@ class AgentMemorySystem:
         return context
 
 
-# ── Integration helpers ────────────────────────────────────────────────────
+# â”€â”€ Integration helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def get_agent_memory_system(storage_dir: str = ".crackedcode/agent_memory") -> AgentMemorySystem:
     """Get the global agent memory system."""
@@ -567,3 +567,4 @@ def inject_agent_memory(agent: str, prompt: str, storage_dir: str = ".crackedcod
     """Inject agent memory context into a prompt."""
     memory = get_agent_memory_system(storage_dir=storage_dir)
     return memory.merge_context(agent, prompt)
+

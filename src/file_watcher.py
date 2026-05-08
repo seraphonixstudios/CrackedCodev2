@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 File watcher for CrackedCode - monitors project files for changes
 """
@@ -223,3 +223,4 @@ def demo():
 
 if __name__ == "__main__":
     demo()
+

@@ -1,18 +1,18 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
-╔══════════════════════════════════════════════════════════════════════════════╗
-║                                                                      ║
-║   █████╗  ██████╗  ██████╗ ████████╗    ██████╗  ██╗     ██╗ ██████╗  ║
-║  ██╔══██╗██╔═══██╗██╔═══██╗╚══██╔══╝    ██╔══██╗ ██║     ██║██╔════╝  ║
-║  ███████║██║   ██║██║   ██║   ██║       ██████╔╝ ██║     ██║██║  ███╗║
-║  ██╔══██║██║   ██║██║   ██║   ██║       ██╔══██╗ ██║     ██║██║   ██║║
-║  ██║  ██║╚██████╔╝╚██████╔╝   ██║       ██║  ██║ ███████╗██║██║   ██║║
-║  ╚═╝  ╚═╝ ╚═════╝  ╚═════╝    ╚═╝       ╚═╝  ╚═╝ ╚══════╝╚═╝╚═════╝║
-║                                                                      ║
-║                 CRACKEDCODE: ATLANTEAN SYSTEM                        ║
-║              NEURAL CODING INTERFACE v2.1                    ║
-║                                                                      ║
-╚══════════════════════════════════════════════════════════════════════════════╝
+â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
+â•‘                                                                      â•‘
+â•‘   â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•—  â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•—  â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•— â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•—    â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•—  â–ˆâ–ˆâ•—     â–ˆâ–ˆâ•— â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•—  â•‘
+â•‘  â–ˆâ–ˆâ•”â•â•â–ˆâ–ˆâ•—â–ˆâ–ˆâ•”â•â•â•â–ˆâ–ˆâ•—â–ˆâ–ˆâ•”â•â•â•â–ˆâ–ˆâ•—â•šâ•â•â–ˆâ–ˆâ•”â•â•â•    â–ˆâ–ˆâ•”â•â•â–ˆâ–ˆâ•— â–ˆâ–ˆâ•‘     â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•”â•â•â•â•â•  â•‘
+â•‘  â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘   â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘   â–ˆâ–ˆâ•‘   â–ˆâ–ˆâ•‘       â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•”â• â–ˆâ–ˆâ•‘     â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘  â–ˆâ–ˆâ–ˆâ•—â•‘
+â•‘  â–ˆâ–ˆâ•”â•â•â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘   â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘   â–ˆâ–ˆâ•‘   â–ˆâ–ˆâ•‘       â–ˆâ–ˆâ•”â•â•â–ˆâ–ˆâ•— â–ˆâ–ˆâ•‘     â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘   â–ˆâ–ˆâ•‘â•‘
+â•‘  â–ˆâ–ˆâ•‘  â–ˆâ–ˆâ•‘â•šâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•”â•â•šâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•”â•   â–ˆâ–ˆâ•‘       â–ˆâ–ˆâ•‘  â–ˆâ–ˆâ•‘ â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•—â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘   â–ˆâ–ˆâ•‘â•‘
+â•‘  â•šâ•â•  â•šâ•â• â•šâ•â•â•â•â•â•  â•šâ•â•â•â•â•â•    â•šâ•â•       â•šâ•â•  â•šâ•â• â•šâ•â•â•â•â•â•â•â•šâ•â•â•šâ•â•â•â•â•â•â•‘
+â•‘                                                                      â•‘
+â•‘                 CRACKEDCODE: ATLANTEAN SYSTEM                        â•‘
+â•‘              NEURAL CODING INTERFACE v2.1                    â•‘
+â•‘                                                                      â•‘
+â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 """
 
 import os
@@ -81,24 +81,24 @@ class AtlanteanTheme:
 
 
 class MatrixUI:
-    VERSION = "2.9.5"
+    VERSION = "2.9.6"
     
     CHARSETS = {
         "binary": "01",
         "hex": "0123456789ABCDEF",
-        "matrix": "アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン",
-        "atlan": "◈ ◇ ◆ ▣ ◉ ○ ● ◐ ◑ ◒ ◓ ▤ ▥ ▦ ▧ ▨ ▩ ▪ ▫ ◊ ▼ △ ▽ ◆ ◇",
-        "circuit": "├ ┤ ┤ ┴ ┬ ┼ ├ │ ─ ═ ║ ╒ ╓ ╔ ╕ ╖ ╗ ╘ ╙ ╚ ╛ ╜ ╝ ╞ ╟",
-        "data": "▀ ▄ █ ▓ ▒ ░ ▬ ▭ ▮ ▯ ▰ ▱ ▲ △ ▴ ▵ ▶ ▷ ▸ ▹ ► ▻ ▼ ▽ ▾ ▿",
-        "tech": "⌬ ⌬ ⌬ ⌬ ⌬ ⌬ ⌬ ⌬ ⌬ ⌬ ⌬ ⌬ ⌬ ⌬ ⌬ ⌬ ⌬ ⌬",
+        "matrix": "ã‚¢ã‚¤ã‚¦ã‚¨ã‚ªã‚«ã‚­ã‚¯ã‚±ã‚³ã‚µã‚·ã‚¹ã‚»ã‚½ã‚¿ãƒãƒ„ãƒ†ãƒˆãƒŠãƒ‹ãƒŒãƒãƒŽãƒãƒ’ãƒ•ãƒ˜ãƒ›ãƒžãƒŸãƒ ãƒ¡ãƒ¢ãƒ¤ãƒ¦ãƒ¨ãƒ©ãƒªãƒ«ãƒ¬ãƒ­ãƒ¯ãƒ²ãƒ³",
+        "atlan": "â—ˆ â—‡ â—† â–£ â—‰ â—‹ â— â— â—‘ â—’ â—“ â–¤ â–¥ â–¦ â–§ â–¨ â–© â–ª â–« â—Š â–¼ â–³ â–½ â—† â—‡",
+        "circuit": "â”œ â”¤ â”¤ â”´ â”¬ â”¼ â”œ â”‚ â”€ â• â•‘ â•’ â•“ â•” â•• â•– â•— â•˜ â•™ â•š â•› â•œ â• â•ž â•Ÿ",
+        "data": "â–€ â–„ â–ˆ â–“ â–’ â–‘ â–¬ â–­ â–® â–¯ â–° â–± â–² â–³ â–´ â–µ â–¶ â–· â–¸ â–¹ â–º â–» â–¼ â–½ â–¾ â–¿",
+        "tech": "âŒ¬ âŒ¬ âŒ¬ âŒ¬ âŒ¬ âŒ¬ âŒ¬ âŒ¬ âŒ¬ âŒ¬ âŒ¬ âŒ¬ âŒ¬ âŒ¬ âŒ¬ âŒ¬ âŒ¬ âŒ¬",
     }
     
     FRAMES = {
-        "loading": ["◐", "◓", "◑", "◒", "◐", "◓", "◑", "◒"],
-        "scan": ["▓", "▒", "░", "▒", "▓", "▒", "░"],
-        "link": ["┤", "├", "┤"],
-        "pulse": ["●", "◉", "○"],
-        "data": ["▌", "▀", "▐", "▄"],
+        "loading": ["â—", "â—“", "â—‘", "â—’", "â—", "â—“", "â—‘", "â—’"],
+        "scan": ["â–“", "â–’", "â–‘", "â–’", "â–“", "â–’", "â–‘"],
+        "link": ["â”¤", "â”œ", "â”¤"],
+        "pulse": ["â—", "â—‰", "â—‹"],
+        "data": ["â–Œ", "â–€", "â–", "â–„"],
     }
     
     ASCII_ART = {}
@@ -107,25 +107,25 @@ class MatrixUI:
     def load_ascii_art(cls):
         cls.ASCII_ART = {
             "skull": [
-                "      ████████",
-                "    ██          ██",
-                "  ██    ██  ██    ██",
-                "  ██    ██  ██    ██",
-                "  ██              ██",
-                "    ██          ██",
-                "      ████████",
+                "      â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆ",
+                "    â–ˆâ–ˆ          â–ˆâ–ˆ",
+                "  â–ˆâ–ˆ    â–ˆâ–ˆ  â–ˆâ–ˆ    â–ˆâ–ˆ",
+                "  â–ˆâ–ˆ    â–ˆâ–ˆ  â–ˆâ–ˆ    â–ˆâ–ˆ",
+                "  â–ˆâ–ˆ              â–ˆâ–ˆ",
+                "    â–ˆâ–ˆ          â–ˆâ–ˆ",
+                "      â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆ",
             ],
             "robot": [
-                "   ▄▄▄▄▄▄▄▄▄▄▄▄▄▄",
-                "  █              █",
-                "  █  ◉        ◉  █",
-                "  █  ◉        ◉  █",
-                "  █     ░▒░     █",
-                "  █    █████    █",
-                "  █              █",
-                "   ▀▀▀▀▀▀│▀▀▀▀▀▀",
-                "      ╔══╩══╗",
-                "      ║    ║",
+                "   â–„â–„â–„â–„â–„â–„â–„â–„â–„â–„â–„â–„â–„â–„",
+                "  â–ˆ              â–ˆ",
+                "  â–ˆ  â—‰        â—‰  â–ˆ",
+                "  â–ˆ  â—‰        â—‰  â–ˆ",
+                "  â–ˆ     â–‘â–’â–‘     â–ˆ",
+                "  â–ˆ    â–ˆâ–ˆâ–ˆâ–ˆâ–ˆ    â–ˆ",
+                "  â–ˆ              â–ˆ",
+                "   â–€â–€â–€â–€â–€â–€â”‚â–€â–€â–€â–€â–€â–€",
+                "      â•”â•â•â•©â•â•â•—",
+                "      â•‘    â•‘",
             ],
             "dragon": [
                 "              ><>",
@@ -134,71 +134,71 @@ class MatrixUI:
                 "           <>  <>    <>",
                 "          <>   <>  <>",
                 "         <>    <>  <>",
-                "        <>  █    █  <>",
-                "       <>  █ ██ █ █ <>",
-                "      <>   █ ██ █ █  <>",
-                "     <>    █      █   <>",
-                "    <>     █      █    <>",
-                "   <>      █ ██ █ █     <>",
-                "  <>       █ ██ █ █      <>",
-                " <>        █      █       <>",
-                "<>▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒>",
+                "        <>  â–ˆ    â–ˆ  <>",
+                "       <>  â–ˆ â–ˆâ–ˆ â–ˆ â–ˆ <>",
+                "      <>   â–ˆ â–ˆâ–ˆ â–ˆ â–ˆ  <>",
+                "     <>    â–ˆ      â–ˆ   <>",
+                "    <>     â–ˆ      â–ˆ    <>",
+                "   <>      â–ˆ â–ˆâ–ˆ â–ˆ â–ˆ     <>",
+                "  <>       â–ˆ â–ˆâ–ˆ â–ˆ â–ˆ      <>",
+                " <>        â–ˆ      â–ˆ       <>",
+                "<>â–’â–’â–’â–’â–’â–’â–’â–’â–’â–’â–’â–’â–’â–’â–’â–’â–’â–’â–’â–’â–’â–’â–’â–’â–’â–’>",
             ],
             "circuit_heart": [
-                "    ┌─┐     ┌─┐",
-                "   ╭┤├╮   ╭┤├╮",
-                "   ││││   ││││",
-                "   ╰┴├╯   ╰┴├╯",
-                "    └─┘     └─┘",
-                "     ╲ ╱   ╲ ╱",
-                "      ╳     ╳",
-                "     ╱ ╲─┐ ╱ ╲",
-                "    ┌────┴────┐",
-                "    │  ◉  ◉  │",
-                "    │  ████  │",
-                "    └────┬────┘",
-                "        │││",
-                "    █───┴───┈█",
-                "  ██         ██",
+                "    â”Œâ”€â”     â”Œâ”€â”",
+                "   â•­â”¤â”œâ•®   â•­â”¤â”œâ•®",
+                "   â”‚â”‚â”‚â”‚   â”‚â”‚â”‚â”‚",
+                "   â•°â”´â”œâ•¯   â•°â”´â”œâ•¯",
+                "    â””â”€â”˜     â””â”€â”˜",
+                "     â•² â•±   â•² â•±",
+                "      â•³     â•³",
+                "     â•± â•²â”€â” â•± â•²",
+                "    â”Œâ”€â”€â”€â”€â”´â”€â”€â”€â”€â”",
+                "    â”‚  â—‰  â—‰  â”‚",
+                "    â”‚  â–ˆâ–ˆâ–ˆâ–ˆ  â”‚",
+                "    â””â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”˜",
+                "        â”‚â”‚â”‚",
+                "    â–ˆâ”€â”€â”€â”´â”€â”€â”€â”ˆâ–ˆ",
+                "  â–ˆâ–ˆ         â–ˆâ–ˆ",
             ],
             "neural_network": [
-                "       ◉──◉──◉",
-                "      ╱ │╲ │╱ │",
-                "     ◉  ◉  ◉  ◉",
-                "    ╱│╲ │╱│╲ │",
-                "   ◉ │◉ │◉ │◉",
-                "  ╱│╲│╲��╱│╲│╱│╲",
-                " ◉  ◉  ◉  ◉  ◉",
+                "       â—‰â”€â”€â—‰â”€â”€â—‰",
+                "      â•± â”‚â•² â”‚â•± â”‚",
+                "     â—‰  â—‰  â—‰  â—‰",
+                "    â•±â”‚â•² â”‚â•±â”‚â•² â”‚",
+                "   â—‰ â”‚â—‰ â”‚â—‰ â”‚â—‰",
+                "  â•±â”‚â•²â”‚â•²ï¿½ï¿½â•±â”‚â•²â”‚â•±â”‚â•²",
+                " â—‰  â—‰  â—‰  â—‰  â—‰",
             ],
             "system_core": [
-                "   ╔═══════════════╗",
-                "   ║  ◉  ◉  ◉  ◉  ║",
-                "   ║ ◉═╪═◉═╪═◉═╪═◉ ║",
-                "   ║  ◉══╬══◉  ◉  ║",
-                "   ║ ◉═╪═◉═╪═◉═╪═◉ ║",
-                "   ║  ◉  ◉  ◉  ◉  ║",
-                "   ╚═══════════════╝",
+                "   â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—",
+                "   â•‘  â—‰  â—‰  â—‰  â—‰  â•‘",
+                "   â•‘ â—‰â•â•ªâ•â—‰â•â•ªâ•â—‰â•â•ªâ•â—‰ â•‘",
+                "   â•‘  â—‰â•â•â•¬â•â•â—‰  â—‰  â•‘",
+                "   â•‘ â—‰â•â•ªâ•â—‰â•â•ªâ•â—‰â•â•ªâ•â—‰ â•‘",
+                "   â•‘  â—‰  â—‰  â—‰  â—‰  â•‘",
+                "   â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•",
             ],
             "data_cube": [
-                "    ╔══╗",
-                "   ╔╝▓▓╚╗",
-                "  ╔╝▓▓▓╚╗",
-                " ╔╝▓▓▓▓╚╗",
-                " ║▓▓▓▓▓║",
-                " ║▓▓▓▓╚╝",
-                " ║▓▓╚╝",
-                " ╚╝",
+                "    â•”â•â•â•—",
+                "   â•”â•â–“â–“â•šâ•—",
+                "  â•”â•â–“â–“â–“â•šâ•—",
+                " â•”â•â–“â–“â–“â–“â•šâ•—",
+                " â•‘â–“â–“â–“â–“â–“â•‘",
+                " â•‘â–“â–“â–“â–“â•šâ•",
+                " â•‘â–“â–“â•šâ•",
+                " â•šâ•",
             ],
             "quantum": [
-                "    ◉",
-                "   ╱│╲",
-                "  ╱ │ ╲",
-                " ◉──┼──◉",
-                " ╲ │ ╱",
-                "  ╲│╱",
-                "   ◉",
-                "   │",
-                "  ◉┼◉",
+                "    â—‰",
+                "   â•±â”‚â•²",
+                "  â•± â”‚ â•²",
+                " â—‰â”€â”€â”¼â”€â”€â—‰",
+                " â•² â”‚ â•±",
+                "  â•²â”‚â•±",
+                "   â—‰",
+                "   â”‚",
+                "  â—‰â”¼â—‰",
             ],
         }
 
@@ -229,25 +229,25 @@ BANNERS = {
 
 ASCII_ART = {
     "skull": [
-        "      ████████",
-        "    ██          ██",
-        "  ██    ██  ██    ██",
-        "  ██    ██  ██    ██",
-        "  ██              ██",
-        "    ██          ██",
-        "      ████████",
+        "      â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆ",
+        "    â–ˆâ–ˆ          â–ˆâ–ˆ",
+        "  â–ˆâ–ˆ    â–ˆâ–ˆ  â–ˆâ–ˆ    â–ˆâ–ˆ",
+        "  â–ˆâ–ˆ    â–ˆâ–ˆ  â–ˆâ–ˆ    â–ˆâ–ˆ",
+        "  â–ˆâ–ˆ              â–ˆâ–ˆ",
+        "    â–ˆâ–ˆ          â–ˆâ–ˆ",
+        "      â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆ",
     ],
     "robot": [
-        "   ▄▄▄▄▄▄▄▄▄▄▄▄▄▄",
-        "  █              █",
-        "  █  ◉        ◉  █",
-        "  █  ◉        ◉  █",
-        "  █     ░▒░     █",
-        "  █    █████    █",
-        "  █              █",
-        "   ▀▀▀▀▀▀│▀▀▀▀▀▀",
-        "      ╔══╩══╗",
-        "      ║    ║",
+        "   â–„â–„â–„â–„â–„â–„â–„â–„â–„â–„â–„â–„â–„â–„",
+        "  â–ˆ              â–ˆ",
+        "  â–ˆ  â—‰        â—‰  â–ˆ",
+        "  â–ˆ  â—‰        â—‰  â–ˆ",
+        "  â–ˆ     â–‘â–’â–‘     â–ˆ",
+        "  â–ˆ    â–ˆâ–ˆâ–ˆâ–ˆâ–ˆ    â–ˆ",
+        "  â–ˆ              â–ˆ",
+        "   â–€â–€â–€â–€â–€â–€â”‚â–€â–€â–€â–€â–€â–€",
+        "      â•”â•â•â•©â•â•â•—",
+        "      â•‘    â•‘",
     ],
     "dragon": [
         "              ><>",
@@ -256,15 +256,15 @@ ASCII_ART = {
         "           <>  <>    <>",
         "          <>   <>  <>",
         "         <>    <>  <>",
-        "        <>  █    █  <>",
-        "       <>  █ ██ █ █ <>",
-        "      <>   █ ██ █ █  <>",
-        "     <>    █      █   <>",
-        "    <>     █      █    <>",
-        "   <>      █ ██ █ █     <>",
-        "  <>       █ ██ █ █      <>",
-        " <>        █      █       <>",
-        "<>▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒>",
+        "        <>  â–ˆ    â–ˆ  <>",
+        "       <>  â–ˆ â–ˆâ–ˆ â–ˆ â–ˆ <>",
+        "      <>   â–ˆ â–ˆâ–ˆ â–ˆ â–ˆ  <>",
+        "     <>    â–ˆ      â–ˆ   <>",
+        "    <>     â–ˆ      â–ˆ    <>",
+        "   <>      â–ˆ â–ˆâ–ˆ â–ˆ â–ˆ     <>",
+        "  <>       â–ˆ â–ˆâ–ˆ â–ˆ â–ˆ      <>",
+        " <>        â–ˆ      â–ˆ       <>",
+        "<>â–’â–’â–’â–’â–’â–’â–’â–’â–’â–’â–’â–’â–’â–’â–’â–’â–’â–’â–’â–’â–’â–’â–’â–’â–’>",
     ],
     "binary_skull": [
         "010000010100001101001100",
@@ -276,88 +276,88 @@ ASCII_ART = {
         "010000100101000101000010",
     ],
     "circuit_heart": [
-        "    ┌─┐     ┌─┐",
-        "   ╭┤├╮   ╭┤├╮",
-        "   ││││   ││││",
-        "   ╰┴├╯   ╰┴├╯",
-        "    └─┘     └─┘",
-        "     ╲ ╱   ╲ ╱",
-        "      ╳     ╳",
-        "     ╱ ╲─┐ ╱ ╲",
-        "    ┌────┴────┐",
-        "    │  ◉  ◉  │",
-        "    │  ████  │",
-        "    └────┬────┘",
-        "        │││",
-        "    █───┴───┈█",
-        "  ██         ██",
+        "    â”Œâ”€â”     â”Œâ”€â”",
+        "   â•­â”¤â”œâ•®   â•­â”¤â”œâ•®",
+        "   â”‚â”‚â”‚â”‚   â”‚â”‚â”‚â”‚",
+        "   â•°â”´â”œâ•¯   â•°â”´â”œâ•¯",
+        "    â””â”€â”˜     â””â”€â”˜",
+        "     â•² â•±   â•² â•±",
+        "      â•³     â•³",
+        "     â•± â•²â”€â” â•± â•²",
+        "    â”Œâ”€â”€â”€â”€â”´â”€â”€â”€â”€â”",
+        "    â”‚  â—‰  â—‰  â”‚",
+        "    â”‚  â–ˆâ–ˆâ–ˆâ–ˆ  â”‚",
+        "    â””â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”˜",
+        "        â”‚â”‚â”‚",
+        "    â–ˆâ”€â”€â”€â”´â”€â”€â”€â”ˆâ–ˆ",
+        "  â–ˆâ–ˆ         â–ˆâ–ˆ",
     ],
     "neural_network": [
-        "       ◉──◉──◉",
-        "      ╱ │╲ │╱ │",
-        "     ◉  ◉  ◉  ◉",
-        "    ╱│╲ │╱│╲ │",
-        "   ◉ │◉ │◉ │◉",
-        "  ╱│╲│╲│╱│╲│╱│╲",
-        " ◉  ◉  ◉  ◉  ◉",
+        "       â—‰â”€â”€â—‰â”€â”€â—‰",
+        "      â•± â”‚â•² â”‚â•± â”‚",
+        "     â—‰  â—‰  â—‰  â—‰",
+        "    â•±â”‚â•² â”‚â•±â”‚â•² â”‚",
+        "   â—‰ â”‚â—‰ â”‚â—‰ â”‚â—‰",
+        "  â•±â”‚â•²â”‚â•²â”‚â•±â”‚â•²â”‚â•±â”‚â•²",
+        " â—‰  â—‰  â—‰  â—‰  â—‰",
     ],
     "matrix_rain ascii": [
-        "┋┿┋┿┋┿┋┿",
-        "┃┃┃┃┃┃┃┃┃┃",
-        "┣┿┣┿┣┿┣┿",
-        "┃┃┃┃┃┃┃┃┃┃",
-        "┋┿┋┿┋┿┋┿",
+        "â”‹â”¿â”‹â”¿â”‹â”¿â”‹â”¿",
+        "â”ƒâ”ƒâ”ƒâ”ƒâ”ƒâ”ƒâ”ƒâ”ƒâ”ƒâ”ƒ",
+        "â”£â”¿â”£â”¿â”£â”¿â”£â”¿",
+        "â”ƒâ”ƒâ”ƒâ”ƒâ”ƒâ”ƒâ”ƒâ”ƒâ”ƒâ”ƒ",
+        "â”‹â”¿â”‹â”¿â”‹â”¿â”‹â”¿",
     ],
     "system_core": [
-        "   ╔═══════════════╗",
-        "   ║  ◉  ◉  ◉  ◉  ║",
-        "   ║ ◉═╪═◉═╪═◉═╪═◉ ║",
-        "   ║  ◉══╬══◉  ◉  ║",
-        "   ║ ◉═╪═◉═╪═◉═╪═◉ ║",
-        "   ║  ◉  ◉  ◉  ◉  ║",
-        "   ╚═══════════════╝",
+        "   â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—",
+        "   â•‘  â—‰  â—‰  â—‰  â—‰  â•‘",
+        "   â•‘ â—‰â•â•ªâ•â—‰â•â•ªâ•â—‰â•â•ªâ•â—‰ â•‘",
+        "   â•‘  â—‰â•â•â•¬â•â•â—‰  â—‰  â•‘",
+        "   â•‘ â—‰â•â•ªâ•â—‰â•â•ªâ•â—‰â•â•ªâ•â—‰ â•‘",
+        "   â•‘  â—‰  â—‰  â—‰  â—‰  â•‘",
+        "   â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•",
     ],
     "cyber_eye": [
-        "     ╔██████╗",
-        "   ╔██║▌▌▌██╗",
-        "  ╔██║██▌██║██╗",
-        " ╔██║██▌▌██║██╗",
-        " ╚██║▌▌▌██╝╝",
-        "   ╚█████╝",
-        "      ▌▌",
-        "     █▐▐█",
-        "    █▐█▐█",
+        "     â•”â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•—",
+        "   â•”â–ˆâ–ˆâ•‘â–Œâ–Œâ–Œâ–ˆâ–ˆâ•—",
+        "  â•”â–ˆâ–ˆâ•‘â–ˆâ–ˆâ–Œâ–ˆâ–ˆâ•‘â–ˆâ–ˆâ•—",
+        " â•”â–ˆâ–ˆâ•‘â–ˆâ–ˆâ–Œâ–Œâ–ˆâ–ˆâ•‘â–ˆâ–ˆâ•—",
+        " â•šâ–ˆâ–ˆâ•‘â–Œâ–Œâ–Œâ–ˆâ–ˆâ•â•",
+        "   â•šâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•",
+        "      â–Œâ–Œ",
+        "     â–ˆâ–â–â–ˆ",
+        "    â–ˆâ–â–ˆâ–â–ˆ",
     ],
     "data_cube": [
-        "    ╔══╗",
-        "   ╔╝▓▓╚╗",
-        "  ╔╝▓▓▓╚╗",
-        " ╔╝▓▓▓▓╚╗",
-        " ║▓▓▓▓▓║",
-        " ║▓▓▓▓╚╝",
-        " ║▓▓╚╝",
-        " ╚╝",
+        "    â•”â•â•â•—",
+        "   â•”â•â–“â–“â•šâ•—",
+        "  â•”â•â–“â–“â–“â•šâ•—",
+        " â•”â•â–“â–“â–“â–“â•šâ•—",
+        " â•‘â–“â–“â–“â–“â–“â•‘",
+        " â•‘â–“â–“â–“â–“â•šâ•",
+        " â•‘â–“â–“â•šâ•",
+        " â•šâ•",
     ],
     "quantum": [
-        "    ◉",
-        "   ╱│╲",
-        "  ╱ │ ╲",
-        " ◉──┼──◉",
-        " ╲ │ ╱",
-        "  ╲│╱",
-        "   ◉",
-        "   │",
-        "  ◉┼◉",
+        "    â—‰",
+        "   â•±â”‚â•²",
+        "  â•± â”‚ â•²",
+        " â—‰â”€â”€â”¼â”€â”€â—‰",
+        " â•² â”‚ â•±",
+        "  â•²â”‚â•±",
+        "   â—‰",
+        "   â”‚",
+        "  â—‰â”¼â—‰",
     ],
     "terminator": [
-        "╔══════════════════════════╗",
-        "║ ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄ ░",
-        "║█                       █░",
-        "║█  ██╗  ██╗  ██╗  ██╗  █░",
-        "║█  ██║  ██║  ██║  ██║  █░",
-        "║█  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  █░",
-        "║█                       █░",
-        "╚══════════════════════════╝",
+        "â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—",
+        "â•‘ â–„â–„â–„â–„â–„â–„â–„â–„â–„â–„â–„â–„â–„â–„â–„â–„â–„â–„â–„â–„â–„â–„â–„â–„â–„ â–‘",
+        "â•‘â–ˆ                       â–ˆâ–‘",
+        "â•‘â–ˆ  â–ˆâ–ˆâ•—  â–ˆâ–ˆâ•—  â–ˆâ–ˆâ•—  â–ˆâ–ˆâ•—  â–ˆâ–‘",
+        "â•‘â–ˆ  â–ˆâ–ˆâ•‘  â–ˆâ–ˆâ•‘  â–ˆâ–ˆâ•‘  â–ˆâ–ˆâ•‘  â–ˆâ–‘",
+        "â•‘â–ˆ  â–€â–€â–€â–€â–€â–€â–€â–€â–€â–€â–€â–€â–€â–€â–€â–€â–€â–€â–€â–€  â–ˆâ–‘",
+        "â•‘â–ˆ                       â–ˆâ–‘",
+        "â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•",
     ],
 }
     
@@ -411,12 +411,12 @@ class MatrixRain:
                     self.drops[x] = y
                     
                 if y == self.drops[x]:
-                    char = random.choice("アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホ")
+                    char = random.choice("ã‚¢ã‚¤ã‚¦ã‚¨ã‚ªã‚«ã‚­ã‚¯ã‚±ã‚³ã‚µã‚·ã‚¹ã‚»ã‚½ã‚¿ãƒãƒ„ãƒ†ãƒˆãƒŠãƒ‹ãƒŒãƒãƒŽãƒãƒ’ãƒ•ãƒ˜ãƒ›")
                 elif y > self.drops[x]:
                     char = " "
                 else:
                     fade = (y - self.drops[x]) / self.height
-                    char = random.choice("01アイウエオ")
+                    char = random.choice("01ã‚¢ã‚¤ã‚¦ã‚¨ã‚ª")
                     
                 line += char
             lines.append(line)
@@ -444,7 +444,7 @@ class GlitchEffect:
         result = ""
         for char in text:
             if random.random() < intensity:
-                glitch_chars = "▓▒░█▓▒░"
+                glitch_chars = "â–“â–’â–‘â–ˆâ–“â–’â–‘"
                 result += random.choice(glitch_chars)
             else:
                 result += char
@@ -456,7 +456,7 @@ class GlitchEffect:
         for _ in range(lines):
             offset = random.randint(-2, 2)
             if offset != 0:
-                glitch = "▓" * abs(offset)
+                glitch = "â–“" * abs(offset)
                 output.append(glitch + text)
             else:
                 output.append(text)
@@ -469,7 +469,7 @@ class GlitchEffect:
             if char == "\n":
                 result += "\n"
             elif random.random() < corruption:
-                result += random.choice("▓▒░█■□")
+                result += random.choice("â–“â–’â–‘â–ˆâ– â–¡")
             else:
                 result += char
         return result
@@ -478,17 +478,17 @@ class GlitchEffect:
 class HologramBorder:
     
     CORNERS = {
-        "single": {"tl": "┌", "tr": "┐", "bl": "└", "br": "┘"},
-        "double": {"tl": "╔", "tr": "╗", "bl": "╚", "br": "╝"},
-        "rounded": {"tl": "╭", "tr": "╮", "bl": "╰", "br": "╯"},
-        "heavy": {"tl": "┏", "tr": "┓", "bl": "┗", "br": "┛"},
-        "matrix": {"tl": "┌", "tr": "┐", "bl": "└", "br": "┘"},
+        "single": {"tl": "â”Œ", "tr": "â”", "bl": "â””", "br": "â”˜"},
+        "double": {"tl": "â•”", "tr": "â•—", "bl": "â•š", "br": "â•"},
+        "rounded": {"tl": "â•­", "tr": "â•®", "bl": "â•°", "br": "â•¯"},
+        "heavy": {"tl": "â”", "tr": "â”“", "bl": "â”—", "br": "â”›"},
+        "matrix": {"tl": "â”Œ", "tr": "â”", "bl": "â””", "br": "â”˜"},
     }
     
     EDGES = {
-        "single": {"h": "─", "v": "│"},
-        "double": {"h": "═", "v": "║"},
-        "matrix": {"h": "━", "v": "┃"},
+        "single": {"h": "â”€", "v": "â”‚"},
+        "double": {"h": "â•", "v": "â•‘"},
+        "matrix": {"h": "â”", "v": "â”ƒ"},
     }
     
     @classmethod
@@ -520,24 +520,24 @@ class NeuralPulse:
     def pulse(text: str, style: str = "default") -> List[str]:
         if style == "matrix":
             frames = [
-                f"[◐] {text}",
-                f"[◑] {text}",
-                f"[◒] {text}",
-                f"[◓] {text}",
+                f"[â—] {text}",
+                f"[â—‘] {text}",
+                f"[â—’] {text}",
+                f"[â—“] {text}",
             ]
         elif style == "neural":
             frames = [
-                f"◈ {text}",
-                f"◇ {text}",
-                f"◆ {text}",
-                f"◈ {text}",
+                f"â—ˆ {text}",
+                f"â—‡ {text}",
+                f"â—† {text}",
+                f"â—ˆ {text}",
             ]
         else:
             frames = [
-                f"● {text}",
-                f"◉ {text}",
-                f"○ {text}",
-                f"◉ {text}",
+                f"â— {text}",
+                f"â—‰ {text}",
+                f"â—‹ {text}",
+                f"â—‰ {text}",
             ]
         return frames
     
@@ -552,11 +552,11 @@ class NeuralPulse:
             time.sleep(0.15)
             i += 1
             
-        print(f"\r✓ {text}   ")
+        print(f"\râœ“ {text}   ")
     
     @staticmethod
     def progress_bar(current: int, total: int, width: int = 30, 
-                  fill_char: str = "█", empty_char: str = "▒") -> str:
+                  fill_char: str = "â–ˆ", empty_char: str = "â–’") -> str:
         percent = current / total
         filled = int(width * percent)
         
@@ -582,9 +582,9 @@ class HexGrid:
             
             for x in range(width):
                 if (x + y) % 3 == 0:
-                    char = "◈"
+                    char = "â—ˆ"
                 elif (x + y) % 2 == 0:
-                    char = "◇"
+                    char = "â—‡"
                 else:
                     char = " "
                     
@@ -602,8 +602,8 @@ class HexGrid:
             data = {"system": "ATLANTEAN", "status": "ONLINE", "neural_link": "ACTIVE"}
             
         for key, value in data.items():
-            hex_line = "◇ " * ((width - len(f"{key}: {value}")) // 4)
-            line = f"◈ {key}: {value} {hex_line[:width-len(f'{key}: {value}')-4]} ◈"
+            hex_line = "â—‡ " * ((width - len(f"{key}: {value}")) // 4)
+            line = f"â—ˆ {key}: {value} {hex_line[:width-len(f'{key}: {value}')-4]} â—ˆ"
             lines.append(line)
             
         return "\n".join(lines)
@@ -612,29 +612,29 @@ class HexGrid:
 class CircuitBoard:
     
     NODES = {
-        "cpu": "◉",
-        "memory": "▣",
-        "input": "▷",
-        "output": "◁", 
-        "process": "▦",
-        "data": "▤",
-        "link": "──",
-        "junction": "◇",
+        "cpu": "â—‰",
+        "memory": "â–£",
+        "input": "â–·",
+        "output": "â—", 
+        "process": "â–¦",
+        "data": "â–¤",
+        "link": "â”€â”€",
+        "junction": "â—‡",
     }
     
     @classmethod
     def draw_connection(cls, from_node: str, to_node: str) -> str:
-        return f"{cls.NODES[from_node]}───╬───{cls.NODES[to_node]}"
+        return f"{cls.NODES[from_node]}â”€â”€â”€â•¬â”€â”€â”€{cls.NODES[to_node]}"
     
     @classmethod
     def render_system(cls, components: List[str]) -> str:
         lines = []
         
         for i, comp in enumerate(components):
-            lines.append(f"│  {cls.NODES['junction']} {comp}")
+            lines.append(f"â”‚  {cls.NODES['junction']} {comp}")
             if i < len(components) - 1:
-                lines.append(f"│     │")
-                lines.append(f"│     ├")
+                lines.append(f"â”‚     â”‚")
+                lines.append(f"â”‚     â”œ")
                 
         return "\n".join(lines)
 
@@ -646,11 +646,11 @@ class ScannerLine:
         width = len(text) + 4
         
         for _ in range(passes):
-            print("═" * width)
-            print(f"│ {text} │")
+            print("â•" * width)
+            print(f"â”‚ {text} â”‚")
             time.sleep(0.1)
             
-        print("═" * width)
+        print("â•" * width)
     
     @staticmethod
     def radar_scan(text: str, radius: int = 20) -> str:
@@ -659,9 +659,9 @@ class ScannerLine:
         for r in range(radius):
             line = " "
             if r == radius // 2:
-                line = f"│ {text} │"
+                line = f"â”‚ {text} â”‚"
             elif r < radius // 2:
-                line = " " * 2 + "│" + " " * (len(text)) + "│" + " " * 2
+                line = " " * 2 + "â”‚" + " " * (len(text)) + "â”‚" + " " * 2
             else:
                 line = " " * radius
                 
@@ -673,19 +673,19 @@ class ScannerLine:
 class StatusDisplay:
     
     STATUS_ICONS = {
-        "online": "◈",
-        "offline": "◇",
-        "processing": "◐",
-        "error": "✗",
-        "warning": "⚠",
-        "success": "✓",
-        "complete": "◉",
-        "loading": "◓",
+        "online": "â—ˆ",
+        "offline": "â—‡",
+        "processing": "â—",
+        "error": "âœ—",
+        "warning": "âš ",
+        "success": "âœ“",
+        "complete": "â—‰",
+        "loading": "â—“",
     }
     
     @classmethod
     def status(cls, name: str, state: str) -> str:
-        icon = cls.STATUS_ICONS.get(state, "○")
+        icon = cls.STATUS_ICONS.get(state, "â—‹")
         
         colors = {
             "online": Fore.CYAN,
@@ -704,19 +704,19 @@ class StatusDisplay:
     
     @classmethod
     def system_status(cls, systems: Dict[str, str]) -> str:
-        lines = ["┌─ SYSTEM STATUS ─┐"]
+        lines = ["â”Œâ”€ SYSTEM STATUS â”€â”"]
         
         for name, state in systems.items():
-            lines.append(f"│ {cls.status(name, state)}")
+            lines.append(f"â”‚ {cls.status(name, state)}")
             
-        lines.append("└" + "─" * 20 + "┘")
+        lines.append("â””" + "â”€" * 20 + "â”˜")
         
         return "\n".join(lines)
 
 
 class DataDecoder:
     
-    BIN_CHARS = "01░▒█"
+    BIN_CHARS = "01â–‘â–’â–ˆ"
     
     @classmethod
     def binary_stream(cls, data: str, chunk_size: int = 8) -> str:
@@ -779,7 +779,7 @@ class AtlanInterface:
         }
         color = colors.get(mode, Fore.WHITE)
         
-        print(f"\n{color}[◈] MODE: {mode}{Style.RESET_ALL}")
+        print(f"\n{color}[â—ˆ] MODE: {mode}{Style.RESET_ALL}")
         
     def toggle_plan(self):
         self.plan_mode = not self.plan_mode
@@ -793,14 +793,14 @@ class AtlanInterface:
         if not self.plan_mode:
             return None
             
-        print(f"\n{Fore.CYAN}◈ PLANNING PHASE:{Style.RESET_ALL}")
+        print(f"\n{Fore.CYAN}â—ˆ PLANNING PHASE:{Style.RESET_ALL}")
         
         plan = []
         for i, task in enumerate(tasks, 1):
             print(f"  {Fore.CYAN}{i}.{Style.RESET_ALL} {task}")
             plan.append({"step": i, "task": task, "status": "planned"})
             
-        print(f"  └─ {len(tasks)} tasks planned")
+        print(f"  â””â”€ {len(tasks)} tasks planned")
         
         return plan
         
@@ -808,12 +808,12 @@ class AtlanInterface:
         if not self.build_mode:
             return None
             
-        print(f"\n{Fore.GREEN}◈ BUILD PHASE:{Style.RESET_ALL}")
+        print(f"\n{Fore.GREEN}â—ˆ BUILD PHASE:{Style.RESET_ALL}")
         
         results = []
         for step in plan:
             task = step.get("task", "")
-            print(f"  {Fore.GREEN}▓{Style.RESET_ALL} Executing: {task}")
+            print(f"  {Fore.GREEN}â–“{Style.RESET_ALL} Executing: {task}")
             
             results.append({
                 "step": step.get("step"),
@@ -828,7 +828,7 @@ class AtlanInterface:
                 "timestamp": datetime.now().isoformat()
             })
             
-        print(f"  └─ {len(plan)} tasks executed")
+        print(f"  â””â”€ {len(plan)} tasks executed")
         
         return results
         
@@ -836,20 +836,20 @@ class AtlanInterface:
         plan = [{"step": i, "task": f"subtask_{i}", "status": "pending"} for i in range(1, task_count + 1)]
         
         if self.plan_mode:
-            print(f"\n{Fore.CYAN}◈ PROCESSING: {task_description}{Style.RESET_ALL}")
+            print(f"\n{Fore.CYAN}â—ˆ PROCESSING: {task_description}{Style.RESET_ALL}")
             
             if self.plan_mode:
                 plan = self.plan_phase([p["task"] for p in plan])
                 
             if self.build_mode and plan:
                 results = self.build_phase(plan)
-                print(f"\n{Fore.GREEN}✓ EXECUTION COMPLETE{Style.RESET_ALL}")
+                print(f"\n{Fore.GREEN}âœ“ EXECUTION COMPLETE{Style.RESET_ALL}")
                 return results
             else:
-                print(f"\n{Fore.YELLOW}⚠ PLAN READY - Toggle build mode to execute{Style.RESET_ALL}")
+                print(f"\n{Fore.YELLOW}âš  PLAN READY - Toggle build mode to execute{Style.RESET_ALL}")
                 return plan
         else:
-            print(f"\n{Fore.RED}◈ SYSTEM IN IDLE MODE{Style.RESET_ALL}")
+            print(f"\n{Fore.RED}â—ˆ SYSTEM IN IDLE MODE{Style.RESET_ALL}")
             return None
         
     def print_banner(self, style: str = "atlan"):
@@ -895,7 +895,7 @@ class AtlanInterface:
         print()
     
     def loading_sequence(self, message: str = "INITIALIZING"):
-        print(f"\n{Fore.CYAN}◈ {message}..{Style.RESET_ALL}")
+        print(f"\n{Fore.CYAN}â—ˆ {message}..{Style.RESET_ALL}")
         
         frames = self.ui.FRAMES["loading"]
         
@@ -904,7 +904,7 @@ class AtlanInterface:
             print(f"\r{Fore.CYAN}{frame} {message}{Style.RESET_ALL}", end="", flush=True)
             time.sleep(0.1)
             
-        print(f"\r{Fore.GREEN}✓ {message} COMPLETE{Style.RESET_ALL}\n")
+        print(f"\r{Fore.GREEN}âœ“ {message} COMPLETE{Style.RESET_ALL}\n")
     
     def print_system_info(self):
         self.print_banner("atlan")
@@ -930,14 +930,14 @@ class AtlanInterface:
     
     def prompt(self) -> str:
         if COLORAMA_AVAILABLE:
-            return f"{Fore.CYAN}◈>{Style.RESET_ALL} "
-        return "◈> "
+            return f"{Fore.CYAN}â—ˆ>{Style.RESET_ALL} "
+        return "â—ˆ> "
     
     def response(self, text: str):
         if COLORAMA_AVAILABLE:
-            print(f"{Fore.GREEN}◈>{Style.RESET_ALL} {text}")
+            print(f"{Fore.GREEN}â—ˆ>{Style.RESET_ALL} {text}")
         else:
-            print(f"◈> {text}")
+            print(f"â—ˆ> {text}")
 
 
 atlan_ui = AtlanInterface()
@@ -945,7 +945,7 @@ atlan_ui = AtlanInterface()
 
 def test_interface():
     print("\n" + "="*70)
-    print(f"{Fore.CYAN}◈ ATLANTEAN UI INTERFACE TEST{Style.RESET_ALL}")
+    print(f"{Fore.CYAN}â—ˆ ATLANTEAN UI INTERFACE TEST{Style.RESET_ALL}")
     print("="*70 + "\n")
     
     atlan_ui.print_system_info()
@@ -957,7 +957,7 @@ def test_interface():
     print(HologramBorder.box("ATLANTEAN SYSTEM\nVERSION 2.1.7\nNEURAL LINK: ACTIVE", "rounded"))
     print()
     
-    print(f"{Fore.CYAN}◈ Testing ASCII Art Rendering:{Style.RESET_ALL}\n")
+    print(f"{Fore.CYAN}â—ˆ Testing ASCII Art Rendering:{Style.RESET_ALL}\n")
     for art_name in MatrixUI.ASCII_ART:
         if art_name in ["robot", "system_core", "data_cube", "quantum"]:
             art = MatrixUI.ASCII_ART[art_name]
@@ -965,34 +965,34 @@ def test_interface():
                 print(Fore.GREEN + line)
             print()
     
-    print(f"{Fore.CYAN}◈ Testing NeuralPulse Animation:{Style.RESET_ALL}")
+    print(f"{Fore.CYAN}â—ˆ Testing NeuralPulse Animation:{Style.RESET_ALL}")
     NeuralPulse.animate("SYSTEM DIAGNOSTIC", 1.5)
     
-    print(f"{Fore.CYAN}◈ Testing Progress Bar:{Style.RESET_ALL}")
+    print(f"{Fore.CYAN}â—ˆ Testing Progress Bar:{Style.RESET_ALL}")
     for i in range(0, 11, 2):
         bar = NeuralPulse.progress_bar(i, 10)
         print(f"\r{Fore.CYAN}{bar}{Style.RESET_ALL}", end="", flush=True)
         time.sleep(0.2)
     print("\n")
     
-    print(f"{Fore.CYAN}◈ Testing HexGrid:{Style.RESET_ALL}")
+    print(f"{Fore.CYAN}â—ˆ Testing HexGrid:{Style.RESET_ALL}")
     grid = HexGrid.hex_pattern(18, 6)
     for line in grid:
         print(Fore.GREEN + line)
     print()
     
-    print(f"{Fore.CYAN}◈ Testing CircuitBoard:{Style.RESET_ALL}")
+    print(f"{Fore.CYAN}â—ˆ Testing CircuitBoard:{Style.RESET_ALL}")
     print(CircuitBoard.draw_connection("cpu", "memory"))
     print(CircuitBoard.draw_connection("input", "process"))
-    components = ["CPU [◉]", "MEMORY [▣]", "GPU [▦]", "NETWORK [▤]"]
+    components = ["CPU [â—‰]", "MEMORY [â–£]", "GPU [â–¦]", "NETWORK [â–¤]"]
     print(CircuitBoard.render_system(components))
     print()
     
-    print(f"{Fore.CYAN}◈ Testing ScannerLine:{Style.RESET_ALL}")
+    print(f"{Fore.CYAN}â—ˆ Testing ScannerLine:{Style.RESET_ALL}")
     ScannerLine.scan("SYSTEM DIAGNOSTIC COMPLETE", 3)
     print()
     
-    print(f"{Fore.CYAN}◈ Testing DataDecoder:{Style.RESET_ALL}")
+    print(f"{Fore.CYAN}â—ˆ Testing DataDecoder:{Style.RESET_ALL}")
     test_data = "ATLAN"
     binary = DataDecoder.binary_stream(test_data)
     print(f"Binary stream: {binary}\n")
@@ -1002,12 +1002,12 @@ def test_interface():
     print(hexdump)
     print()
     
-    print(f"{Fore.GREEN}✓ INTERFACE TEST COMPLETE{Style.RESET_ALL}\n")
+    print(f"{Fore.GREEN}âœ“ INTERFACE TEST COMPLETE{Style.RESET_ALL}\n")
 
 
 def demo_effects():
     print("\n" + "="*70)
-    print(f"{Fore.MAGENTA}◈ ATLANTEAN UI EFFECTS DEMO{Style.RESET_ALL}")
+    print(f"{Fore.MAGENTA}â—ˆ ATLANTEAN UI EFFECTS DEMO{Style.RESET_ALL}")
     print("="*70 + "\n")
     
     print(f"{Fore.CYAN}[1] Glitch Effect:{Style.RESET_ALL}")
@@ -1118,9 +1118,10 @@ def demo_effects():
             print(f"  {line}")
     print()
     
-    print(f"{Fore.GREEN}✓ ALL DEMO EFFECTS COMPLETE{Style.RESET_ALL}\n")
+    print(f"{Fore.GREEN}âœ“ ALL DEMO EFFECTS COMPLETE{Style.RESET_ALL}\n")
 
 
 if __name__ == "__main__":
     test_interface()
     demo_effects()
+

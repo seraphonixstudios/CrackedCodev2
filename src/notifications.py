@@ -1,4 +1,4 @@
-"""Notification System v2.9.5 - Multi-backend alerts for CrackedCode.
+﻿"""Notification System v2.9.6 - Multi-backend alerts for CrackedCode.
 
 Backends:
   - Email (SMTP)
@@ -23,7 +23,7 @@ from src.logger_config import get_logger
 logger = get_logger("Notifications")
 
 
-# ── Data Models ────────────────────────────────────────────────────────────
+# â”€â”€ Data Models â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @dataclass
 class Notification:
@@ -36,7 +36,7 @@ class Notification:
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 
-# ── Backends ───────────────────────────────────────────────────────────────
+# â”€â”€ Backends â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class EmailBackend:
     """Send notifications via SMTP email."""
@@ -196,7 +196,7 @@ class LogBackend:
         return True
 
 
-# ── Notification Manager ───────────────────────────────────────────────────
+# â”€â”€ Notification Manager â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class NotificationManager:
     """Orchestrates multiple notification backends."""
@@ -303,7 +303,7 @@ def create_notification_manager(config: Optional[Dict[str, Any]] = None) -> Noti
     return NotificationManager(config=config)
 
 
-# ── Singleton ──────────────────────────────────────────────────────────────
+# â”€â”€ Singleton â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 _notification_manager: Optional[NotificationManager] = None
 
@@ -314,3 +314,4 @@ def get_notification_manager(config: Optional[Dict[str, Any]] = None) -> Notific
     if _notification_manager is None:
         _notification_manager = create_notification_manager(config)
     return _notification_manager
+

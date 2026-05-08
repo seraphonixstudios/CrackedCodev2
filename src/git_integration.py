@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 Git integration for CrackedCode sidebar
 Shows diffs, commit status, and branch info
@@ -419,3 +419,4 @@ def demo():
 
 if __name__ == "__main__":
     demo()
+

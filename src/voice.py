@@ -1,18 +1,18 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
-╔══════════════════════════════════════════════════════════════════════════════╗
-║                                                                              ║
-║   █████╗  ██████╗  ██████╗ ████████╗    ██████╗  ██╗     ██╗ ██████╗ ██████╗  █████╗ ║
-║  ██╔══██╗██╔═══██╗██╔═══██╗╚══██╔══╝    ██╔══██╗ ██║     ██║██╔════╝ ██╔══██╗██╔══██╗║
-║  ███████║██║   ██║██║   ██║   ██║       ██████╔╝ ██║     ██║██║  ███╗██████╔╝███████║║
-║  ██╔══██║██║   ██║██║   ██║   ██║       ██╔══██╗ ██║     ██║██║   ██║██╔══██╗██╔══██║║
-║  ██║  ██║╚██████╔╝╚██████╔╝   ██║       ██║  ██║ ███████╗██║██║   ██║██║  ██║██║  ██║║
-║  ╚═╝  ╚═╝ ╚═════╝  ╚═════╝    ╚═╝       ╚═╝  ╚═╝ ╚══════╝╚═╝╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝║
-║                                                                              ║
-║                         Voice Engine Module                                   ║
-║              Speech-to-Text + Text-to-Speech Integration                      ║
-║                                                                              ║
-╚══════════════════════════════════════════════════════════════════════════════╝
+â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
+â•‘                                                                              â•‘
+â•‘   â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•—  â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•—  â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•— â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•—    â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•—  â–ˆâ–ˆâ•—     â–ˆâ–ˆâ•— â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•— â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•—  â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•— â•‘
+â•‘  â–ˆâ–ˆâ•”â•â•â–ˆâ–ˆâ•—â–ˆâ–ˆâ•”â•â•â•â–ˆâ–ˆâ•—â–ˆâ–ˆâ•”â•â•â•â–ˆâ–ˆâ•—â•šâ•â•â–ˆâ–ˆâ•”â•â•â•    â–ˆâ–ˆâ•”â•â•â–ˆâ–ˆâ•— â–ˆâ–ˆâ•‘     â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•”â•â•â•â•â• â–ˆâ–ˆâ•”â•â•â–ˆâ–ˆâ•—â–ˆâ–ˆâ•”â•â•â–ˆâ–ˆâ•—â•‘
+â•‘  â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘   â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘   â–ˆâ–ˆâ•‘   â–ˆâ–ˆâ•‘       â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•”â• â–ˆâ–ˆâ•‘     â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘  â–ˆâ–ˆâ–ˆâ•—â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•”â•â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•‘â•‘
+â•‘  â–ˆâ–ˆâ•”â•â•â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘   â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘   â–ˆâ–ˆâ•‘   â–ˆâ–ˆâ•‘       â–ˆâ–ˆâ•”â•â•â–ˆâ–ˆâ•— â–ˆâ–ˆâ•‘     â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘   â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•”â•â•â–ˆâ–ˆâ•—â–ˆâ–ˆâ•”â•â•â–ˆâ–ˆâ•‘â•‘
+â•‘  â–ˆâ–ˆâ•‘  â–ˆâ–ˆâ•‘â•šâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•”â•â•šâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•”â•   â–ˆâ–ˆâ•‘       â–ˆâ–ˆâ•‘  â–ˆâ–ˆâ•‘ â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•—â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘   â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘  â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘  â–ˆâ–ˆâ•‘â•‘
+â•‘  â•šâ•â•  â•šâ•â• â•šâ•â•â•â•â•â•  â•šâ•â•â•â•â•â•    â•šâ•â•       â•šâ•â•  â•šâ•â• â•šâ•â•â•â•â•â•â•â•šâ•â•â•šâ•â•â•â•â•â•â•šâ•â•  â•šâ•â•â•šâ•â•  â•šâ•â•â•‘
+â•‘                                                                              â•‘
+â•‘                         Voice Engine Module                                   â•‘
+â•‘              Speech-to-Text + Text-to-Speech Integration                      â•‘
+â•‘                                                                              â•‘
+â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 CrackedCode Voice Engine
 Module for Speech Recognition and Speech Synthesis
@@ -147,11 +147,11 @@ class STTEngine:
                 device=self.device,
                 compute_type=self.compute_type
             )
-            print(f"✅ STT Engine loaded successfully")
+            print(f"âœ… STT Engine loaded successfully")
             return True
 
         except Exception as e:
-            print(f"❌ Failed to load STT model: {e}")
+            print(f"âŒ Failed to load STT model: {e}")
             return False
 
     def transcribe(self, audio: np.ndarray, beam_size: int = 5,
@@ -195,7 +195,7 @@ class STTEngine:
     def record(self, duration: float = None) -> np.ndarray:
         duration = duration or self.config.duration
 
-        print(f"🎤 Recording for {duration}s...")
+        print(f"ðŸŽ¤ Recording for {duration}s...")
         recording = sd.rec(
             int(duration * self.config.sample_rate),
             samplerate=self.config.sample_rate,
@@ -408,7 +408,7 @@ class VoiceHotkeyManager:
 
     def start_listening(self):
         self.listening = True
-        print(f"🎤 Voice hotkey enabled: {self.hotkey}")
+        print(f"ðŸŽ¤ Voice hotkey enabled: {self.hotkey}")
 
     def stop_listening(self):
         self.listening = False
@@ -443,10 +443,10 @@ class VoiceController:
         if load_tts:
             success = self.tts.is_ready() or success
             if not self.tts.is_ready():
-                print("⚠️  TTS not ready, but continuing...")
+                print("âš ï¸  TTS not ready, but continuing...")
 
         self.initialized = success
-        print(f"✅ Voice Controller ready" if success else "❌ Voice init failed")
+        print(f"âœ… Voice Controller ready" if success else "âŒ Voice init failed")
         return success
 
     def listen(self, duration: float = None) -> str:
@@ -465,7 +465,7 @@ class VoiceController:
             print("Error: Voice not initialized")
             return
 
-        print(f"🎤 Continuous listening mode (timeout: {silence_timeout}s)")
+        print(f"ðŸŽ¤ Continuous listening mode (timeout: {silence_timeout}s)")
 
         while True:
             audio = self.stt.record(duration)
@@ -486,12 +486,12 @@ class VoiceController:
 
     def voice_loop(self):
         print("\n" + "=" * 50)
-        print("🎤 Voice Loop Ready")
+        print("ðŸŽ¤ Voice Loop Ready")
         print("=" * 50)
         print(f"Mode: {self.mode.value}")
         print("Commands:")
-        print("  • Say 'exit' to quit")
-        print("  • Say 'listen' to activate")
+        print("  â€¢ Say 'exit' to quit")
+        print("  â€¢ Say 'listen' to activate")
         print()
 
         while True:
@@ -504,10 +504,10 @@ class VoiceController:
                 if not transcript or transcript.startswith("Error"):
                     continue
 
-                print(f"👤 You: {transcript}")
+                print(f"ðŸ‘¤ You: {transcript}")
 
                 if transcript.lower() in ["exit", "quit", "shutdown"]:
-                    print("👋 Goodbye!")
+                    print("ðŸ‘‹ Goodbye!")
                     self.speak("Goodbye")
                     break
 
@@ -525,7 +525,7 @@ class VoiceController:
 
 def test_stt():
     """Test speech recognition"""
-    print("\n🧪 Testing STT Engine...")
+    print("\nðŸ§ª Testing STT Engine...")
     stt = STTEngine("medium.en")
     if stt.load():
         audio = stt.record(5.0)
@@ -537,7 +537,7 @@ def test_stt():
 
 def test_tts():
     """Test speech synthesis"""
-    print("\n🧪 Testing TTS Engine...")
+    print("\nðŸ§ª Testing TTS Engine...")
     tts = TTSEngine("en_US-lessac-medium")
     if tts.is_ready():
         result = tts.speak("CrackedCode voice system is working. Hello world!")
@@ -581,3 +581,4 @@ def voice_main():
 
 if __name__ == "__main__":
     voice_main()
+

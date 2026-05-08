@@ -1,4 +1,4 @@
-"""Screen Capture and Vision Analysis - AI-powered screen understanding.
+﻿"""Screen Capture and Vision Analysis - AI-powered screen understanding.
 
 Captures screenshots and analyzes them using the vision model (llava:13b-gpu).
 
@@ -190,7 +190,7 @@ class VisionAnalyzer:
     def detect_errors(self) -> Dict[str, Any]:
         """Specialized prompt for error detection."""
         return self.analyze_screen(
-            prompt="Look for any error messages, warnings, pop-ups, or异常 states on this screen. Report the exact error text and what UI element it appears on.",
+            prompt="Look for any error messages, warnings, pop-ups, orå¼‚å¸¸ states on this screen. Report the exact error text and what UI element it appears on.",
         )
     
     def ocr_screen(self) -> Dict[str, Any]:
@@ -208,3 +208,4 @@ def get_screen_capture() -> ScreenCapture:
 def get_vision_analyzer(engine=None) -> VisionAnalyzer:
     """Get a VisionAnalyzer instance."""
     return VisionAnalyzer(engine)
+

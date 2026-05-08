@@ -1,4 +1,4 @@
-"""Doctor / Health Check v2.9.5 - System diagnostics and component testing.
+﻿"""Doctor / Health Check v2.9.6 - System diagnostics and component testing.
 
 Automatically test every component and report exactly what's broken.
 
@@ -34,7 +34,7 @@ from src.logger_config import get_logger
 logger = get_logger("Doctor")
 
 
-# ── Data Models ────────────────────────────────────────────────────────────
+# â”€â”€ Data Models â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @dataclass
 class HealthCheck:
@@ -57,7 +57,7 @@ class HealthReport:
     version: str = ""
 
 
-# ── Doctor ─────────────────────────────────────────────────────────────────
+# â”€â”€ Doctor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class Doctor:
     """System diagnostics and health checks."""
@@ -72,7 +72,7 @@ class Doctor:
         "files": ["config", "storage"],
     }
     
-    def __init__(self, version: str = "2.9.5"):
+    def __init__(self, version: str = "2.9.6"):
         self.version = version
         self.results: List[HealthCheck] = []
     
@@ -133,7 +133,7 @@ class Doctor:
             details=details or {},
         ))
     
-    # ── Ollama checks ──────────────────────────────────────────────────────
+    # â”€â”€ Ollama checks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     
     def _check_ollama_connection(self):
         """Check Ollama connectivity."""
@@ -194,7 +194,7 @@ class Doctor:
         except Exception as e:
             self._add_result("ollama", "response", "error", str(e))
     
-    # ── Engine checks ──────────────────────────────────────────────────────
+    # â”€â”€ Engine checks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     
     def _check_engine_init(self):
         """Check engine can initialize."""
@@ -218,7 +218,7 @@ class Doctor:
         except Exception as e:
             self._add_result("engine", "models_loaded", "error", str(e))
     
-    # ── API checks ─────────────────────────────────────────────────────────
+    # â”€â”€ API checks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     
     def _check_api_server(self):
         """Check API server is accessible."""
@@ -253,7 +253,7 @@ class Doctor:
         except Exception as e:
             self._add_result("api", "endpoints", "error", str(e))
     
-    # ── Memory checks ──────────────────────────────────────────────────────
+    # â”€â”€ Memory checks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     
     def _check_memory_long_term(self):
         """Check long-term memory system."""
@@ -278,7 +278,7 @@ class Doctor:
         except Exception as e:
             self._add_result("memory", "agent_memory", "error", str(e))
     
-    # ── Git checks ─────────────────────────────────────────────────────────
+    # â”€â”€ Git checks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     
     def _check_git_repo(self):
         """Check git repository status."""
@@ -313,7 +313,7 @@ class Doctor:
         except Exception as e:
             self._add_result("git", "hooks", "error", str(e))
     
-    # ── Voice checks ───────────────────────────────────────────────────────
+    # â”€â”€ Voice checks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     
     def _check_voice_stt(self):
         """Check speech-to-text availability."""
@@ -335,7 +335,7 @@ class Doctor:
         except Exception as e:
             self._add_result("voice", "tts", "error", str(e))
     
-    # ── File checks ────────────────────────────────────────────────────────
+    # â”€â”€ File checks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     
     def _check_files_config(self):
         """Check configuration file."""
@@ -372,7 +372,7 @@ class Doctor:
         status = "ok" if all_exist else "warning"
         self._add_result("files", "storage", status, f"Storage dirs: {sum(r['exists'] for r in results.values())}/{len(results)} exist", {"details": results})
     
-    # ── Formatting ─────────────────────────────────────────────────────────
+    # â”€â”€ Formatting â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     
     def format_report(self, report: HealthReport, json_output: bool = False) -> str:
         """Format a health report for display."""
@@ -398,12 +398,12 @@ class Doctor:
         lines = []
         lines.append("")
         lines.append("=" * 70)
-        lines.append(f"  🏥 CRACKEDCODE HEALTH CHECK v{report.version}")
+        lines.append(f"  ðŸ¥ CRACKEDCODE HEALTH CHECK v{report.version}")
         lines.append("=" * 70)
         lines.append("")
         
         # Overall status
-        emoji = {"ok": "✅", "warning": "⚠️", "error": "❌"}.get(report.overall, "❓")
+        emoji = {"ok": "âœ…", "warning": "âš ï¸", "error": "âŒ"}.get(report.overall, "â“")
         lines.append(f"  Overall: {emoji} {report.overall.upper()}")
         lines.append(f"  Duration: {report.duration_ms:.0f}ms")
         lines.append("")
@@ -415,10 +415,10 @@ class Doctor:
         
         for component, checks in sorted(by_component.items()):
             lines.append(f"  {component.upper()}")
-            lines.append(f"  {'─' * 60}")
+            lines.append(f"  {'â”€' * 60}")
             
             for check in checks:
-                emoji = {"ok": "✅", "warning": "⚠️", "error": "❌"}.get(check.status, "❓")
+                emoji = {"ok": "âœ…", "warning": "âš ï¸", "error": "âŒ"}.get(check.status, "â“")
                 lines.append(f"    {emoji} {check.name}: {check.message}")
                 if check.details:
                     for key, val in check.details.items():
@@ -440,7 +440,7 @@ class Doctor:
         return "\n".join(lines)
 
 
-def run_health_check(component: Optional[str] = None, json_output: bool = False, version: str = "2.9.5") -> HealthReport:
+def run_health_check(component: Optional[str] = None, json_output: bool = False, version: str = "2.9.6") -> HealthReport:
     """Run health check and return report."""
     doctor = Doctor(version=version)
     
@@ -455,3 +455,4 @@ def run_health_check(component: Optional[str] = None, json_output: bool = False,
         report = doctor.run_all()
     
     return report
+

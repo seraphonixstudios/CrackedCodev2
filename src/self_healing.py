@@ -1,4 +1,4 @@
-"""Self-Healing Agent v2.9.5 - Auto-detect errors and fix them.
+﻿"""Self-Healing Agent v2.9.6 - Auto-detect errors and fix them.
 
 Monitors log files for exceptions, traces them to source code,
 generates patches, and verifies fixes with tests.
@@ -33,7 +33,7 @@ from src.logger_config import get_logger
 logger = get_logger("SelfHealing")
 
 
-# ── Data Models ────────────────────────────────────────────────────────────
+# â”€â”€ Data Models â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @dataclass
 class DetectedError:
@@ -61,7 +61,7 @@ class AppliedFix:
     reverted: bool = False
 
 
-# ── Self-Healing Agent ─────────────────────────────────────────────────────
+# â”€â”€ Self-Healing Agent â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class SelfHealingAgent:
     """Auto-detect errors and generate fixes."""
@@ -408,3 +408,4 @@ Provide ONLY the fixed code block. Do not include explanations."""
 def get_healing_agent(engine=None, repo_path: str = ".") -> SelfHealingAgent:
     """Get the global self-healing agent."""
     return SelfHealingAgent(engine=engine, repo_path=repo_path)
+

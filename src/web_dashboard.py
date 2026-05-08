@@ -1,4 +1,4 @@
-"""Web Dashboard v2.9.5 - Browser-based UI for CrackedCode.
+﻿"""Web Dashboard v2.9.6 - Browser-based UI for CrackedCode.
 
 A lightweight web interface that works on any device.
 Access via http://localhost:8080/dashboard
@@ -22,7 +22,7 @@ except ImportError:
 
 logger = get_logger("WebDashboard")
 
-# ── HTML Templates ─────────────────────────────────────────────────────────
+# â”€â”€ HTML Templates â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 DASHBOARD_HTML = """
 <!DOCTYPE html>
@@ -176,8 +176,8 @@ DASHBOARD_HTML = """
 </head>
 <body>
     <div class="header">
-        <h1>⚡ CrackedCode Dashboard</h1>
-        <p>Local AI Coding Assistant v2.9.5</p>
+        <h1>âš¡ CrackedCode Dashboard</h1>
+        <p>Local AI Coding Assistant v2.9.6</p>
     </div>
     
     <div class="container">
@@ -191,7 +191,7 @@ DASHBOARD_HTML = """
         
         <div class="grid">
             <div class="card">
-                <h3>🤖 System Status</h3>
+                <h3>ðŸ¤– System Status</h3>
                 <div class="stat">
                     <span>Ollama</span>
                     <span class="stat-value"><span class="status-indicator status-{{ 'online' if status.ollama_available else 'offline' }}"></span>{{ 'Online' if status.ollama_available else 'Offline' }}</span>
@@ -211,7 +211,7 @@ DASHBOARD_HTML = """
             </div>
             
             <div class="card">
-                <h3>📊 Today's Activity</h3>
+                <h3>ðŸ“Š Today's Activity</h3>
                 <div class="stat">
                     <span>Requests</span>
                     <span class="stat-value">{{ metrics.requests_total }}</span>
@@ -231,18 +231,18 @@ DASHBOARD_HTML = """
             </div>
             
             <div class="card">
-                <h3>🎯 Quick Actions</h3>
+                <h3>ðŸŽ¯ Quick Actions</h3>
                 <div class="stat">
-                    <a href="/docs" target="_blank" style="color: #00FF41;">📚 Open API Docs</a>
+                    <a href="/docs" target="_blank" style="color: #00FF41;">ðŸ“š Open API Docs</a>
                 </div>
                 <div class="stat">
-                    <a href="/export" style="color: #00FF41;">💾 Export Data</a>
+                    <a href="/export" style="color: #00FF41;">ðŸ’¾ Export Data</a>
                 </div>
                 <div class="stat">
-                    <span style="color: #888;">🔑 Auth: {{ 'Enabled' if status.auth_required else 'Disabled' }}</span>
+                    <span style="color: #888;">ðŸ”‘ Auth: {{ 'Enabled' if status.auth_required else 'Disabled' }}</span>
                 </div>
                 <div class="stat">
-                    <span style="color: #888;">📡 API: {{ status.api_url }}</span>
+                    <span style="color: #888;">ðŸ“¡ API: {{ status.api_url }}</span>
                 </div>
             </div>
         </div>
@@ -422,3 +422,4 @@ def create_web_dashboard(engine=None, host: str = "0.0.0.0", port: int = 3000) -
 if __name__ == "__main__":
     dashboard = create_web_dashboard()
     dashboard.start()
+
