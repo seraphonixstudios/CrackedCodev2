@@ -1,11 +1,11 @@
 {
   "name": "CrackedCode",
-  "version": "2.9.0",
+  "version": "2.9.5",
   "description": "Autonomous AI Coding Agent with Multi-Agent Swarm, Voice I/O, and Production-Ready App Generation",
   "model": "qwen3:8b-gpu",
   "vision_model": "llava:13b-gpu",
   "secondary_model": "dolphin-llama3:8b-gpu",
-  "unified_mode": false,
+  "unified_mode": true,
   "autonomous_enabled": true,
   "autonomous_max_corrections": 3,
   "autonomous_workspace": ".autonomous",
@@ -14,8 +14,8 @@
   "cache_enabled": true,
   "max_context": 20,
   "max_retries": 2,
-  "whisper_size": "medium.en",
-  "tts_backend": "pyttsx3",
+  "whisper_size": "medium",
+  "tts_backend": "fallback",
   "tts_voice": "default",
   "tts_gender": "female",
   "tts_rate": 175,
@@ -53,7 +53,7 @@
     "rg",
     "echo"
   ],
-  "project_root": ".",
+  "project_root": "C:/Users/User/Desktop/New folder",
   "logging": {
     "log_level": "INFO",
     "log_dir": "logs",
@@ -64,9 +64,9 @@
     "console_logging": true
   },
   "voice_enabled": true,
+  "auto_load_stt": true,
   "auto_save_blackboard": true,
   "debate_rounds": 3,
-  "max_retries": 2,
   "temperature": 0.1,
   "num_ctx": 16384,
   "agents": {
@@ -171,7 +171,7 @@
     "enabled": false,
     "token": null,
     "auto_review_prs": false,
-    "review_comment_template": "🤖 CrackedCode AI Review\n\n**Verdict:** {verdict}\n\n{summary}\n\n---\n*Reviewed by CrackedCode*"
+    "review_comment_template": "\u00f0\u0178\u00a4\u2013 CrackedCode AI Review\n\n**Verdict:** {verdict}\n\n{summary}\n\n---\n*Reviewed by CrackedCode*"
   },
   "rate_limiting": {
     "enabled": true,
@@ -197,7 +197,11 @@
   },
   "agent_collaboration": {
     "enabled": true,
-    "default_agents": ["architect", "security", "coder"],
+    "default_agents": [
+      "architect",
+      "security",
+      "coder"
+    ],
     "max_rounds": 5,
     "require_consensus": false
   },
@@ -210,7 +214,13 @@
   "knowledge_base": {
     "enabled": true,
     "storage_dir": ".crackedcode/knowledge",
-    "supported_types": ["pdf", "markdown", "text", "html", "docx"],
+    "supported_types": [
+      "pdf",
+      "markdown",
+      "text",
+      "html",
+      "docx"
+    ],
     "chunk_size": 500,
     "chunk_overlap": 50
   },
@@ -244,7 +254,14 @@
     "storage_dir": ".crackedcode/agent_memory",
     "max_entries_per_agent": 1000,
     "auto_summarize_threshold": 50,
-    "categories": ["fact", "preference", "decision", "error", "fix", "interaction"],
+    "categories": [
+      "fact",
+      "preference",
+      "decision",
+      "error",
+      "fix",
+      "interaction"
+    ],
     "inject_into_prompts": true,
     "max_context_entries": 3
   },
@@ -265,12 +282,31 @@
     "storage_dir": ".crackedcode/traces",
     "max_age_hours": 24,
     "auto_trace": true,
-    "trace_components": ["engine", "agent", "tool", "memory"]
+    "trace_components": [
+      "engine",
+      "agent",
+      "tool",
+      "memory"
+    ]
   },
   "doctor": {
     "enabled": true,
     "check_interval_seconds": 300,
     "auto_alert": false,
-    "components": ["ollama", "engine", "api", "memory", "git", "voice", "files"]
-  }
+    "components": [
+      "ollama",
+      "engine",
+      "api",
+      "memory",
+      "git",
+      "voice",
+      "files"
+    ]
+  },
+  "stt_language": "en",
+  "stt_beam_size": 5,
+  "tts_volume": 1.0,
+  "hotword": "verily ",
+  "font_size": 11,
+  "line_numbers": false
 }

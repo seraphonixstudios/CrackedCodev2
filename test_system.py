@@ -3320,7 +3320,7 @@ def test_conversation_manager() -> bool:
         import src.conversation_manager as cm_module
         cm_module._manager_instance = None
         
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmpdir:
             # Test creation
             manager = ConversationManager(db_path=os.path.join(tmpdir, "conv.db"))
             PASS("ConversationManager created")

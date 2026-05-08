@@ -9,9 +9,12 @@ and hands-free voice interaction.
 from __future__ import annotations
 
 import io
+import json
 import os
 import re
+import sys
 import wave
+import base64
 import time
 import asyncio
 import tempfile
@@ -48,6 +51,15 @@ def check_audio_devices() -> bool:
         return False
     except Exception:
         return False
+
+# Windows: Hide CUDA before importing faster-whisper to prevent
+# segfaults from CUDA library loading (ctranslate2) that kill the
+# process before Python can catch. Set WHISPER_ALLOW_CUDA=1 to override.
+# Windows: Hide CUDA before importing faster-whisper to prevent
+# segfaults from CUDA library loading (ctranslate2) that kill the
+# process before Python can catch. Set WHISPER_ALLOW_CUDA=1 to override.
+if platform.system() == "Windows" and os.environ.get("WHISPER_ALLOW_CUDA", "0") != "1":
+    os.environ.setdefault("CUDA_VISIBLE_DEVICES", "")
 
 try:
     from faster_whisper import WhisperModel
@@ -177,18 +189,18 @@ class STTEngine:
         self._device = self._detect_device()
         self._loaded = False
         self._load_lock = threading.Lock()
+        self._worker_process: Optional[subprocess.Popen] = None
+        self._worker_lock = threading.Lock()
         if not self._available:
             logger.info(f"STT unavailable: whisper={WHISPER_AVAILABLE}, audio={AUDIO_AVAILABLE}, devices={check_audio_devices()}")
 
     def _detect_device(self) -> str:
-        force_cpu = os.environ.get("WHISPER_FORCE_CPU", "0") == "1"
+        force_cpu = os.environ.get("WHISPER_ALLOW_CUDA", "0" if platform.system() == "Windows" else "1") != "1"
         if force_cpu:
             return "cpu"
         if platform.system() == "Windows":
             try:
-                result = subprocess.run(
-                    ["nvidia-smi"], capture_output=True, text=True, timeout=3
-                )
+                result = subprocess.run(["nvidia-smi"], capture_output=True, text=True, timeout=3)
                 if result.returncode == 0 and "NVIDIA-SMI" in result.stdout:
                     return "cuda"
             except Exception:
@@ -201,57 +213,97 @@ class STTEngine:
 
     @property
     def is_loaded(self) -> bool:
-        return self._loaded and self.model is not None
+        return self._loaded and self._worker_process is not None and self._worker_process.poll() is None
+
+    def _build_worker_script(self) -> str:
+        dl_root = str(Path.home() / ".cache" / "whisper")
+        return (
+            "import json,os,sys,base64,tempfile,wave\n"
+            'os.environ.pop("CUDA_VISIBLE_DEVICES",None)\n'
+            "from faster_whisper import WhisperModel\n"
+            f'model=WhisperModel(sys.argv[1],device="cpu",compute_type="int8",'
+            f'download_root=r"{dl_root}",local_files_only=False)\n'
+            'sys.stdout.write(json.dumps({"status":"ready"})+"\\n")\n'
+            "sys.stdout.flush()\n"
+            "for line in sys.stdin:\n"
+            "    try:\n"
+            "        cmd=json.loads(line.strip())\n"
+            '        if cmd.get("action")=="quit": break\n'
+            '        if cmd.get("action")=="transcribe":\n'
+            '            wav_bytes=base64.b64decode(cmd["audio_b64"])\n'
+            "            tmp=tempfile.NamedTemporaryFile(suffix='.wav',delete=False)\n"
+            "            tmp.write(wav_bytes); tmp.close()\n"
+            "            segs,info=model.transcribe(tmp.name,"
+            "language=cmd.get('language','en'),"
+            "beam_size=cmd.get('beam_size',5),vad_filter=True,"
+            "condition_on_previous_text=True)\n"
+            "            os.unlink(tmp.name)\n"
+            '            parts=[s.text.strip() for s in segs]\n'
+            '            result={"text":" ".join(parts),"language":info.language,'
+            '"confidence":info.language_probability,"duration":info.duration}\n'
+            '            sys.stdout.write(json.dumps(result)+"\\n")\n'
+            "            sys.stdout.flush()\n"
+            "    except Exception as e:\n"
+            '        sys.stdout.write(json.dumps({"error":str(e)})+"\\n")\n'
+            "        sys.stdout.flush()\n"
+        )
 
     def load(self) -> bool:
         if not self._available:
             logger.error("STT not available: faster-whisper or sounddevice missing")
             return False
-        if self._loaded:
+        if self._loaded and self.is_loaded:
             return True
 
         with self._load_lock:
-            if self._loaded:
+            if self._loaded and self.is_loaded:
                 return True
+            if self._worker_process is not None:
+                self._worker_process.kill()
+                self._worker_process = None
+
             try:
-                compute = "float16" if self._device == "cuda" else "int8"
-                logger.info(f"Loading Whisper model: {self.config.stt_model_size} (device={self._device}, compute={compute})")
-                self.model = WhisperModel(
-                    self.config.stt_model_size,
-                    device=self._device,
-                    compute_type=compute,
-                    download_root=str(Path.home() / ".cache" / "whisper"),
-                    local_files_only=False,
+                script = self._build_worker_script()
+                logger.info(f"Launching Whisper worker: {self.config.stt_model_size} (cpu)")
+                self._worker_process = subprocess.Popen(
+                    [sys.executable, "-c", script, self.config.stt_model_size],
+                    stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE, text=True, bufsize=1,
                 )
-                self._loaded = True
-                logger.info(f"Whisper loaded: {self.config.stt_model_size} ({self._device}, {compute})")
-                return True
+                response = self._worker_process.stdout.readline()
+                status = json.loads(response.strip())
+                if status.get("status") == "ready":
+                    self._loaded = True
+                    logger.info(f"Whisper worker ready: {self.config.stt_model_size}")
+                    return True
+                else:
+                    logger.error(f"Worker startup failed: {status}")
+                    self._worker_process.kill()
+                    self._worker_process = None
+                    return False
             except Exception as e:
-                error_msg = str(e)
-                logger.error(f"Failed to load Whisper model: {error_msg}")
-                if "cuda" in error_msg.lower() and self._device == "cuda":
-                    logger.warning("CUDA failed, retrying on CPU...")
-                    self._device = "cpu"
-                    try:
-                        self.model = WhisperModel(
-                            self.config.stt_model_size,
-                            device="cpu",
-                            compute_type="int8",
-                            download_root=str(Path.home() / ".cache" / "whisper"),
-                            local_files_only=False,
-                        )
-                        self._loaded = True
-                        logger.info(f"Whisper loaded on CPU fallback: {self.config.stt_model_size}")
-                        return True
-                    except Exception as e2:
-                        logger.error(f"CPU fallback also failed: {e2}")
-                self._available = False
+                logger.error(f"Failed to launch Whisper worker: {e}")
+                if self._worker_process:
+                    self._worker_process.kill()
+                    self._worker_process = None
                 return False
 
     def unload(self) -> None:
+        if self._worker_process is not None:
+            try:
+                with self._worker_lock:
+                    self._worker_process.stdin.write(json.dumps({"action": "quit"}) + "\n")
+                    self._worker_process.stdin.flush()
+                    self._worker_process.wait(timeout=5)
+            except Exception:
+                try:
+                    self._worker_process.kill()
+                except Exception:
+                    pass
+            self._worker_process = None
         self.model = None
         self._loaded = False
-        logger.info("Whisper model unloaded")
+        logger.info("Whisper worker terminated")
 
     def record(self, duration: Optional[float] = None) -> np.ndarray:
         if not AUDIO_AVAILABLE:
@@ -337,32 +389,28 @@ class STTEngine:
                 wf.setframerate(self.config.sample_rate)
                 audio_int16 = np.clip(audio * 32767, -32768, 32767).astype(np.int16)
                 wf.writeframes(audio_int16.tobytes())
-            buffer.seek(0)
-            segments, info = self.model.transcribe(
-                buffer,
-                language=language,
-                beam_size=beam_size,
-                vad_filter=True,
-                condition_on_previous_text=True,
-            )
-            text_parts: List[str] = []
-            seg_list: List[Dict[str, Any]] = []
-            for seg in segments:
-                text_parts.append(seg.text.strip())
-                seg_list.append({
-                    "text": seg.text,
-                    "start": seg.start,
-                    "end": seg.end,
-                    "confidence": getattr(seg, "avg_logprob", 0.0),
-                })
-            full_text = " ".join(text_parts).strip()
+            wav_b64 = base64.b64encode(buffer.getvalue()).decode()
+
+            cmd = json.dumps({
+                "action": "transcribe",
+                "audio_b64": wav_b64,
+                "language": language,
+                "beam_size": beam_size,
+            })
+            with self._worker_lock:
+                self._worker_process.stdin.write(cmd + "\n")
+                self._worker_process.stdin.flush()
+                response = self._worker_process.stdout.readline()
+            result = json.loads(response.strip())
+
+            if "error" in result:
+                return STTResult(error=result["error"], success=False)
             return STTResult(
-                text=full_text,
-                language=info.language or language,
-                confidence=info.language_probability,
-                duration=info.duration,
-                segments=seg_list,
-                success=len(full_text) > 0,
+                text=result.get("text", ""),
+                language=result.get("language", language),
+                confidence=result.get("confidence", 0.0),
+                duration=result.get("duration", 0.0),
+                success=len(result.get("text", "")) > 0,
             )
         except Exception as e:
             logger.error(f"Transcription failed: {e}")

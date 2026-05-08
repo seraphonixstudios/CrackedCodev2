@@ -42,7 +42,7 @@ except ImportError:
 try:
     import winsound
     HAS_WINSOUND = True
-except:
+except ImportError:
     HAS_WINSOUND = False
 
 

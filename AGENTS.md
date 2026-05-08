@@ -7,7 +7,7 @@ CrackedCode is a 100% local AI coding assistant featuring autonomous application
 **Current Version:** 2.9.5
 **Branch:** main
 **License:** MIT
-**Tests:** 99/99 passing
+**Tests:** 125+ (99/99 E2E + 18 GUI + voice engine)
 
 ## Architecture
 
@@ -97,12 +97,13 @@ crackedcode/
 - HeartbeatScheduler for background tasks
 
 ### UnifiedVoiceEngine (src/voice_engine.py)
-- STTEngine: faster-whisper with VAD-based recording, cuda/cpu auto-detection
+- STTEngine: faster-whisper with **subprocess worker isolation** (avoids ctranslate2 segfault on Python 3.14/Windows)
 - TTSEngine: Multi-backend router (pyttsx3 -> edge-tts -> fallback)
 - VoiceActivityDetector: Energy-based VAD with adaptive noise floor
 - VoiceCommandProcessor: 17 command types with fuzzy matching and parameter extraction
 - VoiceSession: Complete listen -> process -> respond cycle
 - UnifiedVoiceEngine: Singleton orchestrator with hotword detection
+- **auto_load_stt**: config key (default true) loads Whisper in isolated subprocess 2s after GUI start
 
 ### Agent Reasoning Engine (src/reasoning.py)
 - ThoughtChain: Complete reasoning chains from observation to decision
@@ -247,6 +248,7 @@ Key settings in config.json:
 - `streaming_enabled`: true
 - `cache_enabled`: true
 - `voice_enabled`: true
+- `auto_load_stt`: true
 - `tts_backend`: "pyttsx3"
 - `tts_gender`: "female"
 
@@ -412,6 +414,8 @@ Key settings in config.json:
 - Windows path separators may need special handling in tests
 - PyQt6 QStatusBar.addSeparator() doesn't exist (removed in v2.9.0)
 - QLocalSocket stale sockets need removeServer() before listen
+- ctranslate2 segfault on Python 3.14/Windows — mitigated by subprocess STT worker isolation in `voice_engine.py`. If STT fails to load, set `auto_load_stt: false` in config.json and use LOAD VOICE button on demand.
+- PromptRequest dataclass was unhashable (missing `__hash__`) — fixed in `engine.py:82` with manual `__hash__`/`__eq__`
 
 ## Models
 

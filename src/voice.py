@@ -115,7 +115,7 @@ class STTEngine:
                     check=True
                 )
                 return "cuda"
-            except:
+            except (subprocess.CalledProcessError, FileNotFoundError):
                 return "cpu"
         else:
             try:
@@ -125,7 +125,7 @@ class STTEngine:
                     check=True
                 )
                 return "cuda"
-            except:
+            except (subprocess.CalledProcessError, FileNotFoundError):
                 return "cpu"
 
     def load(self) -> bool:
@@ -323,7 +323,7 @@ class TTSEngine:
                 frames = wf.getnframes()
                 rate = wf.getframerate()
                 return frames / rate
-        except:
+        except Exception:
             return 0.0
 
     def _play_audio(self, wav_file: Path):

@@ -1518,7 +1518,6 @@ class CrackedCodeGUI(QMainWindow):
             self.voice = UnifiedVoiceEngine(voice_cfg)
             self.voice.initialize(load_stt=False, load_tts=True)
 
-            # Register command handlers that map to GUI actions
             self._register_voice_command_handlers()
 
             status = self.voice.status
@@ -1527,11 +1526,14 @@ class CrackedCodeGUI(QMainWindow):
             if hasattr(self, 'terminal'):
                 self.term(f"[VOICE: ready | TTS={backend} | STT={'loaded' if stt_loaded else 'not loaded'}]")
             if hasattr(self, 'load_voice_btn'):
+                self.load_voice_btn.setText("LOAD VOICE" if not stt_loaded else "VOICE LOADED")
                 if stt_loaded:
-                    self.load_voice_btn.setText("VOICE LOADED")
                     self.load_voice_btn.setStyleSheet(f"color: {ATLAN_GREEN};")
-                else:
-                    self.load_voice_btn.setText("LOAD VOICE")
+
+            # Auto-load STT in background (runs in isolated subprocess, won't crash main process)
+            if self.config.get("auto_load_stt", True):
+                QTimer.singleShot(2000, self._delayed_stt_load)
+
             logger.info(f"Voice engine initialized: {status}")
         except Exception as e:
             logger.error(f"Voice init failed: {e}")
@@ -1539,6 +1541,13 @@ class CrackedCodeGUI(QMainWindow):
                 self.term(f"[VOICE ERROR: {e}]")
             if hasattr(self, 'voice_btn'):
                 self.voice_btn.setEnabled(False)
+
+    def _delayed_stt_load(self):
+        """Auto-load STT model in background after GUI is up."""
+        if not hasattr(self, 'voice') or not self.voice.stt or self.voice.stt.is_loaded:
+            return
+        self.term("[VOICE] Loading speech recognition (background)...")
+        self.load_voice_model()
 
     def _register_voice_command_handlers(self):
         """Register voice command handlers that execute real GUI operations."""
@@ -1978,27 +1987,27 @@ class CrackedCodeGUI(QMainWindow):
     
     def _check_ollama_connection(self):
         """Check Ollama connectivity on boot and update status bar."""
-        try:
-            import requests
-            ollama_host = self.config.get("ollama_host", "http://localhost:11434")
-            response = requests.get(f"{ollama_host}/api/tags", timeout=5)
-            if response.status_code == 200:
-                models = response.json().get("models", [])
-                model_names = [m.get("name", "unknown") for m in models]
-                if hasattr(self, 'terminal'):
-                    self.term(f"[OLLAMA] Connected: {len(model_names)} models available")
-                    if model_names:
-                        self.term(f"[OLLAMA] {', '.join(model_names[:5])}{'...' if len(model_names) > 5 else ''}")
-                if ENHANCEMENTS_AVAILABLE and hasattr(self, 'status_bar') and hasattr(self.status_bar, 'set_ollama_status'):
-                    self.status_bar.set_ollama_status(True)
-            else:
-                self._ollama_connection_failed(f"HTTP {response.status_code}")
-        except requests.exceptions.ConnectionError:
-            self._ollama_connection_failed("Connection refused")
-        except requests.exceptions.Timeout:
-            self._ollama_connection_failed("Timeout")
-        except Exception as e:
-            self._ollama_connection_failed(str(e))
+        def _do_check():
+            try:
+                import ollama
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+                    fut = ex.submit(ollama.list)
+                    response = fut.result(timeout=5)
+                models = [m.model for m in response.models] if hasattr(response, 'models') else []
+                QTimer.singleShot(0, lambda: self._ollama_ok(models))
+            except Exception as e:
+                QTimer.singleShot(0, lambda e=e: self._ollama_connection_failed(str(e)))
+        threading.Thread(target=_do_check, daemon=True).start()
+
+    def _ollama_ok(self, models):
+        """Update UI when Ollama is connected."""
+        if hasattr(self, 'terminal'):
+            self.term(f"[OLLAMA] Connected: {len(models)} models available")
+            if models:
+                self.term(f"[OLLAMA] {', '.join(models[:5])}{'...' if len(models) > 5 else ''}")
+        if ENHANCEMENTS_AVAILABLE and hasattr(self, 'status_bar') and hasattr(self.status_bar, 'set_ollama_status'):
+            self.status_bar.set_ollama_status(True)
     
     def _ollama_connection_failed(self, reason: str):
         """Handle Ollama connection failure."""
@@ -2528,7 +2537,7 @@ class CrackedCodeGUI(QMainWindow):
         conversations = self.engine.conversation_manager.list_conversations(limit=20)
         
         for conv in conversations:
-            item = QListWidgetItem(f"{conv.name} ({conv.turn_count} turns)")
+            item = QListWidgetItem(f"{conv.name} ({conv.to_dict()['turn_count']} turns)")
             item.setData(Qt.ItemDataRole.UserRole, conv.id)
             self.conversation_list.addItem(item)
 
@@ -3859,119 +3868,67 @@ class CrackedCodeGUI(QMainWindow):
         self.update_tab_count()
 
     def _create_settings_tab_widget(self):
-        """Create a settings widget for embedding in a tab."""
+        """Create an improved settings widget for embedding in a tab."""
         from PyQt6.QtWidgets import (
             QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
             QComboBox, QSpinBox, QCheckBox, QPushButton, QTabWidget,
             QGroupBox, QFormLayout, QSlider, QFileDialog,
-            QMessageBox, QScrollArea, QFrame, QTextEdit
+            QMessageBox, QScrollArea, QFrame
         )
         from PyQt6.QtCore import Qt
-        from PyQt6.QtGui import QFont
 
-        ATLAN_GREEN = "#00FF41"
-        ATLAN_DARK = "#0a0a0a"
-        ATLAN_MEDIUM = "#1a1a1a"
-        ATLAN_GOLD = "#FFD700"
-        ATLAN_CYAN = "#00FFFF"
+        G = "#00FF41"
+        D = "#0a0a0a"
+        M = "#1a1a1a"
+        GOLD = "#FFD700"
 
-        # Container widget
         container = QWidget()
         container.setStyleSheet(f"""
-            QWidget {{
-                background-color: {ATLAN_DARK};
-                color: {ATLAN_GREEN};
-                font-family: Consolas;
-            }}
-            QTabWidget::pane {{
-                border: 1px solid {ATLAN_GREEN};
-                background-color: {ATLAN_DARK};
-            }}
-            QTabBar::tab {{
-                background-color: {ATLAN_MEDIUM};
-                color: {ATLAN_GREEN};
-                padding: 8px 16px;
-                border: 1px solid #333;
-                border-top-left-radius: 6px;
-                border-top-right-radius: 6px;
-            }}
-            QTabBar::tab:selected {{
-                background-color: {ATLAN_GREEN};
-                color: {ATLAN_DARK};
-                font-weight: bold;
-            }}
-            QGroupBox {{
-                border: 1px solid {ATLAN_GREEN};
-                margin-top: 10px;
-                font-weight: bold;
-                border-radius: 6px;
-                padding-top: 10px;
-                color: {ATLAN_GOLD};
-            }}
-            QGroupBox::title {{
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 4px;
-            }}
-            QLabel {{ color: {ATLAN_GREEN}; font-family: Consolas; }}
-            QLineEdit {{
-                background-color: #050505;
-                color: {ATLAN_GREEN};
-                border: 1px solid #333;
-                padding: 6px;
-                border-radius: 4px;
-            }}
-            QComboBox {{
-                background-color: {ATLAN_MEDIUM};
-                color: {ATLAN_GREEN};
-                border: 1px solid #333;
-                padding: 4px;
-                border-radius: 4px;
-            }}
-            QSpinBox {{
-                background-color: {ATLAN_MEDIUM};
-                color: {ATLAN_GREEN};
-                border: 1px solid #333;
-                padding: 4px;
-                border-radius: 4px;
-            }}
-            QSlider::groove:horizontal {{ height: 6px; background: {ATLAN_MEDIUM}; border-radius: 3px; }}
-            QSlider::handle:horizontal {{ background: {ATLAN_GREEN}; width: 14px; height: 14px; border-radius: 7px; }}
-            QCheckBox {{ color: {ATLAN_GREEN}; spacing: 8px; }}
-            QCheckBox::indicator {{ width: 16px; height: 16px; border: 1px solid {ATLAN_GREEN}; border-radius: 3px; }}
-            QCheckBox::indicator:checked {{ background-color: {ATLAN_GREEN}; }}
-            QPushButton {{
-                background-color: {ATLAN_MEDIUM};
-                color: {ATLAN_GREEN};
-                border: 1px solid {ATLAN_GREEN};
-                padding: 8px 16px;
-                border-radius: 6px;
-                font-weight: bold;
-            }}
-            QPushButton:hover {{ background-color: {ATLAN_GREEN}; color: {ATLAN_DARK}; }}
-            QTextEdit {{
-                background-color: #050505;
-                color: {ATLAN_GREEN};
-                border: 1px solid #333;
-                border-radius: 4px;
-                font-family: Consolas;
-            }}
+            QWidget {{ background-color: {D}; color: {G}; font-family: Consolas; }}
+            QTabWidget::pane {{ border: 1px solid {G}; background-color: {D}; }}
+            QTabBar::tab {{ background-color: {M}; color: {G}; padding: 8px 16px; border: 1px solid #333; border-top-left-radius: 6px; border-top-right-radius: 6px; }}
+            QTabBar::tab:selected {{ background-color: {G}; color: {D}; font-weight: bold; }}
+            QGroupBox {{ border: 1px solid {G}; margin-top: 10px; font-weight: bold; border-radius: 6px; padding-top: 10px; color: {GOLD}; }}
+            QGroupBox::title {{ subcontrol-origin: margin; left: 10px; padding: 0 4px; }}
+            QLabel {{ color: {G}; font-family: Consolas; }}
+            QLineEdit {{ background-color: #050505; color: {G}; border: 1px solid #333; padding: 6px; border-radius: 4px; }}
+            QComboBox {{ background-color: {M}; color: {G}; border: 1px solid #333; padding: 4px; border-radius: 4px; }}
+            QSpinBox {{ background-color: {M}; color: {G}; border: 1px solid #333; padding: 4px; border-radius: 4px; }}
+            QSlider::groove:horizontal {{ height: 6px; background: {M}; border-radius: 3px; }}
+            QSlider::handle:horizontal {{ background: {G}; width: 14px; height: 14px; border-radius: 7px; }}
+            QCheckBox {{ color: {G}; spacing: 8px; }}
+            QCheckBox::indicator {{ width: 16px; height: 16px; border: 1px solid {G}; border-radius: 3px; }}
+            QCheckBox::indicator:checked {{ background-color: {G}; }}
+            QPushButton {{ background-color: {M}; color: {G}; border: 1px solid {G}; padding: 8px 16px; border-radius: 6px; font-weight: bold; }}
+            QPushButton:hover {{ background-color: {G}; color: {D}; }}
         """)
 
         layout = QVBoxLayout(container)
         layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(12)
 
-        # Tabs
         settings_tabs = QTabWidget(container)
 
-        # === GENERAL TAB ===
-        general_tab = QWidget()
-        g_layout = QVBoxLayout(general_tab)
-        g_layout.setContentsMargins(12, 12, 12, 12)
-        g_layout.setSpacing(8)
+        def _make_scroll_tab() -> tuple:
+            """Create a scrollable tab widget and its content layout."""
+            tab = QWidget()
+            scroll = QScrollArea(tab)
+            scroll.setWidgetResizable(True)
+            scroll.setStyleSheet("QScrollArea { border: none; background-color: transparent; }")
+            content = QWidget()
+            cl = QVBoxLayout(content)
+            cl.setContentsMargins(12, 12, 12, 12)
+            cl.setSpacing(10)
+            scroll.setWidget(content)
+            outer = QVBoxLayout(tab)
+            outer.setContentsMargins(0, 0, 0, 0)
+            outer.addWidget(scroll)
+            return tab, content, cl
 
-        model_group = QGroupBox("AI MODEL", general_tab)
+        # === GENERAL TAB ===
+        _, g_content, g_layout = _make_scroll_tab()
+
+        model_group = QGroupBox("AI MODEL", g_content)
         m_layout = QFormLayout(model_group)
         m_layout.setContentsMargins(8, 16, 8, 8)
 
@@ -3999,7 +3956,7 @@ class CrackedCodeGUI(QMainWindow):
 
         g_layout.addWidget(model_group)
 
-        behavior_group = QGroupBox("BEHAVIOR", general_tab)
+        behavior_group = QGroupBox("BEHAVIOR", g_content)
         b_layout = QFormLayout(behavior_group)
         b_layout.setContentsMargins(8, 16, 8, 8)
 
@@ -4025,26 +3982,20 @@ class CrackedCodeGUI(QMainWindow):
         max_ctx_spin.setValue(self.config.get("max_context", 20))
         b_layout.addRow("Max Context:", max_ctx_spin)
 
-        temp_spin = QSpinBox(behavior_group)
-        temp_spin.setRange(0, 100)
-        temp_spin.setSuffix("%")
-        temp_spin.setValue(int(self.config.get("temperature", 0.1) * 100))
-        b_layout.addRow("Temperature:", temp_spin)
+        temp_slider = QSlider(Qt.Orientation.Horizontal, behavior_group)
+        temp_slider.setRange(0, 100)
+        temp_slider.setValue(int(self.config.get("temperature", 0.1) * 100))
+        temp_label = QLabel(f"{self.config.get('temperature', 0.1):.2f}", behavior_group)
+        temp_slider.valueChanged.connect(lambda v: temp_label.setText(f"{v / 100.0:.2f}"))
+        b_layout.addRow("Temperature:", temp_slider)
+        b_layout.addRow("", temp_label)
 
         g_layout.addWidget(behavior_group)
         g_layout.addStretch()
-        settings_tabs.addTab(general_tab, "GENERAL")
+        settings_tabs.addTab(g_content.parent(), "GENERAL")
 
         # === VOICE TAB ===
-        voice_tab = QWidget()
-        v_scroll = QScrollArea(voice_tab)
-        v_scroll.setWidgetResizable(True)
-        v_scroll.setStyleSheet("QScrollArea { border: none; background-color: transparent; }")
-
-        v_content = QWidget()
-        v_layout = QVBoxLayout(v_content)
-        v_layout.setContentsMargins(12, 12, 12, 12)
-        v_layout.setSpacing(10)
+        _, v_content, v_layout = _make_scroll_tab()
 
         stt_group = QGroupBox("SPEECH-TO-TEXT", v_content)
         stt_layout = QFormLayout(stt_group)
@@ -4064,6 +4015,11 @@ class CrackedCodeGUI(QMainWindow):
         stt_beam_spin.setRange(1, 20)
         stt_beam_spin.setValue(self.config.get("stt_beam_size", 5))
         stt_layout.addRow("Beam Size:", stt_beam_spin)
+
+        auto_stt_check = QCheckBox("Load STT model at startup", stt_group)
+        auto_stt_check.setChecked(self.config.get("auto_load_stt", True))
+        auto_stt_check.setToolTip("Load Whisper speech recognition model in isolated process on app start")
+        stt_layout.addRow(auto_stt_check)
 
         v_layout.addWidget(stt_group)
 
@@ -4118,37 +4074,90 @@ class CrackedCodeGUI(QMainWindow):
         mode_layout.addRow("Hotword:", hotword_input)
 
         v_layout.addWidget(mode_group)
-        v_layout.addStretch()
 
-        v_scroll.setWidget(v_content)
-        v_outer = QVBoxLayout(voice_tab)
-        v_outer.setContentsMargins(0, 0, 0, 0)
-        v_outer.addWidget(v_scroll)
-        settings_tabs.addTab(voice_tab, "VOICE")
+        # === VOICE STATUS INDICATOR ===
+        status_group = QGroupBox("VOICE STATUS", v_content)
+        status_layout = QFormLayout(status_group)
+        status_layout.setContentsMargins(8, 16, 8, 8)
+
+        stt_loaded = (hasattr(self, 'voice') and self.voice.stt and self.voice.stt.is_loaded)
+        stt_status = QLabel("LOADED" if stt_loaded else "NOT LOADED", v_content)
+        stt_status.setStyleSheet(f"color: {G if stt_loaded else '#FF4444'}; font-weight: bold;")
+        status_layout.addRow("STT (Whisper):", stt_status)
+
+        tts_avail = (hasattr(self, 'voice') and self.voice.tts and self.voice.tts.is_available)
+        tts_status = QLabel("AVAILABLE" if tts_avail else "UNAVAILABLE", v_content)
+        tts_status.setStyleSheet(f"color: {G if tts_avail else '#FF4444'}; font-weight: bold;")
+        status_layout.addRow("TTS:", tts_status)
+
+        mic_avail = False
+        try:
+            from src.voice_engine import check_audio_devices
+            mic_avail = check_audio_devices()
+        except Exception:
+            pass
+        mic_status = QLabel("DETECTED" if mic_avail else "NONE", v_content)
+        mic_status.setStyleSheet(f"color: {G if mic_avail else '#FF4444'}; font-weight: bold;")
+        status_layout.addRow("Microphone:", mic_status)
+
+        load_now_btn = QPushButton("LOAD STT NOW", v_content)
+        v_layout.addWidget(status_group)
+        v_layout.addWidget(load_now_btn)
+
+        def _refresh_voice_status():
+            nonlocal stt_status, tts_status, mic_status
+            s = (hasattr(self, 'voice') and self.voice.stt and self.voice.stt.is_loaded)
+            stt_status.setText("LOADED" if s else "NOT LOADED")
+            stt_status.setStyleSheet(f"color: {G if s else '#FF4444'}; font-weight: bold;")
+            t = (hasattr(self, 'voice') and self.voice.tts and self.voice.tts.is_available)
+            tts_status.setText("AVAILABLE" if t else "UNAVAILABLE")
+            tts_status.setStyleSheet(f"color: {G if t else '#FF4444'}; font-weight: bold;")
+
+        def _load_stt_now():
+            load_now_btn.setEnabled(False)
+            load_now_btn.setText("LOADING...")
+            self.show_toast("Loading Whisper...", ToastType.INFO)
+            def _do():
+                try:
+                    if hasattr(self, 'voice') and self.voice.stt:
+                        ok = self.voice.stt.load()
+                        QTimer.singleShot(0, lambda: _load_done(ok))
+                except Exception as ex:
+                    QTimer.singleShot(0, lambda: _load_done(False, str(ex)))
+            def _load_done(ok, err=None):
+                load_now_btn.setEnabled(True)
+                load_now_btn.setText("LOAD STT NOW")
+                _refresh_voice_status()
+                if ok:
+                    self.show_toast("Whisper loaded", ToastType.SUCCESS)
+                else:
+                    self.show_toast(f"Whisper failed: {err or 'unknown'}", ToastType.ERROR)
+            threading.Thread(target=_do, daemon=True).start()
+        load_now_btn.clicked.connect(_load_stt_now)
+
+        v_layout.addStretch()
+        settings_tabs.addTab(v_content.parent(), "VOICE")
 
         # === APPEARANCE TAB ===
-        appearance_tab = QWidget()
-        a_layout = QVBoxLayout(appearance_tab)
-        a_layout.setContentsMargins(12, 12, 12, 12)
-        a_layout.setSpacing(8)
+        _, a_content, a_layout = _make_scroll_tab()
 
-        theme_group = QGroupBox("APPEARANCE", appearance_tab)
-        t_layout = QFormLayout(theme_group)
-        t_layout.setContentsMargins(8, 16, 8, 8)
+        theme_group = QGroupBox("APPEARANCE", a_content)
+        th_layout = QFormLayout(theme_group)
+        th_layout.setContentsMargins(8, 16, 8, 8)
 
         theme_label = QLabel("Atlantean (Green) — Default theme")
-        theme_label.setStyleSheet(f"color: {ATLAN_GREEN};")
-        t_layout.addRow("Color Theme:", theme_label)
+        theme_label.setStyleSheet(f"color: {G};")
+        th_layout.addRow("Color Theme:", theme_label)
 
         font_size_spin = QSpinBox(theme_group)
         font_size_spin.setRange(8, 20)
         font_size_spin.setSuffix(" pt")
         font_size_spin.setValue(self.config.get("font_size", 11))
-        t_layout.addRow("Editor Font Size:", font_size_spin)
+        th_layout.addRow("Editor Font Size:", font_size_spin)
 
         a_layout.addWidget(theme_group)
 
-        editor_group = QGroupBox("EDITOR", appearance_tab)
+        editor_group = QGroupBox("EDITOR", a_content)
         e_layout = QFormLayout(editor_group)
         e_layout.setContentsMargins(8, 16, 8, 8)
 
@@ -4169,15 +4178,12 @@ class CrackedCodeGUI(QMainWindow):
 
         a_layout.addWidget(editor_group)
         a_layout.addStretch()
-        settings_tabs.addTab(appearance_tab, "APPEARANCE")
+        settings_tabs.addTab(a_content.parent(), "APPEARANCE")
 
         # === AUTONOMOUS TAB ===
-        autonomous_tab = QWidget()
-        au_layout = QVBoxLayout(autonomous_tab)
-        au_layout.setContentsMargins(12, 12, 12, 12)
-        au_layout.setSpacing(8)
+        _, au_content, au_layout = _make_scroll_tab()
 
-        ws_group = QGroupBox("WORKSPACE", autonomous_tab)
+        ws_group = QGroupBox("WORKSPACE", au_content)
         ws_layout = QFormLayout(ws_group)
         ws_layout.setContentsMargins(8, 16, 8, 8)
 
@@ -4194,7 +4200,7 @@ class CrackedCodeGUI(QMainWindow):
 
         au_layout.addWidget(ws_group)
 
-        limits_group = QGroupBox("LIMITS", autonomous_tab)
+        limits_group = QGroupBox("LIMITS", au_content)
         l_layout = QFormLayout(limits_group)
         l_layout.setContentsMargins(8, 16, 8, 8)
 
@@ -4210,13 +4216,17 @@ class CrackedCodeGUI(QMainWindow):
 
         au_layout.addWidget(limits_group)
         au_layout.addStretch()
-        settings_tabs.addTab(autonomous_tab, "AUTONOMOUS")
+        settings_tabs.addTab(au_content.parent(), "AUTONOMOUS")
 
         layout.addWidget(settings_tabs)
 
+        # Footer: config file indicator
+        footer = QLabel("config.json  |  Ctrl+S to save", container)
+        footer.setStyleSheet(f"color: #666; font-size: 9pt; padding: 2px 0;")
+        layout.addWidget(footer)
+
         # Buttons
         btn_layout = QHBoxLayout()
-        btn_layout.addStretch()
 
         discover_btn = QPushButton("DISCOVER MODELS", container)
         discover_btn.setToolTip("Query Ollama for available models")
@@ -4230,12 +4240,9 @@ class CrackedCodeGUI(QMainWindow):
                         parts = line.split()
                         if parts: models.append(parts[0])
                     if models:
-                        model_combo.clear()
-                        model_combo.addItems(models)
-                        vision_combo.clear()
-                        vision_combo.addItems(models)
-                        secondary_combo.clear()
-                        secondary_combo.addItems(models)
+                        model_combo.clear(); model_combo.addItems(models)
+                        vision_combo.clear(); vision_combo.addItems(models)
+                        secondary_combo.clear(); secondary_combo.addItems(models)
                         self.show_toast(f"Found {len(models)} models", ToastType.SUCCESS)
                     else:
                         self.show_toast("No models found", ToastType.WARNING)
@@ -4248,13 +4255,14 @@ class CrackedCodeGUI(QMainWindow):
 
         reset_btn = QPushButton("RESET", container)
         def _reset():
-            reply = QMessageBox.question(container, "Reset", "Reset all settings to defaults?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            reply = QMessageBox.question(container, "Reset", "Reset all settings to defaults?",
+                                         QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
             if reply == QMessageBox.StandardButton.Yes:
                 defaults = {
                     "model": "qwen3:8b-gpu", "vision_model": "llava:13b-gpu",
                     "secondary_model": "dolphin-llama3:8b-gpu", "streaming_enabled": True,
                     "cache_enabled": True, "unified_mode": False, "autonomous_enabled": True,
-                    "voice_enabled": True, "auto_save": True,
+                    "voice_enabled": True, "auto_save": True, "auto_load_stt": True,
                     "ollama_host": "http://localhost:11434",
                     "whisper_size": "base", "stt_language": "en", "stt_beam_size": 5,
                     "tts_backend": "pyttsx3", "tts_voice": "default", "tts_gender": "female",
@@ -4270,12 +4278,22 @@ class CrackedCodeGUI(QMainWindow):
         reset_btn.clicked.connect(_reset)
         btn_layout.addWidget(reset_btn)
 
-        save_btn = QPushButton("SAVE", container)
+        btn_layout.addStretch()
+
+        apply_btn = QPushButton("APPLY", container)
+        apply_btn.setToolTip("Save settings without closing")
+        def _apply():
+            _save_impl()
+            _refresh_voice_status()
+        apply_btn.clicked.connect(_apply)
+        btn_layout.addWidget(apply_btn)
+
+        save_btn = QPushButton("SAVE & CLOSE", container)
         save_btn.setStyleSheet(f"""
-            QPushButton {{ background-color: {ATLAN_GREEN}; color: {ATLAN_DARK}; border: none; }}
+            QPushButton {{ background-color: {G}; color: {D}; border: none; }}
             QPushButton:hover {{ background-color: #00CC33; }}
         """)
-        def _save():
+        def _save_impl():
             self.config["model"] = model_combo.currentText()
             self.config["vision_model"] = vision_combo.currentText()
             self.config["secondary_model"] = secondary_combo.currentText()
@@ -4285,11 +4303,12 @@ class CrackedCodeGUI(QMainWindow):
             self.config["unified_mode"] = unified_check.isChecked()
             self.config["autonomous_enabled"] = autonomous_check.isChecked()
             self.config["max_context"] = max_ctx_spin.value()
-            self.config["temperature"] = temp_spin.value() / 100.0
+            self.config["temperature"] = temp_slider.value() / 100.0
 
             self.config["whisper_size"] = stt_combo.currentText()
             self.config["stt_language"] = stt_lang.text() or "en"
             self.config["stt_beam_size"] = stt_beam_spin.value()
+            self.config["auto_load_stt"] = auto_stt_check.isChecked()
             self.config["tts_backend"] = tts_backend_combo.currentText()
             self.config["tts_voice"] = tts_voice_input.text() or "default"
             self.config["tts_gender"] = tts_gender_combo.currentText()
@@ -4310,16 +4329,15 @@ class CrackedCodeGUI(QMainWindow):
                     json.dump(self.config, f, indent=2)
                 if self.engine:
                     self.engine.config = self.config
-                self.term("Settings updated", level="success")
+                self.term("Settings saved", level="success")
                 self.show_toast("Settings saved", ToastType.SUCCESS)
             except Exception as e:
                 QMessageBox.critical(container, "Error", f"Could not save: {e}")
-        save_btn.clicked.connect(_save)
+        save_btn.clicked.connect(lambda: (_save_impl(), _close()))
         btn_layout.addWidget(save_btn)
 
         close_btn = QPushButton("CLOSE", container)
         def _close():
-            # Find and remove the settings tab
             for i in range(self.tab_widget.count()):
                 if self.tab_widget.tabText(i) == "SETTINGS":
                     self.tab_widget.removeTab(i)

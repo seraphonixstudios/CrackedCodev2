@@ -465,6 +465,7 @@ python src/main.py autonomous -p "Build a todo app with web API"
 ```json
 {
   "voice_enabled": true,
+  "auto_load_stt": true,
   "tts_backend": "pyttsx3",
   "tts_gender": "female"
 }
@@ -528,6 +529,11 @@ crackedcode/
 | llava:13b-gpu | Vision | Image analysis, OCR |
 
 ---
+
+## Known Issues
+
+- **ctranslate2 segfault on Python 3.14/Windows**: Whisper STT loading can crash the process due to incompatible CUDA DLLs. Mitigated by running the model in an isolated subprocess. If STT fails to load, set `auto_load_stt: false` in config.json and load on demand via the LOAD VOICE button.
+- **Git push timeout**: May require retries on slow connections.
 
 ## Dependencies
 

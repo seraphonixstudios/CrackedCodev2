@@ -86,15 +86,15 @@ class PromptRequest:
     user_level: str = "intermediate"
     timestamp: datetime = field(default_factory=datetime.now)
     reasoning_log: List[Dict] = field(default_factory=list)
-    
-    def add_reasoning(self, step_type: str, content: str, confidence: float = 0.5):
-        """Add a reasoning step to the request."""
-        self.reasoning_log.append({
-            "type": step_type,
-            "content": content,
-            "confidence": confidence,
-            "timestamp": time.time(),
-        })
+
+    def __hash__(self) -> int:
+        return hash((self.text, self.intent, self.user_level))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, PromptRequest):
+            return NotImplemented
+        return (self.text, self.intent, self.user_level) == (
+            other.text, other.intent, other.user_level)
 
 
 @dataclass
