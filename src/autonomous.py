@@ -307,73 +307,42 @@ class SkillRegistry:
         self.register(Skill(
             name="code-generator",
             description="Generate production-ready code with tests and documentation",
-            system_prompt="""You are an expert code generator. Generate complete, production-ready code with:
-- Type hints and docstrings
-- Error handling and input validation
-- Unit tests
-- Clean architecture following SOLID principles
-- No placeholders or TODO comments""",
+            system_prompt="Generate complete, production-ready code with type hints, error handling, tests, and clean architecture.",
             tools=["write_file", "read_file", "execute_shell"],
         ))
 
         self.register(Skill(
             name="architect",
             description="Design system architecture and project structure",
-            system_prompt="""You are a senior software architect. Design systems with:
-- Clear separation of concerns
-- Appropriate design patterns
-- Scalable and maintainable structure
-- Well-defined interfaces and APIs
-- Mermaid diagrams for visualization""",
+            system_prompt="Design systems with clear separation of concerns, appropriate patterns, scalable structure, and Mermaid diagrams.",
             tools=["write_file", "read_file"],
         ))
 
         self.register(Skill(
             name="tester",
             description="Write and execute comprehensive tests",
-            system_prompt="""You are an expert test engineer. Create tests that cover:
-- Happy path scenarios
-- Edge cases and boundary conditions
-- Error handling and failure modes
-- Integration between components
-- Performance-critical paths""",
+            system_prompt="Create tests covering happy path, edge cases, error handling, integration, and performance.",
             tools=["write_file", "execute_shell", "read_file"],
         ))
 
         self.register(Skill(
             name="debugger",
             description="Analyze failures and autonomously fix bugs",
-            system_prompt="""You are an expert debugger. Fix bugs by:
-1. Analyzing error messages and stack traces
-2. Identifying root cause
-3. Implementing minimal, correct fix
-4. Verifying the fix resolves the issue
-5. Ensuring no regressions""",
+            system_prompt="Fix bugs by analyzing root cause, implementing minimal correct fix, and verifying no regressions.",
             tools=["read_file", "write_file", "execute_shell"],
         ))
 
         self.register(Skill(
             name="documenter",
             description="Generate comprehensive project documentation",
-            system_prompt="""You are an expert technical writer. Create documentation that includes:
-- Project overview and setup instructions
-- Architecture explanation with diagrams
-- API documentation
-- Usage examples
-- Development guide""",
+            system_prompt="Create documentation with project overview, architecture explanation, API docs, usage examples, and dev guide.",
             tools=["write_file", "read_file"],
         ))
 
         self.register(Skill(
             name="refactorer",
             description="Improve code quality without changing behavior",
-            system_prompt="""You are an expert refactoring engineer. Improve code by:
-- Removing code duplication
-- Improving naming and readability
-- Applying design patterns where appropriate
-- Optimizing performance bottlenecks
-- Improving testability
-Always preserve existing behavior.""",
+            system_prompt="Improve code by removing duplication, improving naming, applying patterns, optimizing bottlenecks, and improving testability. Preserve behavior.",
             tools=["read_file", "write_file", "execute_shell"],
         ))
 

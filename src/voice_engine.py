@@ -376,45 +376,60 @@ class STTEngine:
         language: Optional[str] = None,
         beam_size: Optional[int] = None,
     ) -> STTResult:
-        if not self.is_loaded:
-            if not self.load():
-                return STTResult(error="Model not loaded", success=False)
         language = language or self.config.stt_language
         beam_size = beam_size or self.config.stt_beam_size
-        try:
-            buffer = io.BytesIO()
-            with wave.open(buffer, "wb") as wf:
-                wf.setnchannels(self.config.channels)
-                wf.setsampwidth(2)
-                wf.setframerate(self.config.sample_rate)
-                audio_int16 = np.clip(audio * 32767, -32768, 32767).astype(np.int16)
-                wf.writeframes(audio_int16.tobytes())
-            wav_b64 = base64.b64encode(buffer.getvalue()).decode()
+        max_attempts = 2
+        for attempt in range(max_attempts):
+            if not self.is_loaded:
+                if not self.load():
+                    if attempt < max_attempts - 1:
+                        continue
+                    return STTResult(error="Model not loaded", success=False)
+            try:
+                buffer = io.BytesIO()
+                with wave.open(buffer, "wb") as wf:
+                    wf.setnchannels(self.config.channels)
+                    wf.setsampwidth(2)
+                    wf.setframerate(self.config.sample_rate)
+                    audio_int16 = np.clip(audio * 32767, -32768, 32767).astype(np.int16)
+                    wf.writeframes(audio_int16.tobytes())
+                wav_b64 = base64.b64encode(buffer.getvalue()).decode()
 
-            cmd = json.dumps({
-                "action": "transcribe",
-                "audio_b64": wav_b64,
-                "language": language,
-                "beam_size": beam_size,
-            })
-            with self._worker_lock:
-                self._worker_process.stdin.write(cmd + "\n")
-                self._worker_process.stdin.flush()
-                response = self._worker_process.stdout.readline()
-            result = json.loads(response.strip())
+                cmd = json.dumps({
+                    "action": "transcribe",
+                    "audio_b64": wav_b64,
+                    "language": language,
+                    "beam_size": beam_size,
+                })
+                with self._worker_lock:
+                    self._worker_process.stdin.write(cmd + "\n")
+                    self._worker_process.stdin.flush()
+                    response = self._worker_process.stdout.readline()
+                result = json.loads(response.strip())
 
-            if "error" in result:
-                return STTResult(error=result["error"], success=False)
-            return STTResult(
-                text=result.get("text", ""),
-                language=result.get("language", language),
-                confidence=result.get("confidence", 0.0),
-                duration=result.get("duration", 0.0),
-                success=len(result.get("text", "")) > 0,
-            )
-        except Exception as e:
-            logger.error(f"Transcription failed: {e}")
-            return STTResult(error=str(e), success=False)
+                if "error" in result:
+                    return STTResult(error=result["error"], success=False)
+                return STTResult(
+                    text=result.get("text", ""),
+                    language=result.get("language", language),
+                    confidence=result.get("confidence", 0.0),
+                    duration=result.get("duration", 0.0),
+                    success=len(result.get("text", "")) > 0,
+                )
+            except (BrokenPipeError, OSError, json.JSONDecodeError) as e:
+                logger.warning(f"Worker died (attempt {attempt+1}/{max_attempts}): {e}")
+                self._loaded = False
+                if self._worker_process:
+                    try:
+                        self._worker_process.kill()
+                    except Exception:
+                        pass
+                    self._worker_process = None
+                continue
+            except Exception as e:
+                logger.error(f"Transcription failed: {e}")
+                return STTResult(error=str(e), success=False)
+        return STTResult(error="Transcription failed after retries", success=False)
 
     def listen(self, duration: Optional[float] = None) -> STTResult:
         try:
@@ -801,6 +816,8 @@ class VoiceCommandProcessor:
         if not text:
             return VoiceCommand(raw_text="", command_type=CommandType.UNKNOWN)
         text_lower = text.lower().strip()
+        words = text_lower.split()
+        word_count = len(words)
         best_match: Optional[CommandType] = None
         best_keyword = ""
         best_score = 0.0
@@ -811,20 +828,33 @@ class VoiceCommandProcessor:
                         raw_text=text, command_type=cmd_type, confidence=1.0,
                         matched_keyword=keyword, params=self._extract_params(text),
                     )
-                if keyword in text_lower:
+                kw_parts = keyword.split()
+                # Multi-word: substring match (e.g. "new file" in "create a new file")
+                if len(kw_parts) > 1 and keyword in text_lower:
                     score = len(keyword) / len(text_lower)
                     if score > best_score:
                         best_score = score
                         best_match = cmd_type
                         best_keyword = keyword
-                kw_first = keyword.split()[0]
-                if kw_first in text_lower.split():
-                    score = 0.5 + (len(keyword) / len(text_lower)) * 0.3
+                # Single-word: require word boundary AND keyword in first 3 words (command-like)
+                elif len(kw_parts) == 1:
+                    kw = kw_parts[0]
+                    try:
+                        pos = words.index(kw)
+                    except ValueError:
+                        continue
+                    # Penalize keywords deep in a sentence
+                    pos_penalty = 0.0
+                    if pos > 4:
+                        continue  # too far into sentence, skip
+                    if pos > 0 and word_count > 3:
+                        pos_penalty = 0.15
+                    score = len(keyword) / len(text_lower) + 0.3 - pos_penalty
                     if score > best_score:
                         best_score = score
                         best_match = cmd_type
                         best_keyword = keyword
-        if best_match and best_score >= 0.2:
+        if best_match and best_score >= 0.3:
             cmd = VoiceCommand(
                 raw_text=text, command_type=best_match, confidence=min(best_score, 0.95),
                 matched_keyword=best_keyword, params=self._extract_params(text),

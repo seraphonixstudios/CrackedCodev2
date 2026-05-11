@@ -38,6 +38,9 @@ python test_system.py
 
 | Version | Features |
 |---------|----------|
+| 2.9.6 | **Collapsible Sidebar** - Left sidebar toggle (Ctrl+Shift+B), toolbar button, menu item, command palette entry |
+| 2.9.6 | **Attachment Chips** - File attachment badges in input area with drag-and-drop, file dialog, remove button, auto-clear on send |
+| 2.9.6 | **Code Syntax Rendering** - Regex-based token highlighting (keywords, strings, comments, numbers) inside ``` code blocks in terminal |
 | 2.9.6 | **Visual Enhancements** - Color-coded terminal output, smooth progress bar animation, QGraphicsDropShadowEffect glow on terminal/SEND/progress/prompt, toast slide-in animation |
 | 2.9.6 | **Prompt Simplification** - Simplified all PROMPT_TEMPLATES, agent system prompts, phase prompts, skill prompts, and voice command keywords for better LLM focus |
 | 2.9.6 | **Error Visibility** - Patched silent except blocks across GUI with proper toast/term/logger calls |
@@ -89,10 +92,14 @@ python src/gui.py
 
 ### UI Features
 
-- **Toast Notifications**: Non-intrusive auto-dismissing notifications
+- **Collapsible Sidebar**: `Ctrl+Shift+B` toggle, toolbar button, menu item
+- **Attachment Chips**: File badges in input area with drag-and-drop support
+- **Code Syntax Highlighting**: Token-colored code blocks in terminal output
+- **Toast Notifications**: Non-intrusive auto-dismissing notifications with slide-in animation
 - **Command Palette**: `Ctrl+Shift+P` fuzzy-search all actions
 - **Welcome Screen**: First-launch feature cards with shortcuts
 - **Enhanced Status Bar**: Model, mode, file count, voice status, activity pulse
+- **Glow Effects**: QGraphicsDropShadowEffect on terminal, SEND button, progress bar, prompt
 - **Searchable Terminal**: `Ctrl+F` to search terminal output
 - **Command History**: Up/Down arrow navigation
 - **Tab Management**: Rename tabs, modified indicators
@@ -117,6 +124,7 @@ python src/gui.py
 | `Ctrl+Shift+P` | Command Palette |
 | `Ctrl+Shift+F` | Semantic Search |
 | `Ctrl+Shift+S` | Analyze Screen (Vision) |
+| `Ctrl+Shift+B` | Toggle Sidebar |
 | `Ctrl+M` | Toggle Matrix Rain |
 | `Ctrl+A` | Autonomous Production |
 | `F11` | Toggle Fullscreen |

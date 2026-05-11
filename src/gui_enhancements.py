@@ -438,7 +438,7 @@ Ctrl+A          Autonomous Produce    F1              Help
 
 
 class EnhancedStatusBar(QStatusBar):
-    """Status bar with multiple info panels and activity indicator."""
+    """Status bar with model/agent/mode badges, coherence ring, and activity indicator."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -448,92 +448,152 @@ class EnhancedStatusBar(QStatusBar):
         self._activity_counter = 0
     
     def _init_ui(self):
-        from src.gui import ATLAN_GREEN, ATLAN_DARK
+        from src.gui import ATLAN_GREEN, ATLAN_DARK, ATLAN_GOLD, ATLAN_BLUE, ATLAN_PURPLE
         
-        # Create a container widget with layout since QStatusBar doesn't support addStretch()
         container = QWidget(self)
         layout = QHBoxLayout(container)
-        layout.setContentsMargins(4, 0, 4, 0)
-        layout.setSpacing(8)
+        layout.setContentsMargins(6, 0, 6, 0)
+        layout.setSpacing(10)
         
-        # Left: Status message
-        self.status_label = QLabel("READY")
-        self.status_label.setFont(QFont("Consolas", 10, QFont.Weight.Bold))
-        layout.addWidget(self.status_label)
+        # Left: Status badge (colored pill)
+        self.status_badge = QLabel("READY")
+        self.status_badge.setFont(QFont("Consolas", 9, QFont.Weight.Bold))
+        self.status_badge.setStyleSheet(f"""
+            background: {ATLAN_DARK}; color: {ATLAN_GREEN};
+            border: 1px solid {ATLAN_GREEN}; border-radius: 3px;
+            padding: 1px 8px;
+        """)
+        layout.addWidget(self.status_badge)
+        
+        # Separator
+        sep = QLabel("\u00b7")
+        sep.setStyleSheet("color: #555;")
+        layout.addWidget(sep)
+        
+        # Agent badge
+        self.agent_badge = QLabel("Build")
+        self.agent_badge.setFont(QFont("Consolas", 9))
+        self.agent_badge.setStyleSheet(f"color: {ATLAN_BLUE};")
+        layout.addWidget(self.agent_badge)
+        
+        # Model badge
+        self.model_badge = QLabel("qwen3:8b")
+        self.model_badge.setFont(QFont("Consolas", 9))
+        self.model_badge.setStyleSheet(f"color: {ATLAN_GOLD};")
+        layout.addWidget(self.model_badge)
+        
+        # Mode badge
+        self.mode_badge = QLabel("P+B")
+        self.mode_badge.setFont(QFont("Consolas", 9))
+        self.mode_badge.setStyleSheet(f"""
+            background: {ATLAN_GREEN}22; color: {ATLAN_GREEN};
+            border: 1px solid {ATLAN_GREEN}44; border-radius: 2px;
+            padding: 0 5px;
+        """)
+        layout.addWidget(self.mode_badge)
         
         layout.addStretch()
         
-        # Center: Info panels
-        self.model_label = QLabel("Model: â€”")
-        self.model_label.setFont(QFont("Consolas", 9))
-        layout.addWidget(self.model_label)
+        # Coherence ring
+        self.coherence_label = QLabel("\u25cf 1.00")
+        self.coherence_label.setFont(QFont("Consolas", 9))
+        self.coherence_label.setStyleSheet(f"color: {ATLAN_GREEN};")
+        self.coherence_label.setToolTip("Cross-agent coherence")
+        layout.addWidget(self.coherence_label)
         
-        self.mode_label = QLabel("Mode: PLAN+BUILD")
-        self.mode_label.setFont(QFont("Consolas", 9))
-        layout.addWidget(self.mode_label)
+        # Ollama status
+        self.ollama_badge = QLabel("\u25cf OLLAMA")
+        self.ollama_badge.setFont(QFont("Consolas", 9))
+        self.ollama_badge.setStyleSheet(f"color: {ATLAN_GREEN};")
+        self.ollama_badge.setToolTip("Ollama connection status")
+        layout.addWidget(self.ollama_badge)
         
-        self.files_label = QLabel("Files: 0")
-        self.files_label.setFont(QFont("Consolas", 9))
-        layout.addWidget(self.files_label)
+        # Voice indicator
+        self.voice_badge = QLabel("mic")
+        self.voice_badge.setFont(QFont("Consolas", 9))
+        self.voice_badge.setStyleSheet("color: #555;")
+        self.voice_badge.setToolTip("Voice status")
+        layout.addWidget(self.voice_badge)
         
-        self.voice_label = QLabel("ðŸŽ¤")
-        self.voice_label.setFont(QFont("Consolas", 9))
-        self.voice_label.setToolTip("Voice status")
-        layout.addWidget(self.voice_label)
+        # Separator
+        sep2 = QLabel("\u00b7")
+        sep2.setStyleSheet("color: #555;")
+        layout.addWidget(sep2)
         
-        self.ollama_label = QLabel("â— OLLAMA")
-        self.ollama_label.setFont(QFont("Consolas", 9))
-        self.ollama_label.setToolTip("Ollama connection status")
-        layout.addWidget(self.ollama_label)
+        # Task count
+        self.task_badge = QLabel("T:0")
+        self.task_badge.setFont(QFont("Consolas", 9))
+        self.task_badge.setStyleSheet("color: #888;")
+        self.task_badge.setToolTip("Task count")
+        layout.addWidget(self.task_badge)
         
-        layout.addStretch()
+        # Activity pulse
+        self.activity_dot = QLabel("\u25cf")
+        self.activity_dot.setFont(QFont("Consolas", 11))
+        self.activity_dot.setStyleSheet(f"color: {ATLAN_GREEN};")
+        layout.addWidget(self.activity_dot)
         
-        # Right: Activity indicator
-        self.activity_label = QLabel("â—")
-        self.activity_label.setFont(QFont("Consolas", 10))
-        self.activity_label.setStyleSheet(f"color: {ATLAN_GREEN};")
-        layout.addWidget(self.activity_label)
+        # Clock
+        self.clock_label = QLabel("")
+        self.clock_label.setFont(QFont("Consolas", 9))
+        self.clock_label.setStyleSheet("color: #666;")
+        layout.addWidget(self.clock_label)
         
-        self.cursor_label = QLabel("Ln 1, Col 1")
-        self.cursor_label.setFont(QFont("Consolas", 9))
-        layout.addWidget(self.cursor_label)
-        
-        # Add the container widget to the status bar
         self.addWidget(container, 1)
     
     def set_status(self, text: str, color: str = None):
-        self.status_label.setText(text.upper())
-        if color:
-            self.status_label.setStyleSheet(f"color: {color}; font-weight: bold;")
-        else:
-            from src.gui import ATLAN_GREEN
-            self.status_label.setStyleSheet(f"color: {ATLAN_GREEN}; font-weight: bold;")
+        from src.gui import ATLAN_GREEN, ATLAN_GOLD, ATLAN_RED
+        c = color or ATLAN_GREEN
+        self.status_badge.setText(text.upper())
+        self.status_badge.setStyleSheet(f"""
+            background: {c}22; color: {c};
+            border: 1px solid {c}; border-radius: 3px;
+            padding: 1px 8px;
+        """)
     
     def set_model(self, model: str):
-        self.model_label.setText(f"Model: {model}")
+        short = model.split(":")[0] if ":" in model else model[:12]
+        self.model_badge.setText(short)
     
     def set_mode(self, mode: str):
-        self.mode_label.setText(f"Mode: {mode}")
+        short_map = {"plan": "PLAN", "build": "BUILD", "plan+build": "P+B", "": "P+B"}
+        self.mode_badge.setText(short_map.get(mode.lower(), mode[:6].upper()))
+    
+    def set_agent(self, agent: str):
+        self.agent_badge.setText(agent.capitalize())
     
     def set_files_count(self, count: int):
-        self.files_label.setText(f"Files: {count}")
+        pass  # Uses task_badge for now
     
     def set_voice_status(self, active: bool):
-        color = "#00FF41" if active else "#555"
-        self.voice_label.setStyleSheet(f"color: {color};")
+        from src.gui import ATLAN_GREEN, ATLAN_CYAN
+        if active:
+            self.voice_badge.setText("REC")
+            self.voice_badge.setStyleSheet(f"color: {ATLAN_CYAN}; font-weight: bold;")
+        else:
+            self.voice_badge.setText("mic")
+            self.voice_badge.setStyleSheet("color: #555;")
     
     def set_ollama_status(self, connected: bool):
-        """Update Ollama connection indicator in status bar."""
         from src.gui import ATLAN_GREEN
         if connected:
-            self.ollama_label.setText("â— OLLAMA")
-            self.ollama_label.setStyleSheet(f"color: {ATLAN_GREEN};")
+            self.ollama_badge.setText("\u25cf OLLAMA")
+            self.ollama_badge.setStyleSheet(f"color: {ATLAN_GREEN};")
         else:
-            self.ollama_label.setText("â— OLLAMA")
-            self.ollama_label.setStyleSheet("color: #FF4444;")
+            self.ollama_badge.setText("\u25cf OLLAMA")
+            self.ollama_badge.setStyleSheet("color: #FF4444;")
     
-    def set_cursor_position(self, line: int, col: int):
-        self.cursor_label.setText(f"Ln {line}, Col {col}")
+    def set_coherence(self, coherence: float):
+        from src.gui import ATLAN_GREEN, ATLAN_GOLD, ATLAN_RED
+        color = ATLAN_GREEN if coherence >= 0.8 else ATLAN_GOLD if coherence >= 0.5 else ATLAN_RED
+        self.coherence_label.setText(f"\u25cf {coherence:.2f}")
+        self.coherence_label.setStyleSheet(f"color: {color};")
+    
+    def set_task_count(self, count: int):
+        self.task_badge.setText(f"T:{count}")
+    
+    def set_clock(self, text: str):
+        self.clock_label.setText(text)
     
     def start_activity(self):
         self._activity_counter = 0
@@ -542,11 +602,11 @@ class EnhancedStatusBar(QStatusBar):
     def stop_activity(self):
         self._activity_timer.stop()
         from src.gui import ATLAN_GREEN
-        self.activity_label.setStyleSheet(f"color: {ATLAN_GREEN};")
+        self.activity_dot.setStyleSheet(f"color: {ATLAN_GREEN};")
     
     def _pulse_activity(self):
         colors = ["#00FF41", "#00CC33", "#009926", "#00CC33"]
-        self.activity_label.setStyleSheet(f"color: {colors[self._activity_counter % len(colors)]};")
+        self.activity_dot.setStyleSheet(f"color: {colors[self._activity_counter % len(colors)]};")
         self._activity_counter += 1
 
 
@@ -630,6 +690,195 @@ class KeyboardShortcutHelper:
                 button.setToolTip(f"{existing} ({shortcut})")
 
 
+class AttachmentChip(QFrame):
+    """A single attachment chip showing filename + remove button."""
+
+    removed = pyqtSignal(str)
+
+    def __init__(self, filepath: str, parent=None):
+        super().__init__(parent)
+        from src.gui import ATLAN_LIGHT, ATLAN_BORDER, ATLAN_GREEN, ATLAN_RED, ATLAN_GOLD
+        self.filepath = filepath
+        self.setObjectName("attachmentChip")
+        self.setStyleSheet(f"""
+            #attachmentChip {{
+                background-color: {ATLAN_LIGHT};
+                border: 1px solid {ATLAN_BORDER};
+                border-radius: 4px;
+                padding: 2px 4px;
+            }}
+        """)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(6, 2, 6, 2)
+        layout.setSpacing(4)
+
+        name = QLabel(self._short_name())
+        name.setStyleSheet(f"color: {ATLAN_GREEN}; font-size: 10px;")
+        layout.addWidget(name)
+
+        close_btn = QPushButton("\u2715")
+        close_btn.setFixedSize(16, 16)
+        close_btn.setStyleSheet(f"""
+            QPushButton {{
+                color: {ATLAN_RED}; background: transparent; border: none;
+                font-size: 10px; font-weight: bold;
+            }}
+            QPushButton:hover {{ color: {ATLAN_GOLD}; }}
+        """)
+        close_btn.clicked.connect(lambda: self.removed.emit(self.filepath))
+        layout.addWidget(close_btn)
+
+    def _short_name(self) -> str:
+        import os
+        return os.path.basename(self.filepath)
+
+
+class AttachmentInput(QWidget):
+    """Input area with attachment chips (file badges + text input)."""
+
+    attachments_changed = pyqtSignal(list)
+    returnPressed = pyqtSignal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._attachments: List[str] = []
+        self.setAcceptDrops(True)
+        self._init_ui()
+
+    def _init_ui(self):
+        from src.gui import ATLAN_BORDER
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(3)
+
+        # Chip scroll area (hidden when empty)
+        self._chip_scroll = QScrollArea()
+        self._chip_scroll.setWidgetResizable(True)
+        self._chip_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self._chip_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self._chip_scroll.setFixedHeight(30)
+        self._chip_scroll.setStyleSheet(f"""
+            QScrollArea {{
+                background: transparent; border: 1px solid {ATLAN_BORDER};
+                border-radius: 4px;
+            }}
+        """)
+
+        self._chip_container = QWidget()
+        self._chip_layout = QHBoxLayout(self._chip_container)
+        self._chip_layout.setContentsMargins(4, 2, 4, 2)
+        self._chip_layout.setSpacing(4)
+        self._chip_layout.addStretch()
+        self._chip_scroll.setWidget(self._chip_container)
+        self._chip_scroll.hide()
+        layout.addWidget(self._chip_scroll)
+
+        # Input row
+        input_row = QHBoxLayout()
+        input_row.setSpacing(4)
+
+        prompt_label = QLabel(">")
+        prompt_label.setStyleSheet("color: #00FFFF; font-weight: bold; font-size: 14px;")
+        input_row.addWidget(prompt_label)
+
+        self.text_input = QLineEdit()
+        self.text_input.setPlaceholderText("Enter prompt or command... (Up/Down for history)")
+        self.text_input.returnPressed.connect(self.returnPressed.emit)
+        input_row.addWidget(self.text_input)
+
+        self.attach_btn = QPushButton("\U0001f4ce")
+        self.attach_btn.setFixedWidth(32)
+        self.attach_btn.setToolTip("Attach file")
+        self.attach_btn.clicked.connect(self._browse_file)
+        input_row.addWidget(self.attach_btn)
+
+        layout.addLayout(input_row)
+
+    def _browse_file(self):
+        from PyQt6.QtWidgets import QFileDialog
+        path, _ = QFileDialog.getOpenFileName(self, "Attach File")
+        if path:
+            self.add_attachment(path)
+
+    def add_attachment(self, filepath: str):
+        if filepath in self._attachments:
+            return
+        self._attachments.append(filepath)
+        chip = AttachmentChip(filepath)
+        chip.removed.connect(self._remove_attachment)
+        self._chip_layout.insertWidget(self._chip_layout.count() - 1, chip)
+        self._chip_scroll.show()
+        self.attachments_changed.emit(list(self._attachments))
+
+    def _remove_attachment(self, filepath: str):
+        if filepath in self._attachments:
+            self._attachments.remove(filepath)
+        self._rebuild_chips()
+        self.attachments_changed.emit(list(self._attachments))
+
+    def _rebuild_chips(self):
+        for i in reversed(range(self._chip_layout.count())):
+            item = self._chip_layout.itemAt(i)
+            if item and item.widget() and isinstance(item.widget(), AttachmentChip):
+                item.widget().deleteLater()
+        self._chip_layout.addStretch()
+        for fp in self._attachments:
+            chip = AttachmentChip(fp)
+            chip.removed.connect(self._remove_attachment)
+            self._chip_layout.insertWidget(self._chip_layout.count() - 1, chip)
+        self._chip_scroll.setVisible(len(self._attachments) > 0)
+
+    def clear_attachments(self):
+        self._attachments.clear()
+        self._rebuild_chips()
+        self.attachments_changed.emit([])
+
+    def get_attachments(self) -> List[str]:
+        return list(self._attachments)
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+
+    def dropEvent(self, event):
+        for url in event.mimeData().urls():
+            if url.isLocalFile():
+                self.add_attachment(url.toLocalFile())
+
+    @property
+    def text(self) -> str:
+        return self.text_input.text()
+
+    @text.setter
+    def text(self, value: str):
+        self.text_input.setText(value)
+
+    def setText(self, value: str):
+        self.text_input.setText(value)
+
+    def clear(self):
+        self.text_input.clear()
+
+    def setFocus(self, reason=Qt.FocusReason.NoFocusReason):
+        self.text_input.setFocus(reason)
+
+    def installEventFilter(self, obj):
+        self.text_input.installEventFilter(obj)
+
+    def selectAll(self):
+        self.text_input.selectAll()
+
+    def setPlaceholderText(self, text: str):
+        self.text_input.setPlaceholderText(text)
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key.Key_Return or event.key() == Qt.Key.Key_Enter:
+            self.text_input.setFocus()
+            self.text_input.keyPressEvent(event)
+        else:
+            super().keyPressEvent(event)
+
+
 # Compatibility re-exports for existing code
 __all__ = [
     "ToastNotification",
@@ -641,5 +890,7 @@ __all__ = [
     "EnhancedStatusBar",
     "FloatingActionButton",
     "KeyboardShortcutHelper",
+    "AttachmentInput",
+    "AttachmentChip",
 ]
 

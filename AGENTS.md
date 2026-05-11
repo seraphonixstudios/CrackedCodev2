@@ -16,7 +16,7 @@ crackedcode/
 ├── src/
 │   ├── main.py              # CLI application with AgentSwarm
 │   ├── gui.py               # PyQt6 Desktop GUI (primary interface)
-│   ├── gui_enhancements.py  # UX widgets: Toast, Command Palette, Welcome
+│   ├── gui_enhancements.py  # UX widgets: Toast, Command Palette, Welcome, AttachmentInput, EnhancedStatusBar
 │   ├── gui_git_panel.py     # Git sidebar with diff viewer and AI commits
 │   ├── gui_settings.py      # Preferences dialog with Ollama discovery
 │   ├── gui_syntax.py        # Code syntax highlighting (Python, JSON)
@@ -62,6 +62,7 @@ crackedcode/
 - Long-term memory integration: automatic context injection
 - MCP client integration: auto-connect on startup
 - **Simplified prompt templates**: PROMPT_TEMPLATES reduced ~70% — concise, focused system prompts for better LLM adherence
+- **Live stage callback**: `process()` accepts `stage_callback(stage, detail)` for real-time pipeline visibility with stages: parsing, intent, agent, context, model, generating, complete, executing, searching, vision, security
 
 ### UnifiedOrchestrator (src/orchestrator.py)
 - Task lifecycle: PENDING -> QUEUED -> RUNNING -> VERIFYING -> COMPLETED/FAILED/RETRYING
@@ -202,6 +203,9 @@ crackedcode/
 - Enhanced status bar with activity pulse and model/mode display
 - Autonomous production dialog (Ctrl+A)
 - File watcher with auto-save and external change detection
+- **Collapsible sidebar**: toggle_left_panel() with Ctrl+Shift+B, toolbar button, VIEW menu, command palette
+- **Attachment chips**: AttachmentInput widget with file badges, drag-and-drop, remove button, auto-clear
+- **Code syntax highlighting**: Regex-based token coloring inside ``` code blocks in terminal
 - **Reasoning Panel** (left sidebar): per-agent thought chains, coherence bar, recent events stream, live terminal integration
 - **Color-coded terminal**: Per-level text colors via QTextCharFormat — info/success→green, warning→gold, error→red, voice→cyan, ai→purple, reasoning→blue
 - **Smooth progress bar**: QPropertyAnimation with OutCubic easing replaces all setValue() calls
@@ -292,6 +296,22 @@ Key settings in config.json:
 3. For glow effects: Use QGraphicsDropShadowEffect with appropriate blur radius (8-12) and color
 4. Add QGraphicsDropShadowEffect import from PyQt6.QtWidgets
 5. Test with python src/gui.py
+
+### Adding a Collapsible Panel
+1. Create a toggle method (e.g. toggle_left_panel) that tracks state and calls setVisible()
+2. Add QPushButton to toolbar with checkable state
+3. Register QShortcut for the toggle keybinding
+4. Add QAction to the VIEW menu
+5. Add QuickActionItem to _setup_quick_actions() for command palette
+6. Test with python src/gui.py
+
+### Adding Attachment Support
+1. Create AttachmentChip(QFrame) with filename label + remove button + removed signal
+2. Create AttachmentInput(QWidget) with chip scroll area, QLineEdit, attach button
+3. Implement add_attachment, remove_attachment, clear_attachments, get_attachments
+4. Connect returnPressed to propagate signal from internal QLineEdit
+5. Add dragEnterEvent/dropEvent for drag-and-drop
+6. Integrate in gui.py, replacing plain QLineEdit, with fallback when ENHANCEMENTS_AVAILABLE is False
 
 ### Simplifying Prompts
 1. Identify repetitive or verbose system prompts (PROMPT_TEMPLATES, AGENT_SYSTEM_PROMPTS, skill prompts, phase prompts)

@@ -22,7 +22,8 @@ from PyQt6.QtWidgets import (
     QStatusBar, QLabel, QFileDialog, QMessageBox, QTabWidget,
     QListWidget, QListWidgetItem, QSplitter, QGroupBox, QCheckBox, QComboBox, QSpinBox,
     QScrollArea, QFrame, QDialog, QInputDialog, QProgressBar, QSlider, QTreeWidget,
-    QTreeWidgetItem, QStackedWidget, QSizePolicy, QDockWidget, QToolTip
+    QTreeWidgetItem, QStackedWidget, QSizePolicy, QDockWidget, QToolTip,
+    QGraphicsDropShadowEffect
 )
 from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal, QSettings, QUrl, QMimeData, QSize, QPropertyAnimation, QEasingCurve, QPoint
 import threading
@@ -50,7 +51,7 @@ try:
     from src.gui_enhancements import (
         ToastNotification, ToastType, QuickActionsDialog,
         QuickActionItem, WelcomeWidget, EnhancedStatusBar,
-        KeyboardShortcutHelper
+        KeyboardShortcutHelper, AttachmentInput, AttachmentChip
     )
     ENHANCEMENTS_AVAILABLE = True
 except ImportError as e:
@@ -1362,6 +1363,9 @@ class SearchableTerminal(QTextEdit):
 
 
 class CrackedCodeGUI(QMainWindow):
+    voice_load_result = pyqtSignal(object)  # carries ("success", bool) or ("error", Exception)
+    voice_transcribed = pyqtSignal(str)     # carries transcribed text from background thread
+    
     def __init__(self):
         super().__init__()
         self.config = {}
@@ -1369,6 +1373,7 @@ class CrackedCodeGUI(QMainWindow):
         self.engine = None
         self.voice: Optional[Any] = None
         self.voice_recording = False
+        self._voice_transcribing = False
         self._loading_voice = False
         self.project_path: Optional[Path] = None
         self.status_labels = {}
@@ -1383,6 +1388,8 @@ class CrackedCodeGUI(QMainWindow):
         self._auto_save_timer.setSingleShot(True)
         self._auto_save_timer.timeout.connect(self._auto_save_current_file)
         self._externally_modified_files: Set[str] = set()
+        self.left_panel_visible = True
+        self.left_panel_width = 280
         
         self.load_config()
         self.setup_atlan_theme()
@@ -1534,6 +1541,10 @@ class CrackedCodeGUI(QMainWindow):
             if self.config.get("auto_load_stt", True):
                 QTimer.singleShot(2000, self._delayed_stt_load)
 
+            # Connect thread-safe signals for background thread communication
+            self.voice_load_result.connect(self._on_voice_load_result)
+            self.voice_transcribed.connect(self._on_voice_transcribed)
+
             logger.info(f"Voice engine initialized: {status}")
         except Exception as e:
             logger.error(f"Voice init failed: {e}")
@@ -1553,6 +1564,24 @@ class CrackedCodeGUI(QMainWindow):
         """Register voice command handlers that execute real GUI operations."""
         if not self.voice:
             return
+        def _build_from_cmd(cmd):
+            self.plan_btn.setChecked(True)
+            self.build_btn.setChecked(True)
+            self.set_mode("plan")
+            self.set_mode("build")
+            self.term_input.setText(cmd.raw_text)
+            self.run_term()
+        def _plan_from_cmd(cmd):
+            self.plan_btn.setChecked(True)
+            self.set_mode("plan")
+            self.term_input.setText(cmd.raw_text)
+            self.run_term()
+        def _write_from_cmd(cmd):
+            self.plan_btn.setChecked(True)
+            self.set_mode("plan")
+            stripped = cmd.raw_text.lower().replace("write", "").replace("create", "").replace("generate", "").replace("make", "").replace("code a", "").replace("build a", "").strip()
+            self.term_input.setText(stripped or cmd.raw_text)
+            self.run_term()
         handlers = {
             CommandType.STOP: lambda cmd: self.stop_current_operation(),
             CommandType.EXECUTE: lambda cmd: self.exec_code(),
@@ -1560,11 +1589,12 @@ class CrackedCodeGUI(QMainWindow):
             CommandType.COPY: lambda cmd: self.copy_output(),
             CommandType.CLEAR: lambda cmd: self.clear_terminal(),
             CommandType.VOICE: lambda cmd: self.toggle_voice(),
-            CommandType.PLAN: lambda cmd: self.plan_btn.setChecked(True),
-            CommandType.BUILD: lambda cmd: self.build_btn.setChecked(True),
+            CommandType.PLAN: _plan_from_cmd,
+            CommandType.BUILD: _build_from_cmd,
             CommandType.NEW_TAB: lambda cmd: self.new_file(),
             CommandType.CLOSE_TAB: lambda cmd: self.close_current_tab(),
             CommandType.HELP: lambda cmd: self.show_help(),
+            CommandType.WRITE: _write_from_cmd,
         }
         for cmd_type, handler in handlers.items():
             self.voice.register_command_handler(cmd_type, handler)
@@ -1835,6 +1865,10 @@ class CrackedCodeGUI(QMainWindow):
             }}
             QCheckBox::indicator:checked {{ background: {ATLAN_GREEN}; }}
             QCheckBox::indicator:hover {{ border: 1px solid {ATLAN_CYAN}; }}
+            QScrollArea {{ background-color: {ATLAN_DARK}; border: none; }}
+            QTextBrowser {{ background-color: #050505; color: {ATLAN_GREEN}; border: 1px solid {ATLAN_BORDER}; border-radius: 6px; }}
+            QTableWidget {{ background-color: #050505; color: {ATLAN_GREEN}; border: 1px solid {ATLAN_BORDER}; gridline-color: {ATLAN_BORDER}; }}
+            QTableWidget::item:selected {{ background-color: {ATLAN_GREEN}; color: {ATLAN_DARK}; }}
         """)
 
     def init_ui(self):
@@ -1912,16 +1946,29 @@ class CrackedCodeGUI(QMainWindow):
         term_layout.addWidget(self.terminal.search_bar)
         
         tin = QHBoxLayout()
-        prompt_label = QLabel(">")
-        prompt_label.setStyleSheet(f"color: {ATLAN_CYAN}; font-weight: bold; font-size: 14px;")
-        tin.addWidget(prompt_label)
+        if ENHANCEMENTS_AVAILABLE:
+            self.term_input = AttachmentInput()
+            self.term_input.setToolTip("Command input - press Enter to send")
+            self.term_input.returnPressed.connect(self.run_term)
+            self.term_input.installEventFilter(self)
+            tin.addWidget(self.term_input)
+        else:
+            prompt_label = QLabel(">")
+            prompt_label.setStyleSheet(f"color: {ATLAN_CYAN}; font-weight: bold; font-size: 14px;")
+            tin.addWidget(prompt_label)
+            self.term_input = QLineEdit()
+            self.term_input.setPlaceholderText("Enter prompt or command... (Up/Down for history)")
+            self.term_input.setToolTip("Command input - press Enter to send")
+            self.term_input.returnPressed.connect(self.run_term)
+            self.term_input.installEventFilter(self)
+            tin.addWidget(self.term_input)
         
-        self.term_input = QLineEdit()
-        self.term_input.setPlaceholderText("Enter prompt or command... (Up/Down for history)")
-        self.term_input.setToolTip("Command input - press Enter to send")
-        self.term_input.returnPressed.connect(self.run_term)
-        self.term_input.installEventFilter(self)
-        tin.addWidget(self.term_input)
+        self.stage_indicator = QLabel("")
+        self.stage_indicator.setFixedWidth(160)
+        self.stage_indicator.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.stage_indicator.setStyleSheet(f"color: {ATLAN_GOLD}; font-size: 10px; font-weight: bold; padding: 2px 6px; border: 1px solid {ATLAN_BORDER}; border-radius: 4px; background-color: #0a0a0a;")
+        self.stage_indicator.hide()
+        tin.addWidget(self.stage_indicator)
         
         send_btn = QPushButton("SEND")
         send_btn.setToolTip("Send command (Enter)")
@@ -1935,6 +1982,7 @@ class CrackedCodeGUI(QMainWindow):
         main.addWidget(right, 3)
         
         self.create_status()
+        self._apply_glow_effects()
         
         QTimer.singleShot(1000, self.post_init)
 
@@ -2035,6 +2083,7 @@ class CrackedCodeGUI(QMainWindow):
             QuickActionItem("Clear Terminal", "", self.clear_terminal, "Terminal"),
             QuickActionItem("Copy Output", "", self.copy_output, "Terminal"),
             QuickActionItem("Show Help", "F1", self.show_help, "Help"),
+            QuickActionItem("Toggle Sidebar", "Ctrl+Shift+B", self.toggle_left_panel, "View"),
             QuickActionItem("Toggle Fullscreen", "F11", self.toggle_full, "View"),
             QuickActionItem("Analyze Screen", "Ctrl+Shift+S", self.analyze_screen, "Vision"),
             QuickActionItem("New Project", "", self.new_proj, "Project"),
@@ -2084,6 +2133,10 @@ class CrackedCodeGUI(QMainWindow):
         
         prev_tab_pg = QShortcut(QKeySequence("Ctrl+PgUp"), self)
         prev_tab_pg.activated.connect(self.scroll_tabs_left)
+
+        # Toggle sidebar
+        sidebar_shortcut = QShortcut(QKeySequence("Ctrl+Shift+B"), self)
+        sidebar_shortcut.activated.connect(self.toggle_left_panel)
     
     def show_quick_actions(self):
         """Show the command palette."""
@@ -2210,6 +2263,12 @@ class CrackedCodeGUI(QMainWindow):
         palette_action.setToolTip("Open command palette (Ctrl+Shift+P)")
         palette_action.triggered.connect(self.show_quick_actions)
         view_menu.addAction(palette_action)
+        
+        sidebar_action = QAction("TOGGLE SIDEBAR", self)
+        sidebar_action.setShortcut(QKeySequence("Ctrl+Shift+B"))
+        sidebar_action.setToolTip("Show/hide left sidebar (Ctrl+Shift+B)")
+        sidebar_action.triggered.connect(self.toggle_left_panel)
+        view_menu.addAction(sidebar_action)
         
         view_menu.addSeparator()
         
@@ -2498,6 +2557,8 @@ class CrackedCodeGUI(QMainWindow):
         
         dock.setWidget(panel_tabs)
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, dock)
+        self.workspace_dock = dock
+        self.panel_tabs = panel_tabs
         
         return dock
 
@@ -2589,6 +2650,17 @@ class CrackedCodeGUI(QMainWindow):
             }}
         """)
         self.addToolBar(tb)
+        
+        # --- SIDEBAR TOGGLE ---
+        self.sidebar_btn = QPushButton("\u2630")
+        self.sidebar_btn.setCheckable(True)
+        self.sidebar_btn.setChecked(True)
+        self.sidebar_btn.setFixedWidth(36)
+        self.sidebar_btn.setToolTip("Toggle sidebar (Ctrl+Shift+B)")
+        self.sidebar_btn.clicked.connect(self.toggle_left_panel)
+        tb.addWidget(self.sidebar_btn)
+        
+        tb.addSeparator()
         
         # --- MODE GROUP: Plan / Build ---
         mode_label = QLabel("MODE:")
@@ -2703,43 +2775,32 @@ class CrackedCodeGUI(QMainWindow):
         if ENHANCEMENTS_AVAILABLE:
             sb = EnhancedStatusBar(self)
             self.setStatusBar(sb)
-            self.status_lbl = sb.status_label  # Compatibility
-            # Will be updated via sb methods
+            self.status_lbl = sb.status_badge
+            self.enhanced_status = sb
         else:
             sb = QStatusBar()
             self.setStatusBar(sb)
             self.status_lbl = QLabel("READY")
             sb.addWidget(self.status_lbl)
+            self.enhanced_status = None
         
-        self.cache_lbl = QLabel("Cache: 0")
-        self.cache_lbl.setToolTip("Response cache size")
-        self.statusBar().addPermanentWidget(self.cache_lbl)
-        
-        self.ollama_lbl = QLabel("OLLAMA: ...")
-        self.ollama_lbl.setToolTip("Ollama connection status")
-        self.statusBar().addPermanentWidget(self.ollama_lbl)
-        
-        self.model_lbl = QLabel("MODEL: none")
-        self.model_lbl.setToolTip("Current AI model")
-        self.statusBar().addPermanentWidget(self.model_lbl)
-        
-        self.task_status_lbl = QLabel("Tasks: 0")
-        self.task_status_lbl.setToolTip("Task count")
-        self.statusBar().addPermanentWidget(self.task_status_lbl)
-        
-        self.coherence_status_lbl = QLabel("C: 1.00")
-        self.coherence_status_lbl.setToolTip("Cross-agent coherence")
-        self.coherence_status_lbl.setStyleSheet(f"color: {ATLAN_GREEN};")
-        self.statusBar().addPermanentWidget(self.coherence_status_lbl)
-        
+        self.cache_lbl = QLabel("")
+        self.cache_lbl.setVisible(False)
+        self.ollama_lbl = QLabel("")
+        self.ollama_lbl.setVisible(False)
+        self.model_lbl = QLabel("")
+        self.model_lbl.setVisible(False)
+        self.task_status_lbl = QLabel("")
+        self.task_status_lbl.setVisible(False)
+        self.coherence_status_lbl = QLabel("")
+        self.coherence_status_lbl.setVisible(False)
         self.time_lbl = QLabel("")
-        self.statusBar().addPermanentWidget(self.time_lbl)
+        self.time_lbl.setVisible(False)
         
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_time)
         self.timer.start(1000)
         
-        # Toast notification
         if ENHANCEMENTS_AVAILABLE:
             self.toast = ToastNotification(self)
         else:
@@ -3557,6 +3618,17 @@ class CrackedCodeGUI(QMainWindow):
     def set_status(self, text: str):
         if hasattr(self, 'status_lbl'):
             self.status_lbl.setText(text)
+            status_colors = {"processing": ATLAN_GREEN, "ready": ATLAN_CYAN, "error": ATLAN_RED, "waiting": ATLAN_GOLD}
+            color = ATLAN_GREEN
+            for key, c in status_colors.items():
+                if key in text.lower():
+                    color = c
+                    break
+            if hasattr(self, 'stage_indicator') and not self.stage_indicator.isVisible():
+                self.stage_indicator.setText(f"[{text[:8]}]")
+                self.stage_indicator.setStyleSheet(f"color: {color}; font-size: 10px; font-weight: bold; padding: 2px 6px; border: 1px solid {color}; border-radius: 4px; background-color: #0a0a0a;")
+                self.stage_indicator.show()
+                QTimer.singleShot(3000, lambda: self.stage_indicator.hide() if hasattr(self, 'stage_indicator') else None)
 
     def update_task_status(self):
         if hasattr(self, 'orchestrator'):
@@ -4462,6 +4534,13 @@ class CrackedCodeGUI(QMainWindow):
                 self.statusBar().stop_activity()
 
     def toggle_voice(self):
+        if self.voice_recording:
+            self.voice_recording = False
+            self.voice_btn.setChecked(False)
+            self.set_status("READY")
+            self.term("[VOICE] Recording stopped")
+            return
+
         if not self.voice or not self.voice.is_ready:
             self.term("[VOICE: not available]")
             return
@@ -4475,26 +4554,22 @@ class CrackedCodeGUI(QMainWindow):
             self.load_voice_model()
             return
 
-        if self.voice_recording:
-            self.voice_recording = False
-            self.voice_btn.setChecked(False)
-            self.set_status("READY")
-            self.term("[VOICE] Recording stopped")
-        else:
-            self.voice_recording = True
-            self.voice_btn.setChecked(True)
-            self.set_status("RECORDING...")
-            self.term("[VOICE] Recording... Speak now!")
-            self._voice_thread = threading.Thread(target=self._record_voice_thread, daemon=True)
-            self._voice_thread.start()
+        self.voice_recording = True
+        self.voice_btn.setChecked(True)
+        self.set_status("RECORDING...")
+        self.term("[VOICE] Recording... Speak now!")
+        self._voice_thread = threading.Thread(target=self._record_voice_thread, daemon=True)
+        self._voice_thread.start()
 
     def load_voice_model(self):
         """Load Whisper speech recognition model in background thread."""
         if hasattr(self, '_loading_voice') and self._loading_voice:
-            self.term("[VOICE] Already loading...")
+            self.term("[VOICE] Already loading... (wait or click again to force)")
             return
-
+        
         self._loading_voice = True
+        # Timeout guard: reset flag after 60s so user can retry
+        QTimer.singleShot(60000, lambda: setattr(self, '_loading_voice', False) if getattr(self, '_loading_voice', False) else None)
         self.load_voice_btn.setEnabled(False)
         self.load_voice_btn.setText("LOADING...")
         self.term("[VOICE] Loading Whisper model in background... (may take a moment)")
@@ -4503,11 +4578,19 @@ class CrackedCodeGUI(QMainWindow):
         def _do_load():
             try:
                 success = self.voice.stt.load()
-                QTimer.singleShot(0, lambda s=success: self._on_voice_load_complete(s))
+                self.voice_load_result.emit(("success", success))
             except Exception as e:
-                QTimer.singleShot(0, lambda e=e: self._on_voice_load_error(e))
+                self.voice_load_result.emit(("error", e))
 
         threading.Thread(target=_do_load, daemon=True).start()
+
+    def _on_voice_load_result(self, result):
+        """Thread-safe handler for voice load completion (runs on main thread via signal)."""
+        kind, value = result
+        if kind == "success":
+            self._on_voice_load_complete(value)
+        else:
+            self._on_voice_load_error(value)
 
     def _on_voice_load_complete(self, success):
         """Called on main thread after voice model load attempt."""
@@ -4532,46 +4615,92 @@ class CrackedCodeGUI(QMainWindow):
         self.show_toast(f"Voice error: {error}", ToastType.ERROR)
 
     def _record_voice_thread(self):
-        """Run voice recording in background thread to avoid blocking GUI."""
-        if not self.voice_recording or not self.voice:
+        """Record audio in background until toggled off, transcribing chunks in real-time."""
+        if not self.voice_recording or not self.voice or not self.voice.stt:
             return
+        if self._voice_transcribing:
+            return
+        self._voice_transcribing = True
 
         try:
-            result = self.voice.listen(duration=5.0, use_vad=False)
-            if result.success and result.text:
-                transcribed = result.text.strip()
-                QTimer.singleShot(0, lambda t=transcribed: self._handle_voice_result(t))
-            elif result.error:
-                QTimer.singleShot(0, lambda e=result.error: self.term(f"[VOICE ERROR] {e}"))
+            import sounddevice as sd
+            import numpy as np
+            sr = self.voice.stt.config.sample_rate
+            total_chunks: list = []
+            partials = 0
+            frames_per_chunk = int(sr * 1.0)  # 1s chunks
+            self.term("[VOICE] Recording... (click VOICE again to stop)")
 
-            if self.voice_recording:
-                QTimer.singleShot(300, self._restart_voice_recording)
+            with sd.InputStream(samplerate=sr, channels=1, dtype='float32') as stream:
+                while self.voice_recording:
+                    chunk, _ = stream.read(frames_per_chunk)
+                    total_chunks.append(chunk.copy())
+                    partials += 1
+                    if partials >= 3:
+                        partial_audio = np.concatenate(total_chunks[-3:])
+                        result = self.voice.stt.transcribe(partial_audio)
+                        if result.success and result.text:
+                            self.voice_transcribed.emit(f"[partial] {result.text.strip()}")
+
+            if total_chunks:
+                full_audio = np.concatenate(total_chunks)
+                result = self.voice.stt.transcribe(full_audio)
+                if result.success and result.text:
+                    self.voice_transcribed.emit(result.text.strip())
+                else:
+                    self.term("[VOICE] No speech detected")
+            else:
+                self.term("[VOICE] No audio captured")
         except Exception as e:
             logger.error(f"Voice recording error: {e}")
-            QTimer.singleShot(0, lambda: self.term(f"[VOICE ERROR] {e}"))
-            QTimer.singleShot(0, lambda: setattr(self, 'voice_recording', False))
-            QTimer.singleShot(0, lambda: self.voice_btn.setChecked(False) if hasattr(self, 'voice_btn') else None)
-            QTimer.singleShot(0, lambda: self.set_status("READY"))
+            self.voice_transcribed.emit(f"[ERROR] {e}")
+        finally:
+            self._voice_transcribing = False
+
+    def _on_voice_transcribed(self, text: str):
+        """Thread-safe handler for voice transcription (runs on main thread via signal)."""
+        try:
+            if text.startswith("[ERROR] "):
+                self.term(f"[VOICE ERROR] {text[8:]}")
+                self.voice_recording = False
+                self.voice_btn.setChecked(False)
+                self.set_status("READY")
+                return
+            if text.startswith("[partial] "):
+                partial = text[10:]
+                self.term(f"[VOICE live] {partial}", level="voice")
+                return
+            self._handle_voice_result(text)
+        except Exception as e:
+            logger.error(f"Voice handler error: {e}")
+            self.term(f"[VOICE ERROR] {e}", level="error")
+            self.voice_recording = False
+            self.voice_btn.setChecked(False)
+            self.set_status("READY")
 
     def _handle_voice_result(self, transcribed: str):
         """Process voice result on main thread."""
-        self.term(f"[VOICE] '{transcribed}'")
+        try:
+            self.term(f"[VOICE] '{transcribed}'")
 
-        command = self.voice.processor.parse(transcribed)
-        if command.command_type.value != "unknown":
-            self.term(f"[CMD] {command.command_type.value} (conf={command.confidence:.2f})")
-            executed = self.voice.processor.execute(command)
-            if executed:
-                self.voice.speak(f"Executed {command.command_type.value}")
+            command = self.voice.processor.parse(transcribed)
+            if command.command_type.value != "unknown":
+                self.term(f"[CMD] {command.command_type.value} (conf={command.confidence:.2f})")
+                executed = self.voice.processor.execute(command)
+                if executed:
+                    self.voice.speak(f"Executed {command.command_type.value}")
+                else:
+                    self.voice.speak(f"Recognized {command.command_type.value}")
             else:
-                self.voice.speak(f"Recognized {command.command_type.value}")
-        else:
-            self.term_input.setText(transcribed)
-            if self.orchestrator:
-                intent = self.engine.parse_intent(transcribed)
-                agent, task = self.orchestrator.delegate(intent, transcribed)
-                self.term(f"[DELEGATED] -> {agent}")
-                self.update_orchestrator_display()
+                self.plan_btn.setChecked(True)
+                self.set_mode("plan")
+                self.term_input.setText(transcribed)
+                if self.engine:
+                    self.term(f"[VOICE] Transcribed: '{transcribed[:80]}'")
+                    self.run_term()
+        except Exception as e:
+            logger.error(f"Voice result error: {e}")
+            self.term(f"[VOICE ERROR] {e}", level="error")
 
     def _restart_voice_recording(self):
         """Restart recording loop if still active."""
@@ -4590,7 +4719,8 @@ class CrackedCodeGUI(QMainWindow):
 
     def run_term(self):
         cmd = self.term_input.text().strip()
-        if not cmd:
+        attachments = getattr(self.term_input, 'get_attachments', lambda: [])()
+        if not cmd and not attachments:
             return
         
         global COMMAND_HISTORY, HISTORY_INDEX
@@ -4598,8 +4728,13 @@ class CrackedCodeGUI(QMainWindow):
             COMMAND_HISTORY.append(cmd)
         HISTORY_INDEX = -1
         
-        self.term(f"> {cmd}")
+        if attachments:
+            attach_info = "; ".join(attachments)
+            self.term(f"[attachments: {attach_info}]")
+        self.term(f"> {cmd}" if cmd else "")
         self.term_input.clear()
+        if hasattr(self.term_input, 'clear_attachments'):
+            self.term_input.clear_attachments()
         self.process_prompt(cmd)
 
     def process_prompt(self, text):
@@ -4618,17 +4753,24 @@ class CrackedCodeGUI(QMainWindow):
             self.progress_bar.setValue(0)
             return
 
-        assigned_task = None
-
         try:
             import asyncio
             
-            intent = self.engine.parse_intent(text)
+            intent_prompt = self.engine.parse_intent(text)
+            self.term(f"[INTENT] {intent_prompt.intent.value}")
             self.progress_bar.setValue(20)
             
+            task_id = None
             if self.orchestrator:
-                agent, assigned_task = self.orchestrator.delegate(intent, text)
-                self.term(f"[INTENT] {intent.value} -> [AGENT] {agent}")
+                try:
+                    unified = self.orchestrator.unified
+                    task = unified.create_task(
+                        prompt=text,
+                        intent=intent_prompt.intent.value,
+                    )
+                    task_id = task.id if hasattr(task, 'id') else None
+                except Exception:
+                    task_id = None
                 self.update_orchestrator_display()
 
             self.progress_bar.setValue(40)
@@ -4636,6 +4778,28 @@ class CrackedCodeGUI(QMainWindow):
             streaming = self.config.get("streaming_enabled", True)
             full_response = ""
             
+            def stage_callback(stage: str, detail: str):
+                stages = {
+                    "parsing": ("PRC", ATLAN_GREEN),
+                    "intent": ("INTENT", ATLAN_GREEN),
+                    "agent": ("AGENT", ATLAN_PURPLE),
+                    "context": ("CTX", ATLAN_CYAN),
+                    "model": ("MODEL", ATLAN_GOLD),
+                    "generating": ("GEN", ATLAN_GREEN),
+                    "complete": ("DONE", ATLAN_GREEN),
+                    "executing": ("RUN", ATLAN_CYAN),
+                    "searching": ("SEARCH", ATLAN_BLUE),
+                    "vision": ("VISION", ATLAN_PURPLE),
+                    "security": ("SEC", ATLAN_RED),
+                }
+                prefix, color = stages.get(stage, ("STAGE", ATLAN_GREEN))
+                stage_name = stage.upper()[:6]
+                self.stage_indicator.setText(f"[{stage_name}]")
+                self.stage_indicator.setStyleSheet(f"color: {color}; font-size: 10px; font-weight: bold; padding: 2px 6px; border: 1px solid {color}; border-radius: 4px; background-color: #0a0a0a;")
+                self.stage_indicator.show()
+                self.term(f"[{prefix}] {detail}", level="ai" if stage == "generating" else "reasoning")
+                QApplication.processEvents()
+
             if streaming:
                 def stream_callback(chunk):
                     nonlocal full_response
@@ -4644,7 +4808,7 @@ class CrackedCodeGUI(QMainWindow):
                     self.terminal.moveCursor(QTextCursor.MoveOperation.End)
                     QApplication.processEvents()
                 
-                response = asyncio.run(self.engine.process(text, streaming=True, callback=stream_callback))
+                response = asyncio.run(self.engine.process(text, streaming=True, callback=stream_callback, stage_callback=stage_callback))
             else:
                 response = asyncio.run(self.engine.process(text))
                 full_response = getattr(response, 'text', '')
@@ -4665,51 +4829,209 @@ class CrackedCodeGUI(QMainWindow):
             
             exec_time = getattr(response, 'execution_time', 0)
             self.term(f"[COMPLETED in {exec_time:.2f}s]")
-            
-            if self.orchestrator and assigned_task is not None:
-                self.orchestrator.complete_task(assigned_task.task_id, full_response or getattr(response, 'text', ''))
-                self.update_orchestrator_display()
-            
             self.set_status("READY")
             
         except Exception as e:
             self.term(f"[ERROR] {type(e).__name__}: {e}")
             self.set_status("ERROR")
             self.show_notification(f"Error: {e}", NotificationType.ERROR)
-            if self.orchestrator and assigned_task is not None:
-                self.orchestrator.fail_task(assigned_task.task_id, str(e))
-                self.update_orchestrator_display()
         
         self.progress_bar.setValue(100)
         QTimer.singleShot(500, lambda: self.progress_bar.setValue(0))
+        QTimer.singleShot(3000, lambda: self.stage_indicator.hide() if hasattr(self, 'stage_indicator') else None)
         self.update_task_status()
 
+    def _insert_syntax_highlighted(self, cursor, code: str, lang: str = ""):
+        """Insert code with basic syntax highlighting into the terminal."""
+        import re
+        base_fmt = QTextCharFormat()
+        base_fmt.setForeground(QColor(ATLAN_CYAN))
+        base_fmt.setFontFamily("Consolas")
+        base_fmt.setFontPointSize(10)
+
+        kw_fmt = QTextCharFormat()
+        kw_fmt.setForeground(QColor(ATLAN_CYAN))
+        kw_fmt.setFontFamily("Consolas")
+        kw_fmt.setFontPointSize(10)
+
+        str_fmt = QTextCharFormat()
+        str_fmt.setForeground(QColor(ATLAN_GOLD))
+        str_fmt.setFontFamily("Consolas")
+        str_fmt.setFontPointSize(10)
+
+        cmt_fmt = QTextCharFormat()
+        cmt_fmt.setForeground(QColor("#559955"))
+        cmt_fmt.setFontFamily("Consolas")
+        cmt_fmt.setFontPointSize(10)
+
+        num_fmt = QTextCharFormat()
+        num_fmt.setForeground(QColor(ATLAN_ORANGE))
+        num_fmt.setFontFamily("Consolas")
+        num_fmt.setFontPointSize(10)
+
+        dec_fmt = QTextCharFormat()
+        dec_fmt.setForeground(QColor(ATLAN_GOLD))
+        dec_fmt.setFontFamily("Consolas")
+        dec_fmt.setFontPointSize(10)
+
+        keywords = {
+            "def", "class", "if", "else", "elif", "for", "while", "import",
+            "from", "return", "try", "except", "finally", "with", "as",
+            "pass", "break", "continue", "raise", "yield", "lambda",
+            "async", "await", "in", "not", "and", "or", "is", "None",
+            "True", "False", "del", "global", "nonlocal", "assert",
+        }
+
+        token_pat = (
+            r"(\#[^\n]*)|"
+            r"(\"\"\"(?:[^\"\\]|\\.)*\"\"\"|\'\'\'(?:[^\'\\]|\\.)*\'\'\')|"
+            r"(\"[^\"\\]*\"|\'[^\'\\]*\')|"
+            r"(\b\d+\.?\d*\b)|"
+            r"(@\w+)|"
+            r"(\b[a-zA-Z_]\w*\b)|"
+            r"(\S)|"
+            r"(\s+)"
+        )
+        token_re = re.compile(token_pat, re.DOTALL)
+
+        for m in token_re.finditer(code):
+            comment, tstr, sstr, num, dec, kw, punct, ws = m.groups()
+            if comment:
+                cursor.insertText(comment, cmt_fmt)
+            elif tstr or sstr:
+                cursor.insertText(tstr or sstr, str_fmt)
+            elif num:
+                cursor.insertText(num, num_fmt)
+            elif dec:
+                cursor.insertText(dec, dec_fmt)
+            elif kw:
+                cursor.insertText(kw, kw_fmt if kw in keywords else base_fmt)
+            elif punct:
+                cursor.insertText(punct, base_fmt)
+            elif ws:
+                cursor.insertText(ws, base_fmt)
+
+    def _insert_with_code_highlight(self, cursor, text: str, default_fmt: QTextCharFormat):
+        """Insert text, detecting and highlighting ```code blocks```."""
+        import re
+        parts = re.split(r'(```(\w*)\n?|\n?```)', text)
+        i = 0
+        in_code = False
+        code_buf = ""
+        lang = ""
+        while i < len(parts):
+            part = parts[i]
+            if part.startswith("```"):
+                if in_code:
+                    self._insert_syntax_highlighted(cursor, code_buf, lang)
+                    code_buf = ""
+                    lang = ""
+                else:
+                    cursor.insertText(code_buf, default_fmt)
+                    code_buf = ""
+                    lang = part[3:].strip() if len(part) > 3 else ""
+                in_code = not in_code
+            else:
+                code_buf += part
+            i += 1
+        if in_code:
+            self._insert_syntax_highlighted(cursor, code_buf, lang)
+        else:
+            cursor.insertText(code_buf, default_fmt)
+
+    def _apply_glow_effects(self):
+        """Apply glow effects to key UI widgets."""
+        effects = [
+            (self.terminal.parent() if hasattr(self.terminal, 'parent') else None,
+             ATLAN_GREEN, 12),
+            (None, None, None),
+        ]
+        for child in self.findChildren(QGroupBox):
+            if child.title() == "TERMINAL":
+                glow = QGraphicsDropShadowEffect()
+                glow.setBlurRadius(12)
+                glow.setColor(QColor(ATLAN_GREEN))
+                glow.setOffset(0, 0)
+                child.setGraphicsEffect(glow)
+                break
+        for child in self.findChildren(QPushButton):
+            if child.text() == "SEND":
+                glow = QGraphicsDropShadowEffect()
+                glow.setBlurRadius(10)
+                glow.setColor(QColor(ATLAN_GREEN))
+                glow.setOffset(0, 0)
+                child.setGraphicsEffect(glow)
+                break
+        if hasattr(self, 'progress_bar'):
+            glow = QGraphicsDropShadowEffect()
+            glow.setBlurRadius(8)
+            glow.setColor(QColor(ATLAN_CYAN))
+            glow.setOffset(0, 0)
+            self.progress_bar.setGraphicsEffect(glow)
+        if hasattr(self, 'term_input') and hasattr(self.term_input, 'text_input'):
+            for child in self.term_input.findChildren(QLabel):
+                if child.text() == ">":
+                    glow = QGraphicsDropShadowEffect()
+                    glow.setBlurRadius(8)
+                    glow.setColor(QColor(ATLAN_CYAN))
+                    glow.setOffset(0, 0)
+                    child.setGraphicsEffect(glow)
+                    break
+
     def term(self, text: str, end: str = "\n", level: str = "info"):
-        """Enhanced terminal output with timestamps and color coding."""
-        if hasattr(self, 'terminal'):
-            import time
-            timestamp = time.strftime("%H:%M:%S")
-            
-            # Color-code based on level
-            prefixes = {
-                "info":      f"[{timestamp}]",
-                "success":   f"[{timestamp}] âœ“",
-                "warning":   f"[{timestamp}] âš ",
-                "error":     f"[{timestamp}] âœ—",
-                "voice":     f"[{timestamp}] ðŸŽ¤",
-                "ai":        f"[{timestamp}] ðŸ¤–",
-                "reasoning": f"[{timestamp}] ðŸ§ ",
-            }
-            prefix = prefixes.get(level, f"[{timestamp}]")
-            
-            self.terminal.append(f"{prefix} {text}")
-            self.terminal.moveCursor(QTextCursor.MoveOperation.End)
+        """Enhanced terminal output with timestamps and real color coding."""
+        if not hasattr(self, 'terminal'):
+            return
+        import time
+        timestamp = time.strftime("%H:%M:%S")
+        
+        level_colors = {
+            "info":      (ATLAN_GREEN, f"[{timestamp}]"),
+            "success":   (ATLAN_GREEN, f"[{timestamp}] \u2713"),
+            "warning":   (ATLAN_GOLD,  f"[{timestamp}] \u26a0"),
+            "error":     (ATLAN_RED,   f"[{timestamp}] \u2717"),
+            "voice":     (ATLAN_CYAN,  f"[{timestamp}] \U0001f3a4"),
+            "ai":        (ATLAN_PURPLE,f"[{timestamp}] \U0001f916"),
+            "reasoning": (ATLAN_BLUE,  f"[{timestamp}] \U0001f9e0"),
+            "code":      (ATLAN_CYAN,  f"[{timestamp}] \u23e9"),
+            "stage":     (ATLAN_GOLD,  f"[{timestamp}] \u25b6"),
+        }
+        color, prefix = level_colors.get(level, (ATLAN_GREEN, f"[{timestamp}]"))
+        
+        cursor = self.terminal.textCursor()
+        cursor.movePosition(QTextCursor.MoveOperation.End)
+        
+        fmt = QTextCharFormat()
+        fmt.setForeground(QColor(color))
+        cursor.insertText(f"{prefix} ", fmt)
+        
+        if level == "code" or "```" in text:
+            self._insert_with_code_highlight(cursor, text, fmt)
+        else:
+            cursor.insertText(text, fmt)
+        cursor.insertText(end, fmt)
+        
+        self.terminal.setTextCursor(cursor)
+        self.terminal.ensureCursorVisible()
 
     def toggle_full(self):
         if self.isFullScreen():
             self.showNormal()
         else:
             self.showFullScreen()
+
+    def toggle_left_panel(self):
+        if not hasattr(self, 'workspace_dock') or not self.workspace_dock:
+            return
+        self.left_panel_visible = not self.left_panel_visible
+        self.workspace_dock.setVisible(self.left_panel_visible)
+        if hasattr(self, 'sidebar_btn'):
+            self.sidebar_btn.setText("\u2630" if self.left_panel_visible else "\u2630")
+            self.sidebar_btn.setChecked(self.left_panel_visible)
+            self.sidebar_btn.setToolTip(
+                "Hide sidebar (Ctrl+Shift+B)" if self.left_panel_visible
+                else "Show sidebar (Ctrl+Shift+B)"
+            )
 
     def restore_state(self):
         g = self.settings.value("geometry")

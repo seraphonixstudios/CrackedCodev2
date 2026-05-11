@@ -399,91 +399,37 @@ class SessionManager:
 
 
 class CrackedCodeEngine:
-    PROMPT_TEMPLATES = {
-        Intent.CODE: """Generate complete Python code for this task.
+    UNIFIED_SYSTEM_PROMPT = """You are CrackedCode, a local AI coding assistant.
 
-Requirements:
-- Include all necessary imports
-- Add proper error handling
-- Include type hints and docstrings
-- Write clean, production-ready code
-- Follow PEP 8 style guidelines
+Core directives:
+- Write clean, production-ready code with type hints and error handling
+- Be concise and direct — no unnecessary exposition
+- No placeholders, TODO comments, or pseudo-code in production code
+- Follow language conventions (PEP 8 for Python)
+- Include all necessary imports; prefer standard library when reasonable
+- Handle edge cases and validate inputs
 
-Task: {prompt}
+When responding:
+- Output code in fenced blocks with language specified
+- Explain the approach briefly, then show the code
+- If multiple files, show each in a separate code block
 
-Output the code in a code block.
-""",
-        Intent.DEBUG: """Find and fix bugs in the following code.
+Tool usage:
+- Use Read to view files, Edit/Write to modify
+- Use Glob/Grep to find files and search content
+- Prefer specialized tools over shell for file operations"""
 
-Analysis Steps:
-1. Identify the bug or issue
-2. Explain the root cause
-3. Provide the fixed code
-
-Task: {prompt}
-
-Output analysis and fixed code in a code block.
-""",
-        Intent.REVIEW: """Analyze and review the following code for quality.
-
-Check:
-1. Code structure and organization
-2. Error handling
-3. Performance considerations
-4. Security issues
-5. Best practices
-
-Provide a detailed review with suggestions.
-
-Task: {prompt}
-
-Output review in a code block.
-""",
-        Intent.BUILD: """Create a detailed implementation plan for this task.
-
-Include:
-1. Overall architecture
-2. File structure
-3. Step-by-step implementation
-4. Dependencies required
-5. Testing strategy
-
-Task: {prompt}
-
-Output plan in a code block.
-""",
-        Intent.VISION: """Analyze the provided screenshot and answer the user's question.
-
-Be specific about:
-- UI elements (buttons, menus, text fields)
-- Text content and labels
-- Error messages or warnings
-- Layout and visual structure
-
-Question: {prompt}
-""",
-        Intent.SECURITY: """Perform a security analysis for this task.
-
-Check for:
-1. Hardcoded secrets, API keys, passwords
-2. SQL injection, XSS, CSRF vulnerabilities
-3. Unsafe deserialization or eval/exec usage
-4. Missing input validation or sanitization
-5. Insecure file permissions or configurations
-6. Dependency vulnerabilities
-7. Insecure communication (HTTP vs HTTPS)
-
-Provide specific findings with file paths, line numbers, and remediation steps.
-
-Task: {prompt}
-""",
-        Intent.BROWSE: """Analyze the following web page content and answer the user's question.
-
-Content from {url}:
-{content}
-
-Question: {prompt}
-""",
+    SYSTEM_REMINDERS = {
+        Intent.CODE: "<system-reminder>\nYou are generating code. Focus on complete, working implementations.\n</system-reminder>",
+        Intent.DEBUG: "<system-reminder>\nYou are debugging. Analyze root cause first, then provide the minimal fix.\n</system-reminder>",
+        Intent.REVIEW: "<system-reminder>\nYou are reviewing code. Check for bugs, security issues, performance problems, and code quality.\n</system-reminder>",
+        Intent.BUILD: "<system-reminder>\nYou are planning. Outline architecture, file structure, and implementation steps before coding.\n</system-reminder>",
+        Intent.CHAT: "<system-reminder>\nYou are in chat mode. Explain concepts clearly without unnecessary code unless asked.\n</system-reminder>",
+        Intent.SECURITY: "<system-reminder>\nYou are performing a security audit. Check for vulnerabilities, hardcoded secrets, injection flaws, and insecure configurations.\n</system-reminder>",
+        Intent.VISION: "<system-reminder>\nYou are analyzing a screenshot. Describe UI elements, text content, and any visible errors or issues.\n</system-reminder>",
+        Intent.BROWSE: "<system-reminder>\nYou are analyzing web content. Extract key information and answer based on what you find.\n</system-reminder>",
+        Intent.EXECUTE: "<system-reminder>\nYou are executing commands. Validate safety, run, and report results clearly.\n</system-reminder>",
+        Intent.SEARCH: "<system-reminder>\nYou are searching. Find relevant code and information.\n</system-reminder>",
     }
     
     DEBUG_KEYWORDS = {
@@ -964,16 +910,17 @@ Question: {prompt}
         if request.intent == Intent.CHAT:
             request.intent = Intent.CODE
         
-        template = self.PROMPT_TEMPLATES.get(request.intent, "Write Python code.\n\nTask: {prompt}")
-        response = self.ollama.chat(template.format(prompt=prompt))
-        
+        reminder = self.SYSTEM_REMINDERS.get(request.intent, "")
+        user_msg = f"{reminder}\n\n{prompt}" if reminder else prompt
+        response = self.ollama.chat(user_msg, system=self.UNIFIED_SYSTEM_PROMPT)
+
         if not response.success:
             return response
-        
+
         code, filename = self._extract_code_from_response(response.text)
-        
+
         response.text = code
-        
+
         return response
 
     def generate_and_save(self, prompt: str, filepath: str = None) -> AgentResponse:
@@ -1109,7 +1056,7 @@ Requirements:
         intent_value = intent.value if hasattr(intent, "value") else str(intent).lower()
         return intent_role_map.get(intent_value)
 
-    async def process(self, prompt: str, streaming: bool = False, callback: Callable = None) -> AgentResponse:
+    async def process(self, prompt: str, streaming: bool = False, callback: Callable = None, stage_callback: Callable = None) -> AgentResponse:
         """Process a user prompt with full intent detection and execution.
         
         Includes complete reasoning chain for:
@@ -1118,9 +1065,13 @@ Requirements:
         - Execution path selection
         - Model selection
         - Response handling
+        
+        stage_callback: optional fn(stage_name: str, detail: str) called at each processing stage
         """
         import time
         start_time = time.time()
+        if stage_callback:
+            stage_callback("parsing", "Detecting intent...")
         
         # Plugin pre-process hook
         if _plugins_available:
@@ -1135,7 +1086,12 @@ Requirements:
         # Build execution path reasoning
         execution_reasoning = []
         execution_reasoning.append({"type": "observation", "content": f"Intent detected: {request.intent.value} (confidence: {request.context.get('confidence', 0):.2f})", "confidence": request.context.get('confidence', 0.5)})
+        if stage_callback:
+            stage_callback("intent", f"{request.intent.value} (conf={request.context.get('confidence', 0):.0%})")
         
+        if stage_callback:
+            stage_callback("agent", f"Agent: {self._intent_to_agent_role(request.intent) or 'auto'}")
+
         # Check plan mode
         if not self.plan_enabled and request.intent != Intent.CHAT:
             execution_reasoning.append({"type": "decision", "content": "Plan mode disabled - rejecting non-chat intent", "confidence": 1.0})
@@ -1171,6 +1127,8 @@ Requirements:
 
         # Route to execution handler with reasoning
         if request.intent == Intent.EXECUTE:
+            if stage_callback:
+                stage_callback("executing", "Executing shell command...")
             execution_reasoning.append({"type": "decision", "content": "Routing to CodeExecutor (shell command execution)", "confidence": 0.9})
             cmd = prompt.replace("run ", "").replace("execute ", "").strip()
             response = self.executor.run_shell(cmd)
@@ -1186,6 +1144,8 @@ Requirements:
             return response
         
         if request.intent == Intent.SEARCH:
+            if stage_callback:
+                stage_callback("searching", "Searching files...")
             execution_reasoning.append({"type": "decision", "content": "Routing to file search handler", "confidence": 0.9})
             response = self._search_files(prompt)
             response.reasoning_log = execution_reasoning + request.reasoning_log
@@ -1201,6 +1161,8 @@ Requirements:
         
         # Vision processing path
         if request.intent == Intent.VISION:
+            if stage_callback:
+                stage_callback("vision", "Analyzing screen...")
             execution_reasoning.append({"type": "decision", "content": "Routing to vision analysis handler", "confidence": 0.9})
             try:
                 from src.screen_capture import VisionAnalyzer
@@ -1248,6 +1210,8 @@ Requirements:
         
         # Security processing path
         if request.intent == Intent.SECURITY:
+            if stage_callback:
+                stage_callback("security", "Running security analysis...")
             execution_reasoning.append({"type": "decision", "content": "Routing to security analysis handler", "confidence": 0.9})
             try:
                 from src.tool_framework import get_tool_registry
@@ -1305,14 +1269,11 @@ Requirements:
                 report_lines.append(f"\n**Total Issues Found: {total_issues}**")
                 
                 # Also get LLM analysis with security context
-                template = self.PROMPT_TEMPLATES.get(Intent.SECURITY, "{prompt}")
-                formatted_prompt = template.format(prompt=request.text)
-                
-                # Prepend security scan results
+                reminder = self.SYSTEM_REMINDERS.get(Intent.SECURITY, "")
                 security_context = "\n".join(report_lines)
-                full_prompt = f"{security_context}\n\n{formatted_prompt}"
+                full_prompt = f"{reminder}\n\n{security_context}\n\n{request.text}" if reminder else f"{security_context}\n\n{request.text}"
                 
-                response = self.ollama.chat(full_prompt)
+                response = self.ollama.chat(full_prompt, system=self.UNIFIED_SYSTEM_PROMPT)
                 response.processing_path = "security_analysis"
                 response.model_used = self.model
                 
@@ -1382,9 +1343,9 @@ Requirements:
                             report += f"Screenshot captured: {len(screenshot_result.screenshot)} bytes\n"
                         
                         # Ask LLM to analyze
-                        template = self.PROMPT_TEMPLATES.get(Intent.BROWSE, "{prompt}")
-                        formatted = template.format(prompt=request.text, url=nav_result.url, content=content[:3000])
-                        llm_response = self.ollama.chat(formatted)
+                        reminder = self.SYSTEM_REMINDERS.get(Intent.BROWSE, "")
+                        formatted = f"{reminder}\n\nURL: {nav_result.url}\n\nPage content:\n{content[:3000]}\n\nQuestion: {request.text}" if reminder else f"URL: {nav_result.url}\n\nPage content:\n{content[:3000]}\n\nQuestion: {request.text}"
+                        llm_response = self.ollama.chat(formatted, system=self.UNIFIED_SYSTEM_PROMPT)
                         
                         if llm_response.success:
                             report += f"\n**AI Analysis:**\n{llm_response.text}"
@@ -1415,13 +1376,18 @@ Requirements:
             return response
         
         # LLM processing path with codebase context for relevant intents
-        template = self.PROMPT_TEMPLATES.get(request.intent, "{prompt}")
+        system_prompt = self.UNIFIED_SYSTEM_PROMPT
+        
+        # Inject <system-reminder> block for intent-specific behavior (OpenCode pattern)
+        reminder = self.SYSTEM_REMINDERS.get(request.intent, "")
+        formatted_prompt = f"{reminder}\n\n{request.text}" if reminder else request.text
         
         # Inject semantic context for code-related intents
         context_block = ""
         if request.intent in (Intent.CODE, Intent.DEBUG, Intent.REVIEW, Intent.BUILD, Intent.SECURITY):
             context_block = self.get_codebase_context(request.text, top_k=3)
             if context_block:
+                formatted_prompt = context_block + "\n\n" + formatted_prompt
                 execution_reasoning.append({"type": "observation", "content": f"Retrieved {len(context_block)} chars of codebase context via semantic search", "confidence": 0.85})
         
         # Inject long-term memory context
@@ -1430,34 +1396,43 @@ Requirements:
             try:
                 memory_block = self._long_term_memory.get_context_for_prompt(request.text, top_k=3)
                 if memory_block:
+                    formatted_prompt = memory_block + "\n" + formatted_prompt
                     execution_reasoning.append({"type": "observation", "content": "Retrieved relevant past experiences from long-term memory", "confidence": 0.75})
             except Exception as e:
                 logger.warning(f"Memory retrieval failed: {e}")
         
-        formatted_prompt = template.format(prompt=request.text)
-        if context_block:
-            formatted_prompt = context_block + "\n\n" + formatted_prompt
-        if memory_block:
-            formatted_prompt = memory_block + "\n" + formatted_prompt
+        if stage_callback:
+            stage_callback("context", f"Loading context ({'codebase' if context_block else 'none'}, {'memory' if memory_block else 'none'})")
         
         # Model selection reasoning
         selected_model = self._select_model_for_intent(request.intent)
+        if stage_callback:
+            stage_callback("model", f"Model: {selected_model}")
+        
+        if stage_callback:
+            stage_callback("generating", f"Generating with {selected_model}...")
         
         if self.unified_mode:
             execution_reasoning.append({"type": "decision", "content": "Using unified mode (multi-model ensemble)", "confidence": 0.8})
-            response = self.ollama.unified_chat(formatted_prompt)
+            response = self.ollama.unified_chat(formatted_prompt, system=system_prompt)
             response.model_used = "unified_ensemble"
             response.processing_path = "unified_chat"
         elif streaming and callback:
             execution_reasoning.append({"type": "decision", "content": f"Using streaming mode with {selected_model} (intent: {request.intent.value})", "confidence": 0.9})
-            response = self.ollama.chat_stream(formatted_prompt, model=selected_model, callback=callback)
+            response = self.ollama.chat_stream(formatted_prompt, system=system_prompt, model=selected_model, callback=callback)
             response.model_used = selected_model
             response.processing_path = "stream_chat"
         else:
             execution_reasoning.append({"type": "decision", "content": f"Using standard chat with {selected_model} (intent: {request.intent.value})", "confidence": 0.9})
-            response = self.ollama.chat(formatted_prompt, model=selected_model)
+            response = self.ollama.chat(formatted_prompt, system=system_prompt, model=selected_model)
             response.model_used = selected_model
             response.processing_path = "standard_chat"
+        
+        # Combine reasoning logs
+        response.reasoning_log = execution_reasoning + request.reasoning_log
+        
+        if stage_callback:
+            stage_callback("complete", "Response ready")
         
         # Combine reasoning logs
         response.reasoning_log = execution_reasoning + request.reasoning_log
