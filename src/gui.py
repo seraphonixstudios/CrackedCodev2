@@ -1582,6 +1582,261 @@ class SwarmPanelWidget(QWidget):
             pass
 
 
+class LearningPanelWidget(QWidget):
+    """Dashboard showing adaptive learning status, preferences, and corrections."""
+
+    def __init__(self, gui_ref=None):
+        super().__init__()
+        self.gui = gui_ref
+        self.init_ui()
+        self.update_timer = QTimer()
+        self.update_timer.timeout.connect(self.refresh)
+        self.update_timer.start(2000)
+
+    def init_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        header = QLabel("ADAPTIVE LEARNING")
+        header.setStyleSheet(f"font-weight: bold; color: {ATLAN_CYAN}; padding: 2px;")
+        layout.addWidget(header)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setStyleSheet("QScrollArea { border: none; }")
+        content = QWidget()
+        self.content_layout = QVBoxLayout(content)
+        self.content_layout.setContentsMargins(4, 4, 4, 4)
+        self.content_layout.setSpacing(6)
+        scroll.setWidget(content)
+        layout.addWidget(scroll, 1)
+
+        # Stats row
+        self.stats_bar = QWidget()
+        stats_row = QHBoxLayout(self.stats_bar)
+        stats_row.setContentsMargins(4, 0, 4, 0)
+        stats_row.setSpacing(8)
+        self.feedback_lbl = QLabel("Feedback: 0")
+        self.feedback_lbl.setStyleSheet(f"color: {ATLAN_GREEN}; font-size: 9px;")
+        stats_row.addWidget(self.feedback_lbl)
+        self.prefs_lbl = QLabel("Prefs: 0")
+        self.prefs_lbl.setStyleSheet(f"color: {ATLAN_GOLD}; font-size: 9px;")
+        stats_row.addWidget(self.prefs_lbl)
+        self.corr_lbl = QLabel("Corrections: 0")
+        self.corr_lbl.setStyleSheet(f"color: {ATLAN_PURPLE}; font-size: 9px;")
+        stats_row.addWidget(self.corr_lbl)
+        stats_row.addStretch()
+        layout.addWidget(self.stats_bar)
+
+        # Buttons row
+        btn_row = QHBoxLayout()
+        self.refresh_btn = QPushButton("Refresh")
+        self.refresh_btn.setStyleSheet(f"""
+            QPushButton {{ background: {ATLAN_DARK}; color: {ATLAN_CYAN};
+            border: 1px solid {ATLAN_CYAN}; border-radius: 3px; padding: 2px 8px; font-size: 9px; }}
+            QPushButton:hover {{ background: {ATLAN_CYAN}33; }}
+        """)
+        self.refresh_btn.clicked.connect(self.refresh)
+        btn_row.addWidget(self.refresh_btn)
+
+        self.reset_btn = QPushButton("Reset Profile")
+        self.reset_btn.setStyleSheet(f"""
+            QPushButton {{ background: {ATLAN_DARK}; color: {ATLAN_RED};
+            border: 1px solid {ATLAN_RED}; border-radius: 3px; padding: 2px 8px; font-size: 9px; }}
+            QPushButton:hover {{ background: {ATLAN_RED}33; }}
+        """)
+        self.reset_btn.clicked.connect(self._confirm_reset)
+        btn_row.addWidget(self.reset_btn)
+        btn_row.addStretch()
+        layout.addLayout(btn_row)
+
+        # Content sections (added in refresh)
+        self.prefs_section = QWidget()
+        self.prefs_layout = QVBoxLayout(self.prefs_section)
+        self.prefs_layout.setContentsMargins(0, 0, 0, 0)
+        self.content_layout.addWidget(self.prefs_section)
+
+        self.style_section = QWidget()
+        self.style_layout = QVBoxLayout(self.style_section)
+        self.style_layout.setContentsMargins(0, 0, 0, 0)
+        self.content_layout.addWidget(self.style_section)
+
+        self.topics_section = QWidget()
+        self.topics_layout = QVBoxLayout(self.topics_section)
+        self.topics_layout.setContentsMargins(0, 0, 0, 0)
+        self.content_layout.addWidget(self.topics_section)
+
+        self.corrections_section = QWidget()
+        self.corrections_layout = QVBoxLayout(self.corrections_section)
+        self.corrections_layout.setContentsMargins(0, 0, 0, 0)
+        self.content_layout.addWidget(self.corrections_section)
+
+        self.content_layout.addStretch()
+
+        self.empty_label = QLabel(
+            "No learning data yet\n\n"
+            "Feedback on responses (thumbs up/down) and\n"
+            "corrections will appear here."
+        )
+        self.empty_label.setWordWrap(True)
+        self.empty_label.setStyleSheet(f"color: #555; font-size: 10px; padding: 12px;")
+        self.empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.content_layout.addWidget(self.empty_label)
+
+    def refresh(self):
+        if not self.gui or not hasattr(self.gui, 'engine') or not self.gui.engine:
+            return
+        try:
+            engine = self.gui.engine
+            if not hasattr(engine, 'get_adaptive_learning_status'):
+                return
+            status = engine.get_adaptive_learning_status()
+        except Exception:
+            return
+
+        fc = status.get("feedback_count", 0)
+        pc = status.get("preferences_count", 0)
+        cc = status.get("corrections_count", 0)
+
+        self.feedback_lbl.setText(f"Feedback: {fc}")
+        self.prefs_lbl.setText(f"Prefs: {pc}")
+        self.corr_lbl.setText(f"Corrections: {cc}")
+
+        has_data = fc > 0 or pc > 0 or cc > 0
+        self.empty_label.setVisible(not has_data)
+
+        # Get detailed report
+        try:
+            report = engine.get_adaptive_learning_report()
+        except Exception:
+            report = None
+
+        self._update_preferences(report)
+        self._update_style(report)
+        self._update_topics(report)
+        self._update_corrections(report)
+
+    def _clear_layout(self, layout):
+        while layout.count():
+            item = layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+    def _make_section_header(self, text: str, color: str) -> QLabel:
+        lbl = QLabel(text)
+        lbl.setStyleSheet(f"font-weight: bold; color: {color}; font-size: 10px; padding: 4px 0 2px 0; border-bottom: 1px solid {color}44;")
+        return lbl
+
+    def _make_item(self, key: str, value: str, confidence: float = 0.0, color: str = None) -> QLabel:
+        c = color or "#aaa"
+        conf = f" ({confidence:.0%})" if confidence > 0 else ""
+        lbl = QLabel(f"  \u2022 {key}: {value}{conf}")
+        lbl.setWordWrap(True)
+        lbl.setStyleSheet(f"color: {c}; font-size: 9px; padding: 1px 4px;")
+        return lbl
+
+    def _update_preferences(self, report):
+        self._clear_layout(self.prefs_layout)
+        if not report:
+            return
+        explicit = report.get("preferences_explicit", [])
+        inferred = report.get("preferences_inferred", [])
+        if not explicit and not inferred:
+            return
+
+        self.prefs_layout.addWidget(self._make_section_header("LEARNED PREFERENCES", ATLAN_GOLD))
+
+        for pref in explicit:
+            w = self._make_item(pref["key"], pref["value"], pref["confidence"], ATLAN_GREEN)
+            self.prefs_layout.addWidget(w)
+
+        for pref in inferred:
+            w = self._make_item(pref["key"], pref["value"], pref["confidence"], ATLAN_GOLD)
+            self.prefs_layout.addWidget(w)
+
+    def _update_style(self, report):
+        self._clear_layout(self.style_layout)
+        if not report:
+            return
+        style = report.get("style", {})
+        verbosity = style.get("verbosity_label", "neutral")
+        code_examples = style.get("code_examples_label", "neutral")
+
+        self.style_layout.addWidget(self._make_section_header("STYLE INDICATORS", ATLAN_CYAN))
+
+        v_color = ATLAN_GREEN if verbosity == "neutral" else ATLAN_GOLD
+        self.style_layout.addWidget(self._make_item("Verbosity", verbosity, color=v_color))
+        c_color = ATLAN_GREEN if code_examples == "neutral" else ATLAN_GOLD
+        self.style_layout.addWidget(self._make_item("Code Examples", code_examples, color=c_color))
+
+    def _update_topics(self, report):
+        self._clear_layout(self.topics_layout)
+        if not report:
+            return
+        topics = report.get("topics", {})
+        if not topics:
+            return
+
+        self.topics_layout.addWidget(self._make_section_header("FREQUENT TOPICS", ATLAN_PURPLE))
+
+        # Sort by count descending and show top 8
+        sorted_topics = sorted(topics.items(), key=lambda x: x[1], reverse=True)[:8]
+        for topic, count in sorted_topics:
+            bar_width = min(count * 20, 100)
+            bar = QProgressBar()
+            bar.setMaximum(max(count, 1))
+            bar.setValue(count)
+            bar.setFixedHeight(10)
+            bar.setFormat(f"{topic}: {count}")
+            bar.setStyleSheet(f"""
+                QProgressBar {{ background: {ATLAN_DARK}; border: none; border-radius: 3px;
+                text-align: left; padding-left: 4px; font-size: 8px; color: #aaa; }}
+                QProgressBar::chunk {{ background: {ATLAN_CYAN}66; border-radius: 3px; }}
+            """)
+            self.topics_layout.addWidget(bar)
+
+    def _update_corrections(self, report):
+        self._clear_layout(self.corrections_layout)
+        if not report:
+            return
+        corrections = report.get("corrections", [])
+        if not corrections:
+            return
+
+        self.corrections_layout.addWidget(self._make_section_header("RECENT CORRECTIONS", ATLAN_PURPLE))
+
+        for corr in corrections[-5:]:
+            text = f"  \u2190 {corr['original'][:60]} \u2192 {corr['corrected'][:60]}"
+            if corr.get("reason"):
+                text += f" ({corr['reason'][:40]})"
+            lbl = QLabel(text)
+            lbl.setWordWrap(True)
+            lbl.setStyleSheet(f"color: #aaa; font-size: 9px; padding: 1px 4px;")
+            self.corrections_layout.addWidget(lbl)
+
+    def _confirm_reset(self):
+        if not self.gui:
+            return
+        from PyQt6.QtWidgets import QMessageBox
+        reply = QMessageBox.question(
+            self, "Reset Learning Profile",
+            "Clear all learned preferences, corrections, and feedback?\nThis cannot be undone.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            try:
+                from src.adaptive_learning import get_adaptive_learning_engine
+                engine = get_adaptive_learning_engine()
+                engine.reset_profile()
+                self.refresh()
+                if self.gui:
+                    self.gui.term("[LEARN] Learning profile reset", level="warning")
+            except Exception as e:
+                if self.gui:
+                    self.gui.term(f"[LEARN ERROR] {e}", level="error")
+
+
 class SearchableTerminal(QTextEdit):
     def __init__(self):
         super().__init__()
@@ -2936,7 +3191,19 @@ class CrackedCodeGUI(QMainWindow):
 
         panel_tabs.addTab(swarm_tab, "SWARM")
 
-        # --- Tab 5: HISTORY ---
+        # --- Tab 5: LEARNING ---
+        learning_tab = QWidget()
+        learning_layout = QVBoxLayout(learning_tab)
+        learning_layout.setContentsMargins(4, 4, 4, 4)
+        learning_layout.setSpacing(4)
+
+        self.learning_panel = LearningPanelWidget(gui_ref=self)
+        self.learning_panel.setToolTip("Adaptive Learning - user preferences, corrections, topics")
+        learning_layout.addWidget(self.learning_panel)
+
+        panel_tabs.addTab(learning_tab, "LEARN")
+
+        # --- Tab 6: HISTORY ---
         history_tab = QWidget()
         history_layout = QVBoxLayout(history_tab)
         history_layout.setContentsMargins(4, 4, 4, 4)
@@ -5742,6 +6009,8 @@ class CrackedCodeGUI(QMainWindow):
             timers_to_stop.append(self.tool_log.update_timer)
         if hasattr(self, 'swarm_panel') and self.swarm_panel:
             timers_to_stop.append(self.swarm_panel.update_timer)
+        if hasattr(self, 'learning_panel') and self.learning_panel:
+            timers_to_stop.append(self.learning_panel.update_timer)
         if hasattr(self, 'matrix') and self.matrix:
             if hasattr(self.matrix, 'timer') and self.matrix.timer:
                 timers_to_stop.append(self.matrix.timer)

@@ -7,7 +7,7 @@ CrackedCode is a 100% local AI coding assistant featuring autonomous application
 **Current Version:** 2.10.0
 **Branch:** main
 **License:** MIT
-**Tests:** 144+ (5 Working Context + 14 Swarm + 4 Adaptive Learning + 99 E2E + 18 GUI + voice engine)
+**Tests:** 144+ (5 Working Context + 14 Swarm + 5 Adaptive Learning + 99 E2E + 18 GUI + voice engine)
 
 ## Architecture
 
@@ -456,6 +456,12 @@ Key settings in config.json:
 - **Engine integration**: CODE/SECURITY/REVIEW/DEBUG intents auto-load agent context
 - **Collaboration integration**: Debates store outcomes as agent memories
 - **API**: `GET /agent-memory/agents`, `POST /agent-memory/{agent}/remember`, `POST /agent-memory/{agent}/recall`, `GET /agent-memory/{agent}/summarize`
+
+### Adaptive Learning Panel (src/gui.py) — NEW v2.10.0
+- `LearningPanelWidget` in left sidebar LEARN tab
+- Live dashboard: learned preferences (explicit/inferred), style indicators, frequent topics (bar chart), recent corrections
+- **Refresh** / **Reset Profile** buttons
+- 2s periodic refresh with timer cleanup on GUI close
 
 ### Git Pre-commit Hook (src/git_hooks.py)
 - **Auto-install**: `python src/main.py install-hook`

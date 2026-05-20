@@ -2141,6 +2141,16 @@ Requirements:
             logger.warning(f"Failed to get adaptive learning status: {e}")
             return {}
 
+    def get_adaptive_learning_report(self) -> Dict:
+        """Get detailed adaptive learning report for the GUI panel."""
+        try:
+            from src.adaptive_learning import get_adaptive_learning_engine
+            engine = get_adaptive_learning_engine()
+            return engine.get_formatted_report()
+        except Exception as e:
+            logger.warning(f"Failed to get adaptive learning report: {e}")
+            return {}
+
 
 _engine: Optional[CrackedCodeEngine] = None
 

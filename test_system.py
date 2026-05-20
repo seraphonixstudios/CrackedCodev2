@@ -1812,6 +1812,7 @@ def main() -> int:
         ("Working Context Persistence", test_working_context_persistence),
         ("Working Context Injection", test_working_context_injection),
         ("Working Context Engine Integration", test_working_context_engine_integration),
+        ("Adaptive Learning Report", test_adaptive_learning_report),
     ]
     
     results: list[tuple[str, bool]] = []
@@ -6719,9 +6720,72 @@ def test_working_context_engine_integration() -> bool:
         return FAIL("Working context engine integration", str(e)[:80])
 
 
-# ── End Working Context Tests ────────────────────────────────────────
+# ── Adaptive Learning Report Test ────────────────────────────────────
+
+def test_adaptive_learning_report() -> bool:
+    """Test the get_formatted_report method for the GUI panel."""
+    try:
+        from src.adaptive_learning import AdaptiveLearningEngine, LearningStore
+        import tempfile
+        import shutil
+
+        tmpdir = tempfile.mkdtemp(prefix="crackedcode_test_")
+        store = LearningStore(base_path=tmpdir)
+        engine = AdaptiveLearningEngine(store=store)
+
+        # Empty report
+        report = engine.get_formatted_report()
+        assert report["enabled"] is True
+        assert report["feedback_count"] == 0
+        assert report["preferences_count"] == 0
+        assert report["corrections_count"] == 0
+        assert "style" in report
+        assert "topics" in report
+        assert "preferences_explicit" in report
+        assert "preferences_inferred" in report
+        assert "corrections" in report
+        PASS("Empty report structure")
+
+        # Add data
+        engine.add_explicit_preference("code_style", "PEP8", "Python coding")
+        engine.add_explicit_preference("verbosity", "concise", "All")
+        engine.record_feedback("write a function", "def foo(): pass", rating=1, metadata={"intent": "code"})
+        engine.record_correction("use tabs", "use spaces", "Python", "PEP8")
+
+        report2 = engine.get_formatted_report()
+        assert report2["feedback_count"] >= 1
+        assert report2["preferences_count"] >= 2
+        assert report2["corrections_count"] >= 1
+        assert len(report2["preferences_explicit"]) >= 2
+        assert len(report2["corrections"]) >= 1
+        assert report2["style"]["verbosity_label"] in ("high", "low", "neutral")
+        PASS("Populated report data")
+
+        # Test via engine
+        from src.engine import CrackedCodeEngine
+        eng = CrackedCodeEngine()
+        report3 = eng.get_adaptive_learning_report()
+        assert "preferences_count" in report3
+        assert "corrections_count" in report3
+        assert "style" in report3
+        PASS("Engine get_adaptive_learning_report")
+
+        # Test GUI panel class can be imported
+        from src.gui import LearningPanelWidget
+        assert LearningPanelWidget is not None
+        PASS("LearningPanelWidget import")
+
+        shutil.rmtree(tmpdir)
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Adaptive learning report", str(e)[:80])
+
+
+# ── End Adaptive Learning Report Test ────────────────────────────────
 
 if __name__ == "__main__":
     success = main()
-    sys.exit(0 if success >= 153 else 1)
+    sys.exit(0 if success >= 154 else 1)
 

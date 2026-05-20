@@ -40,6 +40,7 @@ python test_system.py
 |---------|----------|
 | 2.10.0 | **Agent Swarm Mode** - Automatic task decomposition into parallel subtasks, multi-agent parallel dispatch, agent-to-agent messaging bus, result aggregation with LLM merge. GUI dashboard with per-task progress bars, message counters, strategy badges |
 | 2.10.0 | **Adaptive Learning Engine** - Learns from user feedback (thumbs up/down), explicit corrections, and implicit signals. Extracts preferences, tracks topics, builds persistent user profile. Auto-injects learned context into prompts for personalized responses |
+| 2.10.0 | **Adaptive Learning Status Panel** - LEARN tab in sidebar showing preferences, style indicators, topic bar chart, recent corrections, with Refresh/Reset buttons |
 | 2.10.0 | **GUI Polish Round** - Fixed thread-safety issues in voice/streaming callbacks, eliminated 9 silent exception swallowers, fixed `close_tab()` KeyError from `*` prefix, fixed `_trim_terminal` extra `deleteChar()`, added timer cleanup on shutdown, fixed `rename_tab` collision bug |
 | 2.10.0 | **Working Context** - Persistent current-session context (recent exchanges, active files, current task) that survives restarts and auto-injects into every prompt alongside codebase RAG, long-term memory, and adaptive learning |
 | 2.9.6 | **Collapsible Sidebar** - Left sidebar toggle (Ctrl+Shift+B), toolbar button, menu item, command palette entry |
@@ -478,6 +479,15 @@ Learns from every interaction to personalize responses over time:
 2. **Preference Extraction**: Engine infers style preferences (verbosity, code examples, explanation depth)
 3. **Topic Tracking**: Identifies your most frequent domains (Python, web, security, etc.)
 4. **Context Injection**: Automatically prepends relevant learned preferences to LLM prompts
+
+### GUI Panel
+The **LEARN** tab in the left sidebar shows a live dashboard:
+- **Stats bar**: Feedback count, preferences count, corrections count
+- **Learned Preferences**: Explicit (green) and inferred (gold) preferences with confidence scores
+- **Style Indicators**: Current verbosity and code_examples style levels
+- **Frequent Topics**: Visual bar chart of your most-discussed topics
+- **Recent Corrections**: Last 5 corrections with original→corrected text
+- **Refresh** / **Reset Profile** buttons
 
 ### Storage
 - `.crackedcode/learning/profile.json` - User profile
