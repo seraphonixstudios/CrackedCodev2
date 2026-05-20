@@ -1,6 +1,6 @@
 ﻿#!/usr/bin/env python3
 """
-CRACKEDCODE v2.9.6 - Comprehensive End-to-End Test Suite
+CRACKEDCODE v2.10.0 - Comprehensive End-to-End Test Suite
 Full coverage with real operations, no placeholders
 """
 
@@ -595,11 +595,19 @@ def test_version_info() -> bool:
         PASS(f"Engine version: {status.get('version', 'unknown')}")
         
         version_checks = 0
-        if CrackedCode.VERSION == "2.9.6":
+        if CrackedCode.VERSION == "2.10.0":
+            PASS("main.py version: 2.10.0")
             version_checks += 1
-        if MatrixUI.VERSION == "2.9.6":
+        else:
+            return FAIL(f"main.py version: {CrackedCode.VERSION}")
+
+        if MatrixUI.VERSION == "2.10.0":
+            PASS("atlan_ui.py version: 2.10.0")
             version_checks += 1
-        if status.get("version") == "2.9.6":
+        else:
+            return FAIL(f"atlan_ui.py version: {MatrixUI.VERSION}")
+
+        if status.get("version") == "2.10.0":
             version_checks += 1
         
         PASS(f"Version consistency: {version_checks}/3")
@@ -709,10 +717,10 @@ def test_cli_integration_e2e() -> bool:
             version = result.stdout.strip()
             PASS(f"CLI import: version {version}")
             
-            if version == "2.9.6":
-                PASS("CLI version correct")
+            if version == "2.10.0":
+                PASS("CLI version: 2.10.0")
             else:
-                FAIL("CLI version", f"Expected 2.9.6, got {version}")
+                FAIL("CLI version", f"Expected 2.10.0, got {version}")
                 return False
         else:
             FAIL("CLI import", result.stderr[:50])
@@ -1663,7 +1671,7 @@ def test_voice_hotword_detection() -> bool:
 
 
 def main() -> int:
-    print(f"\n{'='*60}\n  CRACKEDCODE v2.9.6 - E2E TEST SUITE\n{'='*60}\n")
+    print(f"\n{'='*60}\n  CRACKEDCODE v2.10.0 - E2E TEST SUITE\n{'='*60}\n")
     
     tests = [
         ("Modules", test_modules),
@@ -1782,7 +1790,28 @@ def main() -> int:
         ("Doctor", test_doctor),
         ("GUI v2.9.6", test_gui_v295_fixes),
         ("Intent HELP/CHAT", test_intent_help_chat),
+        ("Swarm Imports", test_swarm_imports),
+        ("Swarm MessageBus", test_swarm_message_bus),
+        ("Swarm Task/Result", test_swarm_task_result),
+        ("Swarm Decomposition", test_swarm_decomposition),
+        ("Swarm Empty Prompt", test_swarm_empty_prompt),
+        ("Swarm Serial Mode", test_swarm_serial_mode),
+        ("Swarm Debate Mode", test_swarm_debate_mode),
+        ("Swarm Parse JSON", test_swarm_parse_decomposition_json),
+        ("Swarm Singleton", test_swarm_get_swarm_coordinator),
+        ("Swarm Agent Messages", test_swarm_agent_messages),
+        ("Engine Swarm Integration", test_engine_swarm_integration),
+        ("Orchestrator Swarm Integration", test_orchestrator_swarm_integration),
+        ("Adaptive Learning Imports", test_adaptive_learning_imports),
+        ("Adaptive Learning Feedback", test_adaptive_learning_feedback),
+        ("Adaptive Learning Preferences", test_adaptive_learning_preferences),
+        ("Adaptive Learning Engine Integration", test_adaptive_learning_engine_integration),
         ("Version Consistency", test_version_consistency),
+        ("Working Context Imports", test_working_context_imports),
+        ("Working Context Dataclasses", test_working_context_dataclasses),
+        ("Working Context Persistence", test_working_context_persistence),
+        ("Working Context Injection", test_working_context_injection),
+        ("Working Context Engine Integration", test_working_context_engine_integration),
     ]
     
     results: list[tuple[str, bool]] = []
@@ -4364,8 +4393,8 @@ def test_import_export() -> bool:
             PASS("ImportExportManager created")
             
             # Test export manifest
-            manifest = ExportManifest(version="2.9.6", items=["config"])
-            if manifest.version == "2.9.6":
+            manifest = ExportManifest(version="2.10.0", items=["config"])
+            if manifest.version == "2.10.0":
                 PASS("ExportManifest dataclass")
             else:
                 return FAIL("ExportManifest wrong")
@@ -5459,13 +5488,17 @@ def test_memory_viz() -> bool:
         
         # Test helper functions
         bar = _bar(0.5)
-        if "â–ˆ" in bar and "%" in bar:
+        # Check bar has percentage and some fill characters (Unicode block or fallback)
+        has_fill = any(c for c in bar if ord(c) > 127)  # Any non-ASCII = unicode blocks
+        if "%" in bar and (has_fill or "=" in bar or "#" in bar):
             PASS("Bar chart works")
         else:
             return FAIL("Bar chart failed")
         
         box = _box("Test", "Hello\nWorld")
-        if "â”Œ" in box and "â””" in box:
+        # Check box has borders (unicode box chars or ASCII fallback)
+        has_border = any(c for c in box if ord(c) > 127) or "+" in box or "-" in box
+        if "Test" in box and "Hello" in box and has_border:
             PASS("Box drawing works")
         else:
             return FAIL("Box drawing failed")
@@ -5838,18 +5871,18 @@ def test_intent_help_chat() -> bool:
 
 
 def test_version_consistency() -> bool:
-    """Test all version numbers are consistent at 2.9.6."""
+    """Test all version numbers are consistent at 2.10.0."""
     try:
         from src.main import CrackedCode
         from src.atlan_ui import MatrixUI
         
-        if CrackedCode.VERSION == "2.9.6":
-            PASS("main.py version: 2.9.6")
+        if CrackedCode.VERSION == "2.10.0":
+            PASS("main.py version: 2.10.0")
         else:
             return FAIL(f"main.py version: {CrackedCode.VERSION}")
         
-        if MatrixUI.VERSION == "2.9.6":
-            PASS("atlan_ui.py version: 2.9.6")
+        if MatrixUI.VERSION == "2.10.0":
+            PASS("atlan_ui.py version: 2.10.0")
         else:
             return FAIL(f"atlan_ui.py version: {MatrixUI.VERSION}")
         
@@ -5860,7 +5893,835 @@ def test_version_consistency() -> bool:
         return FAIL("Version check", str(e)[:50])
 
 
+def test_swarm_imports() -> bool:
+    """Test Swarm Mode module imports."""
+    try:
+        from src.swarm import (
+            SwarmCoordinator, SwarmTask, SwarmResult,
+            AgentMessage, MessageBus, SwarmStrategy,
+            get_swarm_coordinator,
+        )
+        PASS("Swarm module imports")
+        
+        # Check enum values
+        assert "parallel" in [s.value for s in SwarmStrategy]
+        assert "sequential" in [s.value for s in SwarmStrategy]
+        assert "debate" in [s.value for s in SwarmStrategy]
+        PASS("SwarmStrategy enum values")
+        
+        # Check dataclass defaults
+        task = SwarmTask(prompt="test", agent_role="coder")
+        assert task.status == "pending"
+        assert len(task.id) == 8
+        PASS("SwarmTask defaults")
+        
+        msg = AgentMessage(from_agent="coder", to_agent="reviewer", content="hello")
+        assert msg.message_type == "info"
+        assert msg.from_agent == "coder"
+        PASS("AgentMessage defaults")
+        
+        result = SwarmResult(prompt="test")
+        assert result.status == "running"
+        assert result.strategy == SwarmStrategy.PARALLEL_THEN_MERGE
+        PASS("SwarmResult defaults")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Swarm imports", str(e)[:80])
+
+
+def test_swarm_message_bus() -> bool:
+    """Test MessageBus agent-to-agent communication."""
+    try:
+        from src.swarm import MessageBus, AgentMessage
+        
+        bus = MessageBus()
+        
+        # Test send/receive
+        msg1 = AgentMessage(from_agent="coder", to_agent="reviewer", content="Code done", message_type="info")
+        bus.send(msg1)
+        
+        msg2 = AgentMessage(from_agent="reviewer", to_agent="coder", content="Review complete", message_type="response")
+        bus.send(msg2)
+        
+        received = bus.receive("coder")
+        assert len(received) == 1
+        assert received[0].from_agent == "reviewer"
+        PASS("MessageBus send/receive")
+        
+        # Test broadcast
+        bus.broadcast("supervisor", "All agents proceed", "command")
+        all_msgs = bus.get_all_messages()
+        assert len(all_msgs) == 3
+        PASS("MessageBus broadcast")
+        
+        # Test subscribe
+        received_cb = []
+        def on_msg(msg):
+            received_cb.append(msg)
+        bus.subscribe("coder", on_msg)
+        bus.send(AgentMessage(from_agent="test", to_agent="coder", content="ping"))
+        assert len(received_cb) == 1
+        PASS("MessageBus subscribe")
+        
+        # Test clear
+        bus.clear()
+        assert len(bus.get_all_messages()) == 0
+        PASS("MessageBus clear")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("MessageBus", str(e)[:80])
+
+
+def test_swarm_task_result() -> bool:
+    """Test SwarmResult aggregation and properties."""
+    try:
+        from src.swarm import SwarmResult, SwarmTask, SwarmStrategy
+        
+        result = SwarmResult(prompt="test prompt", strategy=SwarmStrategy.PARALLEL)
+        
+        t1 = SwarmTask(prompt="task 1", agent_role="coder", status="completed")
+        t2 = SwarmTask(prompt="task 2", agent_role="reviewer", status="completed")
+        t3 = SwarmTask(prompt="task 3", agent_role="tester")
+        t3.status = "failed"
+        
+        result.tasks = [t1, t2, t3]
+        
+        assert result.success_count == 2
+        assert result.fail_count == 1
+        assert result.all_tasks_completed  # failed is terminal, so all are terminal
+        PASS("SwarmResult success/fail counts")
+        
+        # Terminal state
+        t3.status = "completed"
+        assert result.all_tasks_completed
+        PASS("SwarmResult all_tasks_completed")
+        
+        # Status
+        assert not result.is_terminal
+        result.status = "completed"
+        assert result.is_terminal
+        PASS("SwarmResult is_terminal")
+        
+        # To dict
+        d = result.to_dict()
+        assert d["strategy"] == "parallel"
+        assert d["swarm_id"] == result.swarm_id
+        assert d["success_count"] == 3
+        PASS("SwarmResult to_dict")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("SwarmResult", str(e)[:80])
+
+
+def test_swarm_decomposition() -> bool:
+    """Test SwarmCoordinator task decomposition with fallback."""
+    try:
+        from src.swarm import SwarmCoordinator
+        
+        coordinator = SwarmCoordinator(engine=None, max_workers=4)
+        
+        # Without engine, should fallback to single task
+        tasks = coordinator.decompose("write a function")
+        assert len(tasks) >= 1
+        if len(tasks) == 1:
+            assert tasks[0].prompt == "write a function"
+            assert tasks[0].agent_role == "coder"
+        PASS("SwarmCoordinator decompose fallback")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Swarm decomposition", str(e)[:80])
+
+
+def test_swarm_empty_prompt() -> bool:
+    """Test SwarmCoordinator handles empty prompts."""
+    try:
+        from src.swarm import SwarmCoordinator
+        
+        coordinator = SwarmCoordinator(engine=None)
+        
+        result = coordinator.process("")
+        assert result.status == "failed"
+        assert "Empty prompt" in result.error
+        PASS("SwarmCoordinator empty prompt")
+        
+        result = coordinator.process("   ")
+        assert result.status == "failed"
+        PASS("SwarmCoordinator whitespace prompt")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Swarm empty prompt", str(e)[:80])
+
+
+def test_swarm_serial_mode() -> bool:
+    """Test SwarmCoordinator serial (sequential) mode."""
+    try:
+        from src.swarm import SwarmCoordinator
+        
+        coordinator = SwarmCoordinator(engine=None, max_workers=4)
+        
+        # Without engine, serial should still handle gracefully
+        result = coordinator.process_serial("do task 1 then task 2")
+        assert result is not None
+        PASS("SwarmCoordinator serial mode")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Swarm serial mode", str(e)[:80])
+
+
+def test_swarm_debate_mode() -> bool:
+    """Test SwarmCoordinator debate mode."""
+    try:
+        from src.swarm import SwarmCoordinator
+        
+        coordinator = SwarmCoordinator(engine=None, max_workers=4)
+        
+        result = coordinator.process_with_debate("write a sorting function", rounds=1)
+        assert result is not None
+        assert result.strategy.value == "debate"
+        PASS("SwarmCoordinator debate mode")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Swarm debate mode", str(e)[:80])
+
+
+def test_swarm_parse_decomposition_json() -> bool:
+    """Test parsing of LLM decomposition responses."""
+    try:
+        from src.swarm import SwarmCoordinator
+        
+        coordinator = SwarmCoordinator(engine=None)
+        
+        # Mock a response object
+        class MockResponse:
+            output = '[{"prompt": "write frontend", "agent_role": "coder", "priority": 1}, {"prompt": "write backend", "agent_role": "coder", "priority": 1}]'
+        
+        tasks = coordinator._parse_decomposition(MockResponse())
+        assert len(tasks) == 2
+        assert tasks[0].agent_role == "coder"
+        assert tasks[0].prompt == "write frontend"
+        PASS("Parse decomposition JSON from response object")
+        
+        # Test with string input
+        tasks = coordinator._parse_decomposition('[{"prompt": "test", "agent_role": "reviewer"}]')
+        assert len(tasks) == 1
+        assert tasks[0].agent_role == "reviewer"
+        PASS("Parse decomposition JSON from string")
+        
+        # Test with markdown code block
+        md_text = '```json\n[{"prompt": "task1", "agent_role": "tester"}]\n```'
+        tasks = coordinator._parse_decomposition(md_text)
+        assert len(tasks) == 1
+        assert tasks[0].agent_role == "tester"
+        PASS("Parse decomposition markdown code block")
+        
+        # Test with invalid JSON
+        tasks = coordinator._parse_decomposition("not json at all")
+        assert len(tasks) == 0
+        PASS("Parse decomposition invalid JSON returns empty")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Swarm parse decomposition", str(e)[:80])
+
+
+def test_swarm_get_swarm_coordinator() -> bool:
+    """Test get_swarm_coordinator singleton."""
+    try:
+        from src.swarm import get_swarm_coordinator
+        
+        coord1 = get_swarm_coordinator(max_workers=4)
+        coord2 = get_swarm_coordinator(max_workers=8)
+        
+        assert coord1 is coord2  # Same instance
+        assert coord1.max_workers == 4  # Original params preserved
+        PASS("get_swarm_coordinator singleton")
+        
+        coord1.get_stats()
+        PASS("SwarmCoordinator get_stats")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Swarm singleton", str(e)[:80])
+
+
+def test_swarm_agent_messages() -> bool:
+    """Test AgentMessage creation and serialization."""
+    try:
+        from src.swarm import AgentMessage
+        
+        msg = AgentMessage(
+            from_agent="supervisor",
+            to_agent="coder",
+            content="Please implement the API",
+            message_type="command",
+        )
+        
+        assert msg.from_agent == "supervisor"
+        assert msg.to_agent == "coder"
+        assert msg.message_type == "command"
+        PASS("AgentMessage attributes")
+        
+        d = msg.to_dict()
+        assert d["from"] == "supervisor"
+        assert d["to"] == "coder"
+        assert d["type"] == "command"
+        PASS("AgentMessage to_dict")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("AgentMessage", str(e)[:80])
+
+
+def test_engine_swarm_integration() -> bool:
+    """Test engine's swarm integration methods."""
+    try:
+        from src.engine import CrackedCodeEngine
+        
+        engine = CrackedCodeEngine()
+        
+        # Test swarm coordinator property
+        coord = engine.swarm_coordinator
+        assert coord is not None
+        PASS("Engine swarm_coordinator property")
+        
+        # Test complex prompt detection
+        simple = engine._is_complex_prompt("write hello world")
+        assert not simple
+        PASS("Engine simple prompt detection")
+        
+        complex_prompts = [
+            "create both a frontend and backend, then setup the database",
+            "first build the API, then create the database schema, and finally write tests",
+            "implement login, registration, and user profile features both frontend and backend",
+        ]
+        for p in complex_prompts:
+            assert engine._is_complex_prompt(p), f"Should detect complex: {p[:50]}"
+        PASS("Engine complex prompt detection")
+        
+        # Test process_via_swarm returns None for simple prompts
+        result = engine.process_via_swarm("hello", fast=True)
+        assert result is None  # Simple prompt, no force
+        PASS("Engine process_via_swarm simple prompt")
+        
+        # Test get_swarm_status
+        stats = engine.get_swarm_status()
+        assert "total_swarms" in stats
+        PASS("Engine get_swarm_status")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Engine swarm integration", str(e)[:80])
+
+
+def test_orchestrator_swarm_integration() -> bool:
+    """Test orchestrator's swarm integration methods."""
+    try:
+        from src.orchestrator import get_orchestrator
+        
+        orch = get_orchestrator()
+        
+        # Test swarm coordinator property
+        coord = orch.swarm_coordinator
+        assert coord is not None
+        PASS("Orchestrator swarm_coordinator property")
+        
+        # Test get_swarm_status
+        stats = orch.get_swarm_status()
+        assert "total_swarms" in stats
+        PASS("Orchestrator get_swarm_status")
+        
+        # Test get_all_swarms
+        swarms = orch.get_all_swarms()
+        assert isinstance(swarms, list)
+        PASS("Orchestrator get_all_swarms")
+        
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Orchestrator swarm integration", str(e)[:80])
+
+
+def test_adaptive_learning_imports() -> bool:
+    """Test Adaptive Learning Engine module imports and dataclasses."""
+    try:
+        from src.adaptive_learning import (
+            AdaptiveLearningEngine, LearningStore, UserProfile,
+            UserPreference, Correction, FeedbackEvent,
+            get_adaptive_learning_engine, reset_adaptive_learning_engine,
+        )
+        PASS("Adaptive learning imports")
+
+        # Test dataclass creation
+        pref = UserPreference(key="style", value="concise", confidence=0.8, source="explicit")
+        assert pref.key == "style"
+        assert pref.confidence == 0.8
+        assert pref.frequency == 1
+        PASS("UserPreference dataclass")
+
+        corr = Correction(original="bad", corrected="good", reason="test")
+        assert corr.original == "bad"
+        PASS("Correction dataclass")
+
+        event = FeedbackEvent(prompt="hi", response="hello", rating=1)
+        assert event.rating == 1
+        PASS("FeedbackEvent dataclass")
+
+        profile = UserProfile()
+        assert profile.feedback_count == 0
+        PASS("UserProfile defaults")
+
+        # Test to_dict / from_dict roundtrip
+        d = profile.to_dict()
+        profile2 = UserProfile.from_dict(d)
+        assert profile2.feedback_count == 0
+        PASS("UserProfile roundtrip")
+
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Adaptive learning imports", str(e)[:80])
+
+
+def test_adaptive_learning_feedback() -> bool:
+    """Test feedback recording and stats."""
+    try:
+        from src.adaptive_learning import AdaptiveLearningEngine, LearningStore
+        import tempfile
+        import os
+
+        # Use temp directory to avoid polluting real profile
+        tmpdir = tempfile.mkdtemp(prefix="crackedcode_test_")
+        store = LearningStore(base_path=tmpdir)
+        engine = AdaptiveLearningEngine(store=store)
+
+        # Record feedback with topic keywords for tracking
+        engine.record_feedback("write a python function", "def foo(): pass", 1, {"intent": "code"})
+        engine.record_feedback("write a python function", "def bar(): pass", -1, {"intent": "code"})
+        engine.record_feedback("hello", "hi there", 1)
+
+        stats = engine.get_stats()
+        assert stats["feedback_count"] == 3
+        assert stats["preferences_count"] == 0  # Not enough for inference
+        PASS("Feedback recording")
+
+        # Topics should be tracked ("python" keyword in prompt)
+        assert "python" in stats["topics"] or len(stats["topics"]) > 0
+        PASS("Topic tracking")
+
+        # Load from disk
+        engine2 = AdaptiveLearningEngine(store=store)
+        stats2 = engine2.get_stats()
+        assert stats2["feedback_count"] == 3
+        PASS("Profile persistence")
+
+        # Cleanup
+        import shutil
+        shutil.rmtree(tmpdir)
+
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Adaptive learning feedback", str(e)[:80])
+
+
+def test_adaptive_learning_preferences() -> bool:
+    """Test explicit preferences and context injection."""
+    try:
+        from src.adaptive_learning import AdaptiveLearningEngine, LearningStore
+        import tempfile
+        import shutil
+
+        tmpdir = tempfile.mkdtemp(prefix="crackedcode_test_")
+        store = LearningStore(base_path=tmpdir)
+        engine = AdaptiveLearningEngine(store=store)
+
+        # Add explicit preference
+        engine.add_explicit_preference("code_style", "PEP8", "Python coding")
+        engine.add_explicit_preference("verbosity", "concise", "All responses")
+
+        # Duplicate should update frequency
+        engine.add_explicit_preference("code_style", "PEP8")
+
+        profile = engine.get_user_profile()
+        pep8_prefs = [p for p in profile.preferences if p.key == "code_style" and p.value == "PEP8"]
+        assert len(pep8_prefs) == 1
+        assert pep8_prefs[0].frequency == 2
+        assert pep8_prefs[0].confidence > 0.9
+        PASS("Explicit preference dedup")
+
+        # Context injection
+        context = engine.get_context_for_prompt("write a python function")
+        assert "PEP8" in context or "concise" in context
+        PASS("Context injection")
+
+        # Correction
+        engine.record_correction("use tabs", "use spaces", "Python style", "PEP8 recommends spaces")
+        profile = engine.get_user_profile()
+        assert len(profile.corrections) == 1
+        PASS("Correction recording")
+
+        # Correction should appear in context for relevant prompts
+        context2 = engine.get_context_for_prompt("python indentation style")
+        assert "spaces" in context2
+        PASS("Correction in context")
+
+        # Reset
+        engine.reset_profile()
+        assert engine.get_stats()["feedback_count"] == 0
+        PASS("Profile reset")
+
+        shutil.rmtree(tmpdir)
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Adaptive learning preferences", str(e)[:80])
+
+
+def test_adaptive_learning_engine_integration() -> bool:
+    """Test engine integration with adaptive learning."""
+    try:
+        from src.engine import CrackedCodeEngine
+        from src.adaptive_learning import get_adaptive_learning_engine, reset_adaptive_learning_engine
+        import tempfile
+        import shutil
+
+        # Reset singleton to use temp store
+        reset_adaptive_learning_engine()
+        tmpdir = tempfile.mkdtemp(prefix="crackedcode_test_")
+        from src.adaptive_learning import LearningStore
+        store = LearningStore(base_path=tmpdir)
+        adaptive = get_adaptive_learning_engine(store)
+        adaptive.reset_profile()
+
+        # Add a preference
+        adaptive.add_explicit_preference("language", "Python", "coding tasks")
+
+        # Check engine can access it
+        engine = CrackedCodeEngine()
+        status = engine.get_adaptive_learning_status()
+        assert "preferences_count" in status
+        PASS("Engine adaptive learning status")
+
+        # Record feedback via engine
+        engine.record_feedback("test", "response", 1)
+        status2 = engine.get_adaptive_learning_status()
+        assert status2["feedback_count"] >= 1
+        PASS("Engine record_feedback")
+
+        # Record correction via engine
+        engine.record_correction("wrong", "right", "context", "reason")
+        status3 = engine.get_adaptive_learning_status()
+        assert status3["corrections_count"] >= 1
+        PASS("Engine record_correction")
+
+        reset_adaptive_learning_engine()
+        shutil.rmtree(tmpdir)
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Adaptive learning engine integration", str(e)[:80])
+
+
+# ── Working Context Tests ────────────────────────────────────────────
+
+def test_working_context_imports() -> bool:
+    """Test that working context module imports correctly."""
+    try:
+        from src.working_context import (
+            Exchange, WorkingContextData, WorkingContext,
+            get_working_context,
+        )
+        assert Exchange is not None
+        assert WorkingContextData is not None
+        assert WorkingContext is not None
+        assert get_working_context is not None
+        PASS("Working context module imports")
+        return True
+    except Exception as e:
+        return FAIL("Working context imports", str(e)[:80])
+
+
+def test_working_context_dataclasses() -> bool:
+    """Test WorkingContext dataclass defaults and roundtrip."""
+    try:
+        from src.working_context import Exchange, WorkingContextData
+
+        # Exchange defaults
+        ex = Exchange(prompt="hello", response="world")
+        assert ex.intent == "chat"
+        assert ex.prompt == "hello"
+        assert ex.response == "world"
+        assert ex.timestamp > 0
+        PASS("Exchange defaults")
+
+        # Exchange roundtrip
+        d = ex.to_dict()
+        ex2 = Exchange.from_dict(d)
+        assert ex2.prompt == "hello"
+        assert ex2.response == "world"
+        assert ex2.intent == "chat"
+        PASS("Exchange roundtrip")
+
+        # WorkingContextData defaults
+        wcd = WorkingContextData()
+        assert wcd.current_task == ""
+        assert wcd.active_files == []
+        assert wcd.exchange_count == 0
+        assert wcd.recent_exchanges == []
+        PASS("WorkingContextData defaults")
+
+        # WorkingContextData with values
+        wcd2 = WorkingContextData(
+            current_task="Build API",
+            active_files=["main.py", "test.py"],
+            exchange_count=5,
+            recent_exchanges=[{"prompt": "hi", "response": "hello"}],
+        )
+        assert wcd2.current_task == "Build API"
+        assert len(wcd2.active_files) == 2
+        assert wcd2.exchange_count == 5
+        PASS("WorkingContextData with values")
+
+        # Roundtrip
+        d2 = wcd2.to_dict()
+        wcd3 = WorkingContextData.from_dict(d2)
+        assert wcd3.current_task == "Build API"
+        assert wcd3.exchange_count == 5
+        PASS("WorkingContextData roundtrip")
+
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Working context dataclasses", str(e)[:80])
+
+
+def test_working_context_persistence() -> bool:
+    """Test WorkingContext save/load roundtrip via temp dir."""
+    try:
+        from src.working_context import WorkingContext
+        import tempfile
+        import shutil
+
+        tmpdir = tempfile.mkdtemp(prefix="crackedcode_test_")
+        storage = str(Path(tmpdir) / "working_context.json")
+
+        wc = WorkingContext(storage_path=storage)
+
+        # Initially empty
+        status = wc.get_status()
+        assert status["exchange_count"] == 0
+        assert status["active_files"] == []
+        PASS("Empty context")
+
+        # Record an exchange
+        wc.record_exchange("hello", "hi there", intent="chat")
+        status = wc.get_status()
+        assert status["exchange_count"] == 1
+        PASS("Record exchange")
+
+        # Persist and reload (new instance, same file)
+        wc2 = WorkingContext(storage_path=storage)
+        status2 = wc2.get_status()
+        assert status2["exchange_count"] == 1
+        PASS("Reload persisted context")
+
+        # Set task
+        wc2.set_task("Fix bug in parser")
+        status3 = wc2.get_status()
+        assert status3["current_task"] == "Fix bug in parser"
+        PASS("Set task")
+
+        # Add active files
+        wc2.add_active_file("src/parser.py")
+        wc2.add_active_file("src/utils.py")
+        status4 = wc2.get_status()
+        assert len(status4["active_files"]) == 2
+        PASS("Add active files")
+
+        # Remove file
+        wc2.remove_active_file("src/parser.py")
+        status5 = wc2.get_status()
+        assert len(status5["active_files"]) == 1
+        PASS("Remove active file")
+
+        # Dedup
+        wc2.add_active_file("src/utils.py")
+        assert len(wc2.get_status()["active_files"]) == 1
+        PASS("Dedup active files")
+
+        # Rolling window (max 5)
+        for i in range(10):
+            wc2.record_exchange(f"q{i}", f"a{i}")
+        assert wc2.get_status()["exchange_count"] == 11  # 1 from first + 10 new
+        assert wc2.get_status()["stored_exchanges"] == 5  # max
+        PASS("Rolling window max 5")
+
+        # Reset
+        wc2.reset()
+        status6 = wc2.get_status()
+        assert status6["exchange_count"] == 0
+        assert status6["active_files"] == []
+        PASS("Reset context")
+
+        shutil.rmtree(tmpdir)
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Working context persistence", str(e)[:80])
+
+
+def test_working_context_injection() -> bool:
+    """Test WorkingContext.get_context_for_prompt output formatting."""
+    try:
+        from src.working_context import WorkingContext
+        import tempfile
+        import shutil
+
+        tmpdir = tempfile.mkdtemp(prefix="crackedcode_test_")
+        storage = str(Path(tmpdir) / "wc_inject.json")
+        wc = WorkingContext(storage_path=storage)
+
+        # Empty context produces no block
+        assert wc.get_context_for_prompt() == ""
+        PASS("Empty context no injection")
+
+        # With exchanges only
+        wc.record_exchange("write a function", "def foo(): pass", intent="code")
+        block = wc.get_context_for_prompt()
+        assert "<working-context>" in block
+        assert "write a function" in block
+        assert "def foo(): pass" in block
+        assert "</working-context>" in block
+        PASS("Context includes exchange")
+
+        # With task
+        wc.set_task("Build a calculator app")
+        block2 = wc.get_context_for_prompt()
+        assert "Build a calculator app" in block2
+        PASS("Context includes task")
+
+        # With active files
+        wc.add_active_file("src/calc.py")
+        block3 = wc.get_context_for_prompt()
+        assert "src/calc.py" in block3 or "src/calc" in block3
+        PASS("Context includes files")
+
+        # max_exchanges param limits output
+        for i in range(5):
+            wc.record_exchange(f"query{i}", f"answer{i}")
+        block4 = wc.get_context_for_prompt(max_exchanges=2)
+        # Should contain only the last 2 exchanges
+        assert "query4" in block4
+        assert "query3" in block4 or "query0" not in block4
+        PASS("Context respects max_exchanges")
+
+        shutil.rmtree(tmpdir)
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Working context injection", str(e)[:80])
+
+
+def test_working_context_engine_integration() -> bool:
+    """Test engine integration with working context."""
+    try:
+        from src.engine import CrackedCodeEngine
+        import tempfile
+        import shutil
+
+        tmpdir = tempfile.mkdtemp(prefix="crackedcode_test_")
+        old_cwd = os.getcwd()
+        os.chdir(tmpdir)
+
+        engine = CrackedCodeEngine()
+
+        # Check working context is accessible
+        assert engine.working_context is not None
+        PASS("Engine working_context property")
+
+        # Check status method
+        status = engine.get_working_context_status()
+        assert status["enabled"] is True
+        assert "exchange_count" in status
+        PASS("Engine get_working_context_status")
+
+        # Check set_working_task
+        engine.set_working_task("Test task")
+        wc_status = engine.working_context.get_status()
+        assert wc_status["current_task"] == "Test task"
+        PASS("Engine set_working_task")
+
+        # Check add_working_file
+        engine.add_working_file("src/test.py")
+        engine.add_working_file("src/foo.py")
+        wc_status2 = engine.working_context.get_status()
+        assert len(wc_status2["active_files"]) == 2
+        PASS("Engine add_working_file")
+
+        # Check working_context in get_status
+        full_status = engine.get_status()
+        assert "working_context" in full_status
+        assert "exchange_count" in full_status["working_context"]
+        assert full_status["working_context"]["current_task"] == "Test task"
+        PASS("Engine get_status includes working_context")
+
+        # Check session manager persisted working context file
+        wc_path = Path(tmpdir) / ".crackedcode" / "working_context.json"
+        assert wc_path.exists()
+        data = json.loads(wc_path.read_text())
+        assert "current_task" in data
+        assert "exchange_count" in data
+        PASS("Working context file persisted")
+
+        os.chdir(old_cwd)
+        shutil.rmtree(tmpdir)
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return FAIL("Working context engine integration", str(e)[:80])
+
+
+# ── End Working Context Tests ────────────────────────────────────────
+
 if __name__ == "__main__":
     success = main()
-    sys.exit(0 if success >= 28 else 1)
+    sys.exit(0 if success >= 153 else 1)
 

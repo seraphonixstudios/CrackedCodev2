@@ -3,7 +3,7 @@
 Local AI Coding Assistant with Sci-Fi Neural Interface
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.9.6-blue?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Version-2.10.0-blue?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License">
   <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-orange?style=for-the-badge" alt="Platform">
   <img src="https://img.shields.io/badge/Python-3.10%2B-yellow?style=for-the-badge" alt="Python">
@@ -38,6 +38,10 @@ python test_system.py
 
 | Version | Features |
 |---------|----------|
+| 2.10.0 | **Agent Swarm Mode** - Automatic task decomposition into parallel subtasks, multi-agent parallel dispatch, agent-to-agent messaging bus, result aggregation with LLM merge. GUI dashboard with per-task progress bars, message counters, strategy badges |
+| 2.10.0 | **Adaptive Learning Engine** - Learns from user feedback (thumbs up/down), explicit corrections, and implicit signals. Extracts preferences, tracks topics, builds persistent user profile. Auto-injects learned context into prompts for personalized responses |
+| 2.10.0 | **GUI Polish Round** - Fixed thread-safety issues in voice/streaming callbacks, eliminated 9 silent exception swallowers, fixed `close_tab()` KeyError from `*` prefix, fixed `_trim_terminal` extra `deleteChar()`, added timer cleanup on shutdown, fixed `rename_tab` collision bug |
+| 2.10.0 | **Working Context** - Persistent current-session context (recent exchanges, active files, current task) that survives restarts and auto-injects into every prompt alongside codebase RAG, long-term memory, and adaptive learning |
 | 2.9.6 | **Collapsible Sidebar** - Left sidebar toggle (Ctrl+Shift+B), toolbar button, menu item, command palette entry |
 | 2.9.6 | **Attachment Chips** - File attachment badges in input area with drag-and-drop, file dialog, remove button, auto-clear on send |
 | 2.9.6 | **Code Syntax Rendering** - Regex-based token highlighting (keywords, strings, comments, numbers) inside ``` code blocks in terminal |
@@ -426,6 +430,114 @@ registry.register(card)
 
 client = registry.get_client("reviewer")
 task = client.send_task("Review this code")
+```
+
+---
+
+## Agent Swarm Mode (v2.10.0)
+
+Automatically decomposes complex prompts into parallel subtasks executed across multiple specialist agents:
+
+### GUI Usage
+1. Click **SWARM** button in toolbar (or `Ctrl+Shift+W`)
+2. Type a complex prompt: *"build a web app with frontend, backend API, and database"*
+3. Watch the **SWARM** tab for real-time parallel execution
+
+### CLI Usage
+```bash
+python src/main.py --swarm
+# Then type: "create both frontend and backend, then setup tests"
+```
+
+### Programmatic Usage
+```python
+from src.swarm import get_swarm_coordinator
+
+coordinator = get_swarm_coordinator()
+result = coordinator.process("Build a REST API with auth and tests")
+
+# Result contains:
+# - result.tasks: per-agent subtask results
+# - result.aggregated_output: merged coherent response
+# - result.consensus_score: success ratio
+```
+
+### Strategies
+- **PARALLEL_THEN_MERGE** (default): All agents run concurrently, LLM merges results
+- **SEQUENTIAL**: Tasks execute in order with dependency chaining
+- **DEBATE**: Coder + reviewer multi-round iteration
+
+---
+
+## Adaptive Learning Engine (v2.10.0)
+
+Learns from every interaction to personalize responses over time:
+
+### How It Works
+1. **Feedback**: Click 👍/👎 after responses (or "Correct..." to record exact fixes)
+2. **Preference Extraction**: Engine infers style preferences (verbosity, code examples, explanation depth)
+3. **Topic Tracking**: Identifies your most frequent domains (Python, web, security, etc.)
+4. **Context Injection**: Automatically prepends relevant learned preferences to LLM prompts
+
+### Storage
+- `.crackedcode/learning/profile.json` - User profile
+- `.crackedcode/learning/feedback.jsonl` - Feedback history
+
+### Programmatic Usage
+```python
+from src.adaptive_learning import get_adaptive_learning_engine
+
+engine = get_adaptive_learning_engine()
+engine.record_feedback("write a function", "def foo(): pass", rating=1)
+engine.record_correction("use tabs", "use spaces", reason="PEP8")
+engine.add_explicit_preference("code_style", "PEP8")
+
+# Get personalized context for next prompt
+context = engine.get_context_for_prompt("python function")
+# Returns: "User Preferences:\n- code_style: PEP8\n- Style: User prefers more code_examples"
+```
+
+---
+
+## Working Context (v2.10.0)
+
+Persistent current-session context that bridges the gap between full conversation history (SQLite, not auto-injected) and summarized long-term memories (lossy). Survives engine restarts and auto-injects into every LLM prompt:
+
+### What It Tracks
+- **Last 5 exchanges** — user prompt + assistant response verbatim
+- **Active files** — up to 10 files you're currently editing
+- **Current task** — explicit task description you can set
+
+### Context Injection Order
+```
+<working-context>          ← WorkingContext (new)
+<memory context block>     ← Long-term memory summaries
+<adaptive learning block>  ← User preferences
+<codebase RAG context>     ← Semantic search results
+<system-reminder>          ← Intent-specific behavior
+User prompt
+```
+
+### GUI Usage
+- **Show Working Context**: Command palette → "Show Working Context"
+- **Set Working Task**: Command palette → "Set Working Task"
+- **Reset Working Context**: Command palette → "Reset Working Context"
+- Status bar shows `C:5 F:3` (exchanges, files) with tooltip
+
+### Storage
+- `.crackedcode/working_context.json` — JSON with recent exchanges + metadata
+
+### Programmatic Usage
+```python
+from src.working_context import get_working_context
+
+wc = get_working_context()
+wc.set_task("Build a CLI tool")
+wc.add_active_file("src/main.py")
+wc.record_exchange("write function", "def foo(): pass")
+
+# Gets injected automatically, or manually:
+context = wc.get_context_for_prompt(max_exchanges=3)
 ```
 
 ---

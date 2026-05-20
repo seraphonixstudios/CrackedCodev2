@@ -1,6 +1,6 @@
 ﻿#!/usr/bin/env python3
 """
-CrackedCode GUI Enhancements v2.9.6
+CrackedCode GUI Enhancements v2.10.0
 UX Improvements: Toast notifications, Command Palette, Welcome Screen,
 Enhanced Status Bar, Animated transitions, Quick Actions
 """
@@ -345,7 +345,7 @@ class WelcomeWidget(QWidget):
         layout.setSpacing(20)
         
         # Title
-        title = QLabel("âš¡ CRACKEDCODE v2.9.6", self)
+        title = QLabel("âš¡ CRACKEDCODE v2.10.0", self)
         title.setFont(QFont("Consolas", 24, QFont.Weight.Bold))
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setStyleSheet(f"color: {ATLAN_GREEN};")
@@ -591,6 +591,19 @@ class EnhancedStatusBar(QStatusBar):
     
     def set_task_count(self, count: int):
         self.task_badge.setText(f"T:{count}")
+
+    def set_working_context(self, exchanges: int, files: int, task: str = ""):
+        from src.gui import ATLAN_PURPLE
+        parts = []
+        if exchanges:
+            parts.append(f"C:{exchanges}")
+        if files:
+            parts.append(f"F:{files}")
+        if parts:
+            text = " ".join(parts)
+            self.task_badge.setText(text)
+            self.task_badge.setToolTip(f"Working context: {task or 'No task set'}" if exchanges else "No working context")
+            self.task_badge.setStyleSheet(f"color: {ATLAN_PURPLE};")
     
     def set_clock(self, text: str):
         self.clock_label.setText(text)

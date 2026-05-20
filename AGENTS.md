@@ -4,10 +4,10 @@
 
 CrackedCode is a 100% local AI coding assistant featuring autonomous application production (OpenClaw-style), multi-agent orchestration, voice I/O, screen capture/vision analysis, web browser automation, security auditing, persistent long-term memory, MCP integration, A2A protocol support, and a sci-fi neural interface.
 
-**Current Version:** 2.9.6
+**Current Version:** 2.10.0
 **Branch:** main
 **License:** MIT
-**Tests:** 125+ (99/99 E2E + 18 GUI + voice engine)
+**Tests:** 144+ (5 Working Context + 14 Swarm + 4 Adaptive Learning + 99 E2E + 18 GUI + voice engine)
 
 ## Architecture
 
@@ -49,7 +49,36 @@ crackedcode/
 └── WHITE_PAPER.md           # Technical white paper
 ```
 
+## Architecture
+
+```
+crackedcode/
+├── src/
+│   ├── swarm.py                # Swarm Mode - parallel multi-agent coordination (NEW v2.10.0)
+│   └── ...
+```
+
+Swarm Mode is an additional layer that sits on top of UnifiedOrchestrator, providing:
+- **Automatic task decomposition**: Complex prompts are analyzed and split into independent subtasks
+- **Parallel dispatch**: Subtasks run concurrently across agent roles
+- **Agent-to-agent messaging**: Real-time communication between agents via MessageBus
+- **Result aggregation**: LLM-based merging of parallel outputs into a coherent response
+- **3 execution strategies**: PARALLEL, SEQUENTIAL (serial), DEBATE (coder+reviewer rounds)
+
 ## Key Components
+
+### SwarmCoordinator (src/swarm.py) — NEW v2.10.0
+- `SwarmTask` / `SwarmResult` / `AgentMessage` dataclasses for swarm data
+- `MessageBus`: Thread-safe agent-to-agent communication with pub/sub
+- `SwarmCoordinator.process()`: End-to-end decompose -> dispatch -> aggregate
+- `SwarmCoordinator.process_serial()`: Sequential execution with dependency chaining
+- `SwarmCoordinator.process_with_debate()`: Multi-round coder + reviewer debate
+- `SwarmStrategy` enum: PARALLEL, SEQUENTIAL, PARALLEL_THEN_MERGE, DEBATE, SUPERVISED
+- `get_swarm_coordinator()`: Singleton factory compatible with engine/orchestrator
+- **GUI integration**: SwarmPanelWidget with live task tracking, swarm dashboard tab
+- **Engine integration**: `process_via_swarm()`, `_is_complex_prompt()` heuristic detection
+- **Orchestrator integration**: `swarm_coordinator` property, `process_via_swarm()` methods
+- **CLI integration**: `--swarm` flag, SwarmCoordinator replaces CodeSwarmCoordinator
 
 ### CrackedCodeEngine (src/engine.py)
 - Intent parsing with robust multi-layer keyword matching (11 intents)
@@ -183,6 +212,17 @@ crackedcode/
 - **Engine integration**: Automatic context injection for all code-related intents
 - Storage: .crackedcode/memory/memories.json
 
+### Working Context (src/working_context.py) — NEW v2.10.0
+- Exchange / WorkingContextData / WorkingContext dataclasses for session context
+- Rolling window of last 5 exchanges (user prompt + assistant response)
+- Active file tracking (up to 10, deduplicated)
+- Current task description with explicit set/reset
+- JSON persistence to `.crackedcode/working_context.json` — survives restarts
+- Singleton factory: `get_working_context()`
+- **Context injection**: Auto-injected as `<working-context>` block in LLM prompts alongside codebase RAG, long-term memory, and adaptive learning
+- **Engine integration**: `_init_working_context()` on startup, `working_context` property, `get_working_context_status()`, `set_working_task()`, `add_working_file()`, auto-record on every process() call
+- **GUI integration**: 3 command palette items (Show, Set, Reset) + status bar badge showing exchange/file counts
+
 ### MCP Integration (src/mcp_client.py)
 - MCPClient: Connect to external MCP servers via stdio or SSE
 - Auto-discovery: tools/list, initialize handshake, tools/call
@@ -226,7 +266,7 @@ crackedcode/
 2. Update version numbers in ALL relevant files if version changes
 3. Update test_system.py with new tests
 4. Update README.md and AGENTS.md
-5. Run `python test_system.py` to verify (86 tests, all must pass)
+5. Run `python test_system.py` to verify (144+ tests, all must pass)
 6. Commit with descriptive message
 7. Push to origin
 

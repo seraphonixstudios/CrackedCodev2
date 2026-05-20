@@ -267,6 +267,46 @@ class AgentOrchestrator:
                 "color": ATLAN_GREEN,
                 "tasks_completed": 0,
             },
+            "Tester": {
+                "role": "verification",
+                "status": "idle",
+                "capabilities": ["test", "verify", "validate", "assert"],
+                "icon": "T",
+                "color": ATLAN_ORANGE,
+                "tasks_completed": 0,
+            },
+            "Debugger": {
+                "role": "diagnostics",
+                "status": "idle",
+                "capabilities": ["debug", "trace", "fix", "inspect"],
+                "icon": "D",
+                "color": ATLAN_RED,
+                "tasks_completed": 0,
+            },
+            "Documenter": {
+                "role": "documentation",
+                "status": "idle",
+                "capabilities": ["document", "explain", "comment", "write"],
+                "icon": "W",
+                "color": ATLAN_BLUE,
+                "tasks_completed": 0,
+            },
+            "DevOps": {
+                "role": "infrastructure",
+                "status": "idle",
+                "capabilities": ["docker", "deploy", "ci", "monitor"],
+                "icon": "O",
+                "color": ATLAN_GOLD,
+                "tasks_completed": 0,
+            },
+            "Security": {
+                "role": "protection",
+                "status": "idle",
+                "capabilities": ["scan", "audit", "check", "secure"],
+                "icon": "X",
+                "color": ATLAN_PURPLE,
+                "tasks_completed": 0,
+            },
         }
         
         # Legacy task tracking (for compatibility)
@@ -276,13 +316,16 @@ class AgentOrchestrator:
         
         self.delegation_rules = {
             Intent.CODE: "Coder",
-            Intent.DEBUG: "Reviewer",
+            Intent.DEBUG: "Debugger",
             Intent.REVIEW: "Reviewer",
             Intent.BUILD: "Architect",
             Intent.EXECUTE: "Executor",
             Intent.SEARCH: "Searcher",
             Intent.HELP: "Supervisor",
             Intent.CHAT: "Coder",
+            Intent.TEST: "Tester",
+            Intent.SECURITY: "Security",
+            Intent.BROWSE: "Searcher",
         }
     
     @property
@@ -343,9 +386,11 @@ class AgentOrchestrator:
             "executor": "Executor",
             "reviewer": "Reviewer",
             "searcher": "Searcher",
-            "tester": "Reviewer",
-            "debugger": "Reviewer",
-            "documenter": "Supervisor",
+            "tester": "Tester",
+            "debugger": "Debugger",
+            "documenter": "Documenter",
+            "devops": "DevOps",
+            "security": "Security",
         }
         return mapping.get(role.lower(), "Coder")
     
@@ -410,8 +455,8 @@ class AgentOrchestrator:
                 if hasattr(task, '_unified_id'):
                     try:
                         self.unified.cancel_task(task._unified_id)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.warning(f"Failed to cancel unified task: {e}")
                 if task.agent in self.agents:
                     self.agents[task.agent]["status"] = "idle"
                 if self.current_task and self.current_task.task_id == task_id:
@@ -427,7 +472,8 @@ class AgentOrchestrator:
         """Get current queue status from unified orchestrator."""
         try:
             unified_status = self.unified.get_queue_status()
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Unified queue status unavailable: {e}")
             unified_status = {}
         
         # Combine with legacy status
@@ -692,14 +738,38 @@ class TaskQueueWidget(QWidget):
                     details += f"\nResult: {task.result[:200]}"
                 if task.error:
                     details += f"\nError: {task.error}"
-                QMessageBox.information(self, "Task Details", details)
+                msg = QMessageBox(self)
+                msg.setWindowTitle("Task Details")
+                msg.setText(details)
+                if task.status == TaskStatus.FAILED:
+                    retry_btn = msg.addButton("Retry", QMessageBox.ButtonRole.ActionRole)
+                    msg.exec()
+                    if msg.clickedButton() == retry_btn:
+                        self._retry_task(task)
+                else:
+                    msg.exec()
                 break
+
+    def _retry_task(self, task):
+        """Retry a failed task by creating a new one with same prompt/intent."""
+        try:
+            unified = self.orchestrator.unified
+            new_task = unified.create_task(
+                prompt=task.prompt,
+                intent=task.intent,
+            )
+            unified.submit(new_task)
+            if hasattr(self, 'parent') and hasattr(self.parent(), 'term'):
+                self.parent().term(f"[RETRY] Re-submitted: {task.prompt[:40]}...")
+        except Exception as e:
+            if hasattr(self, 'parent') and hasattr(self.parent(), 'term'):
+                self.parent().term(f"[RETRY FAILED] {e}", level="error")
 
     def refresh(self):
         self.task_list.clear()
         status = self.orchestrator.get_queue_status()
         
-        tasks = self.orchestrator.tasks[-15:]
+        tasks = self.orchestrator.tasks[-100:]
         
         if self.current_filter != "all":
             tasks = [t for t in tasks if t.status.value == self.current_filter]
@@ -1294,6 +1364,224 @@ class AgentPanelWidget(QWidget):
                 """)
 
 
+class SwarmPanelWidget(QWidget):
+    """Dashboard showing active/recent swarm executions."""
+
+    def __init__(self, gui_ref=None):
+        super().__init__()
+        self.gui = gui_ref
+        self.swarm_widgets: Dict[str, QFrame] = {}
+        self.init_ui()
+        self.update_timer = QTimer()
+        self.update_timer.timeout.connect(self.refresh)
+        self.update_timer.start(1000)
+
+    def init_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        header = QLabel("SWARM MODE")
+        header.setStyleSheet(f"font-weight: bold; color: {ATLAN_PURPLE}; padding: 2px;")
+        layout.addWidget(header)
+
+        info_label = QLabel(
+            "Swarm Mode decomposes complex prompts into parallel subtasks\n"
+            "executed across multiple AI agents simultaneously.\n\n"
+            "1. Enable SWARM button in toolbar (Ctrl+Shift+W)\n"
+            "2. Type a complex prompt (e.g., 'build frontend and backend')\n"
+            "3. Watch agents work in parallel"
+        )
+        info_label.setWordWrap(True)
+        info_label.setStyleSheet(f"color: #888; font-size: 9px; padding: 6px;")
+        layout.addWidget(info_label)
+
+        self.swarm_list = QWidget()
+        self.swarm_list_layout = QVBoxLayout(self.swarm_list)
+        self.swarm_list_layout.setContentsMargins(0, 0, 0, 0)
+        self.swarm_list_layout.setSpacing(4)
+        layout.addWidget(self.swarm_list, 1)
+
+        self.empty_label = QLabel(
+            "No swarm runs yet\n\n"
+            "Enable SWARM mode and send a complex prompt\n"
+            "to see parallel agent execution."
+        )
+        self.empty_label.setWordWrap(True)
+        self.empty_label.setStyleSheet(f"color: #555; font-size: 10px; padding: 12px;")
+        self.empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.swarm_list_layout.addWidget(self.empty_label)
+
+        stats_layout = QHBoxLayout()
+        self.run_count_label = QLabel("Runs: 0")
+        self.run_count_label.setStyleSheet(f"color: {ATLAN_GREEN}; font-size: 9px;")
+        stats_layout.addWidget(self.run_count_label)
+        self.success_rate_label = QLabel("Success: 0%")
+        self.success_rate_label.setStyleSheet(f"color: {ATLAN_GREEN}; font-size: 9px;")
+        stats_layout.addWidget(self.success_rate_label)
+        self.active_label = QLabel("Active: 0")
+        self.active_label.setStyleSheet(f"color: {ATLAN_GOLD}; font-size: 9px;")
+        stats_layout.addWidget(self.active_label)
+        stats_layout.addStretch()
+        layout.addLayout(stats_layout)
+
+    def create_swarm_widget(self, swarm_id: str, data: Dict) -> QFrame:
+        frame = QFrame()
+        frame.setStyleSheet(f"""
+            QFrame {{
+                background-color: {ATLAN_MEDIUM};
+                border: 1px solid {ATLAN_BORDER};
+                border-radius: 4px;
+                padding: 4px;
+                margin: 1px;
+            }}
+        """)
+
+        f_layout = QVBoxLayout(frame)
+        f_layout.setContentsMargins(6, 4, 6, 4)
+        f_layout.setSpacing(3)
+
+        # Header row
+        header_row = QHBoxLayout()
+        status_color = ATLAN_GREEN if data["status"] == "completed" else ATLAN_GOLD if data["status"] == "running" else ATLAN_RED
+        status_dot = QLabel("\u25CF")
+        status_dot.setStyleSheet(f"color: {status_color}; font-size: 12px;")
+        header_row.addWidget(status_dot)
+
+        id_label = QLabel(f"#{swarm_id[:8]}")
+        id_label.setStyleSheet(f"color: {ATLAN_CYAN}; font-weight: bold; font-size: 9px;")
+        header_row.addWidget(id_label)
+
+        strategy_label = QLabel(data.get("strategy", "parallel"))
+        strategy_label.setStyleSheet(f"color: {ATLAN_PURPLE}; font-size: 8px; padding: 1px 4px; border: 1px solid {ATLAN_PURPLE}; border-radius: 3px;")
+        header_row.addWidget(strategy_label)
+
+        msg_count = data.get("messages", 0)
+        if msg_count > 0:
+            msg_label = QLabel(f"\u2709 {msg_count}")
+            msg_label.setStyleSheet(f"color: {ATLAN_GOLD}; font-size: 8px;")
+            msg_label.setToolTip(f"{msg_count} agent-to-agent messages")
+            header_row.addWidget(msg_label)
+
+        header_row.addStretch()
+
+        status_lbl = QLabel(data["status"])
+        status_lbl.setStyleSheet(f"color: {status_color}; font-size: 9px;")
+        header_row.addWidget(status_lbl)
+        f_layout.addLayout(header_row)
+
+        # Progress bar
+        task_count = len(data.get("tasks", []))
+        if task_count > 0:
+            progress = QProgressBar()
+            progress.setMaximum(task_count)
+            done = data.get("success_count", 0) + data.get("fail_count", 0)
+            progress.setValue(done)
+            progress.setTextVisible(False)
+            progress.setFixedHeight(4)
+            progress.setStyleSheet(f"""
+                QProgressBar {{ background-color: #222; border: none; border-radius: 2px; }}
+                QProgressBar::chunk {{ background-color: {status_color}; border-radius: 2px; }}
+            """)
+            f_layout.addWidget(progress)
+
+        # Details row
+        details = QLabel(
+            f"Tasks: {data.get('success_count', 0)}/{task_count} "
+            f"| Time: {data.get('execution_time', 0):.1f}s"
+        )
+        details.setStyleSheet("color: #999; font-size: 8px;")
+        f_layout.addWidget(details)
+
+        # Per-task mini list (if tasks available)
+        tasks = data.get("tasks", [])
+        if tasks:
+            task_widget = QWidget()
+            task_layout = QVBoxLayout(task_widget)
+            task_layout.setContentsMargins(4, 0, 0, 0)
+            task_layout.setSpacing(1)
+            for t in tasks[:3]:  # Show first 3 tasks
+                agent = t.get("agent_role", "?")
+                tstatus = t.get("status", "?")
+                tcolor = ATLAN_GREEN if tstatus == "completed" else ATLAN_GOLD if tstatus == "running" else ATLAN_RED if tstatus == "failed" else "#666"
+                dot = "\u25CF" if tstatus in ("completed", "failed") else "\u25CB"
+                t_lbl = QLabel(f"  {dot} [{agent.upper()[:8]}] {tstatus}")
+                t_lbl.setStyleSheet(f"color: {tcolor}; font-size: 8px;")
+                task_layout.addWidget(t_lbl)
+            if len(tasks) > 3:
+                more_lbl = QLabel(f"  ... {len(tasks) - 3} more tasks")
+                more_lbl.setStyleSheet("color: #666; font-size: 8px;")
+                task_layout.addWidget(more_lbl)
+            f_layout.addWidget(task_widget)
+
+        return frame
+
+    def refresh(self):
+        if not self.gui or not hasattr(self.gui, 'engine') or not self.gui.engine:
+            return
+
+        try:
+            swarms = self.gui.engine.get_swarm_status()
+            if not swarms:
+                return
+        except Exception:
+            return
+
+        total = swarms.get("total_swarms", 0)
+        active = swarms.get("active", 0)
+        completed = swarms.get("completed", 0)
+        failed = swarms.get("failed", 0)
+
+        self.run_count_label.setText(f"Runs: {total}")
+        total_finished = completed + failed
+        rate = (completed / total_finished * 100) if total_finished > 0 else 0
+        self.success_rate_label.setText(f"Success: {rate:.0f}%")
+        self.active_label.setText(f"Active: {active}")
+
+        if total == 0:
+            self.empty_label.show()
+            return
+
+        self.empty_label.hide()
+
+        # Remove stale widgets
+        current_ids = set()
+        try:
+            all_swarms = self.gui.engine.swarm_coordinator.get_all_swarms()
+            for sd in all_swarms:
+                sid = sd.get("swarm_id", "")
+                if sid not in current_ids:
+                    current_ids.add(sid)
+        except Exception:
+            return
+
+        for wid in list(self.swarm_widgets.keys()):
+            if wid not in current_ids:
+                widget = self.swarm_widgets.pop(wid, None)
+                if widget:
+                    self.swarm_list_layout.removeWidget(widget)
+                    widget.deleteLater()
+
+        # Add/update widgets
+        try:
+            all_swarms = self.gui.engine.swarm_coordinator.get_all_swarms()
+            for sd in all_swarms:
+                sid = sd.get("swarm_id", "")
+                if not sid:
+                    continue
+                if sid not in self.swarm_widgets:
+                    w = self.create_swarm_widget(sid, sd)
+                    self.swarm_widgets[sid] = w
+                    self.swarm_list_layout.addWidget(w)
+                else:
+                    w = self.swarm_widgets[sid]
+                    w.deleteLater()
+                    nw = self.create_swarm_widget(sid, sd)
+                    self.swarm_widgets[sid] = nw
+                    self.swarm_list_layout.addWidget(nw)
+        except Exception:
+            pass
+
+
 class SearchableTerminal(QTextEdit):
     def __init__(self):
         super().__init__()
@@ -1365,6 +1653,8 @@ class SearchableTerminal(QTextEdit):
 class CrackedCodeGUI(QMainWindow):
     voice_load_result = pyqtSignal(object)  # carries ("success", bool) or ("error", Exception)
     voice_transcribed = pyqtSignal(str)     # carries transcribed text from background thread
+    voice_status = pyqtSignal(str)          # thread-safe voice status messages for terminal
+    stream_chunk = pyqtSignal(str)          # thread-safe streaming chunk for terminal
     
     def __init__(self):
         super().__init__()
@@ -1390,6 +1680,12 @@ class CrackedCodeGUI(QMainWindow):
         self._externally_modified_files: Set[str] = set()
         self.left_panel_visible = True
         self.left_panel_width = 280
+        self.swarm_mode = False
+        
+        # Adaptive learning: track last prompt/response for feedback
+        self._last_prompt = ""
+        self._last_response = ""
+        self._last_response_metadata = {}
         
         self.load_config()
         self.setup_atlan_theme()
@@ -1403,7 +1699,7 @@ class CrackedCodeGUI(QMainWindow):
         self.restore_state()
         self.setup_paste_handler()
         
-        logger.info("CrackedCode GUI v2.9.6 started")
+        logger.info("CrackedCode GUI v2.10.0 started")
 
     def init_orchestrator(self):
         self.orchestrator = AgentOrchestrator(gui_ref=self)
@@ -1544,6 +1840,8 @@ class CrackedCodeGUI(QMainWindow):
             # Connect thread-safe signals for background thread communication
             self.voice_load_result.connect(self._on_voice_load_result)
             self.voice_transcribed.connect(self._on_voice_transcribed)
+            self.voice_status.connect(self._on_voice_status)
+            self.stream_chunk.connect(self._on_stream_chunk)
 
             logger.info(f"Voice engine initialized: {status}")
         except Exception as e:
@@ -1609,7 +1907,7 @@ class CrackedCodeGUI(QMainWindow):
             self.config = {"model": "qwen3:8b-gpu", "project_root": "."}
 
     def setup_atlan_theme(self):
-        self.setWindowTitle("CRACKEDCODE v2.9.6 // AUTONOMOUS NEURAL SYSTEM")
+        self.setWindowTitle("CRACKEDCODE v2.10.0 // AUTONOMOUS NEURAL SYSTEM")
         self.setMinimumSize(1400, 900)
         
         self.atlan_font = QFont("Consolas", 11)
@@ -1884,8 +2182,20 @@ class CrackedCodeGUI(QMainWindow):
         main.setContentsMargins(4, 4, 4, 4)
         main.setSpacing(4)
         
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+        splitter.setHandleWidth(4)
+        splitter.setStyleSheet(f"""
+            QSplitter::handle {{
+                background-color: {ATLAN_GREEN};
+                width: 3px;
+            }}
+            QSplitter::handle:hover {{
+                background-color: {ATLAN_CYAN};
+            }}
+        """)
+        
         left_panel = self.create_left_panel()
-        main.addWidget(left_panel, 1)
+        splitter.addWidget(left_panel)
         
         right = QWidget()
         rl = QVBoxLayout(right)
@@ -1977,9 +2287,56 @@ class CrackedCodeGUI(QMainWindow):
         tin.addWidget(send_btn)
         
         term_layout.addLayout(tin)
+        
+        # Feedback bar (hidden until response received)
+        self.feedback_bar = QWidget()
+        fb_layout = QHBoxLayout(self.feedback_bar)
+        fb_layout.setContentsMargins(0, 0, 0, 0)
+        fb_layout.setSpacing(4)
+        
+        fb_label = QLabel("Rate response:")
+        fb_label.setStyleSheet(f"color: {ATLAN_GOLD}; font-size: 9px;")
+        fb_layout.addWidget(fb_label)
+        
+        self.feedback_up_btn = QPushButton("\u2713")  # checkmark
+        self.feedback_up_btn.setToolTip("Good response (thumbs up)")
+        self.feedback_up_btn.setFixedWidth(28)
+        self.feedback_up_btn.setStyleSheet(f"""
+            QPushButton {{ color: {ATLAN_GREEN}; border: 1px solid {ATLAN_GREEN}; border-radius: 4px; font-size: 12px; padding: 2px; }}
+            QPushButton:hover {{ background-color: {ATLAN_GREEN}; color: {ATLAN_DARK}; }}
+        """)
+        self.feedback_up_btn.clicked.connect(lambda: self._on_feedback(1))
+        fb_layout.addWidget(self.feedback_up_btn)
+        
+        self.feedback_down_btn = QPushButton("\u2717")  # x mark
+        self.feedback_down_btn.setToolTip("Bad response (thumbs down)")
+        self.feedback_down_btn.setFixedWidth(28)
+        self.feedback_down_btn.setStyleSheet(f"""
+            QPushButton {{ color: {ATLAN_RED}; border: 1px solid {ATLAN_RED}; border-radius: 4px; font-size: 12px; padding: 2px; }}
+            QPushButton:hover {{ background-color: {ATLAN_RED}; color: {ATLAN_DARK}; }}
+        """)
+        self.feedback_down_btn.clicked.connect(lambda: self._on_feedback(-1))
+        fb_layout.addWidget(self.feedback_down_btn)
+        
+        self.feedback_corr_btn = QPushButton("Correct...")
+        self.feedback_corr_btn.setToolTip("Record a correction")
+        self.feedback_corr_btn.setStyleSheet(f"""
+            QPushButton {{ color: {ATLAN_CYAN}; border: 1px solid {ATLAN_CYAN}; border-radius: 4px; font-size: 9px; padding: 2px 8px; }}
+            QPushButton:hover {{ background-color: {ATLAN_CYAN}; color: {ATLAN_DARK}; }}
+        """)
+        self.feedback_corr_btn.clicked.connect(self._on_correction)
+        fb_layout.addWidget(self.feedback_corr_btn)
+        
+        fb_layout.addStretch()
+        
+        self.feedback_bar.hide()
+        term_layout.addWidget(self.feedback_bar)
+        
         rl.addWidget(term_group, 2)
         
-        main.addWidget(right, 3)
+        splitter.addWidget(right)
+        splitter.setSizes([280, 700])
+        main.addWidget(splitter)
         
         self.create_status()
         self._apply_glow_effects()
@@ -2085,8 +2442,12 @@ class CrackedCodeGUI(QMainWindow):
             QuickActionItem("Show Help", "F1", self.show_help, "Help"),
             QuickActionItem("Toggle Sidebar", "Ctrl+Shift+B", self.toggle_left_panel, "View"),
             QuickActionItem("Toggle Fullscreen", "F11", self.toggle_full, "View"),
+            QuickActionItem("Toggle Swarm Mode", "Ctrl+Shift+W", self.toggle_swarm_mode, "AI"),
             QuickActionItem("Analyze Screen", "Ctrl+Shift+S", self.analyze_screen, "Vision"),
             QuickActionItem("New Project", "", self.new_proj, "Project"),
+            QuickActionItem("Show Working Context", "", self.show_working_context, "Context"),
+            QuickActionItem("Set Working Task", "", self.set_working_task_dialog, "Context"),
+            QuickActionItem("Reset Working Context", "", self.reset_working_context, "Context"),
         ]
         
         # Plugin command palette hook
@@ -2137,6 +2498,10 @@ class CrackedCodeGUI(QMainWindow):
         # Toggle sidebar
         sidebar_shortcut = QShortcut(QKeySequence("Ctrl+Shift+B"), self)
         sidebar_shortcut.activated.connect(self.toggle_left_panel)
+
+        # Toggle swarm mode
+        swarm_shortcut = QShortcut(QKeySequence("Ctrl+Shift+W"), self)
+        swarm_shortcut.activated.connect(self.toggle_swarm_mode)
     
     def show_quick_actions(self):
         """Show the command palette."""
@@ -2201,6 +2566,20 @@ class CrackedCodeGUI(QMainWindow):
         file_menu.addAction(exit_action)
         
         edit_menu = menubar.addMenu("EDIT")
+        
+        undo_action = QAction("UNDO", self)
+        undo_action.setShortcut(QKeySequence("Ctrl+Z"))
+        undo_action.setToolTip("Undo last change (Ctrl+Z)")
+        undo_action.triggered.connect(lambda: self.editor.undo() if hasattr(self, 'editor') else None)
+        edit_menu.addAction(undo_action)
+        
+        redo_action = QAction("REDO", self)
+        redo_action.setShortcut(QKeySequence("Ctrl+Shift+Z"))
+        redo_action.setToolTip("Redo last undone change (Ctrl+Shift+Z)")
+        redo_action.triggered.connect(lambda: self.editor.redo() if hasattr(self, 'editor') else None)
+        edit_menu.addAction(redo_action)
+        
+        edit_menu.addSeparator()
         
         copy_action = QAction("COPY OUTPUT", self)
         copy_action.setShortcut(QKeySequence("Ctrl+Shift+C"))
@@ -2295,6 +2674,16 @@ class CrackedCodeGUI(QMainWindow):
         dev_action.setToolTip("Open dev console (F12)")
         dev_action.triggered.connect(self.toggle_dev_console)
         view_menu.addAction(dev_action)
+        
+        view_menu.addSeparator()
+
+        swarm_action = QAction("SWARM MODE", self)
+        swarm_action.setCheckable(True)
+        swarm_action.setChecked(self.swarm_mode)
+        swarm_action.setShortcut(QKeySequence("Ctrl+Shift+W"))
+        swarm_action.setToolTip("Toggle Swarm Mode for parallel multi-agent execution (Ctrl+Shift+W)")
+        swarm_action.triggered.connect(lambda: (self.swarm_btn.toggle(), self.toggle_swarm_mode()))
+        view_menu.addAction(swarm_action)
         
         view_menu.addSeparator()
         
@@ -2535,7 +2924,19 @@ class CrackedCodeGUI(QMainWindow):
         
         panel_tabs.addTab(reasoning_tab, "REASONING")
         
-        # --- Tab 4: HISTORY ---
+        # --- Tab 4: SWARM ---
+        swarm_tab = QWidget()
+        swarm_layout = QVBoxLayout(swarm_tab)
+        swarm_layout.setContentsMargins(4, 4, 4, 4)
+        swarm_layout.setSpacing(4)
+
+        self.swarm_panel = SwarmPanelWidget(gui_ref=self)
+        self.swarm_panel.setToolTip("Swarm Mode - parallel multi-agent execution")
+        swarm_layout.addWidget(self.swarm_panel)
+
+        panel_tabs.addTab(swarm_tab, "SWARM")
+
+        # --- Tab 5: HISTORY ---
         history_tab = QWidget()
         history_layout = QVBoxLayout(history_tab)
         history_layout.setContentsMargins(4, 4, 4, 4)
@@ -2771,6 +3172,13 @@ class CrackedCodeGUI(QMainWindow):
         self.matrix_btn.clicked.connect(self.toggle_matrix)
         tb.addWidget(self.matrix_btn)
 
+        self.swarm_btn = QPushButton("SWARM")
+        self.swarm_btn.setCheckable(True)
+        self.swarm_btn.setChecked(self.config.get("swarm_enabled", False))
+        self.swarm_btn.setToolTip("Enable Swarm Mode - auto-decompose complex prompts into parallel agents (Ctrl+Shift+W)")
+        self.swarm_btn.clicked.connect(self.toggle_swarm_mode)
+        tb.addWidget(self.swarm_btn)
+
     def create_status(self):
         if ENHANCEMENTS_AVAILABLE:
             sb = EnhancedStatusBar(self)
@@ -2869,6 +3277,17 @@ class CrackedCodeGUI(QMainWindow):
             self.matrix.toggle()
             self.matrix_visible = not self.matrix_visible
             self.term(f"[MATRIX] {'ON' if self.matrix_visible else 'OFF'}")
+
+    def toggle_swarm_mode(self):
+        self.swarm_mode = self.swarm_btn.isChecked()
+        self.config["swarm_enabled"] = self.swarm_mode
+        if self.engine and hasattr(self.engine, 'config'):
+            self.engine.config["swarm_enabled"] = self.swarm_mode
+        status_text = f"SWARM {'ON' if self.swarm_mode else 'OFF'}"
+        self.set_status(status_text)
+        self.term(f"[SWARM] Swarm Mode {'ENABLED' if self.swarm_mode else 'DISABLED'}")
+        if self.swarm_mode:
+            self.term("[SWARM] Complex prompts will be auto-decomposed across parallel agents", level="info")
 
     def toggle_autonomous_mode(self):
         enabled = self.autonomous_btn.isChecked()
@@ -3163,12 +3582,25 @@ class CrackedCodeGUI(QMainWindow):
     def close_tab(self, index):
         if self.tab_widget.count() > 1:
             tab_name = self.tab_widget.tabText(index)
-            if tab_name in self.open_files:
-                del self.open_files[tab_name]
-            if tab_name in self.modified_tabs:
-                self.modified_tabs.remove(tab_name)
+            clean_name = tab_name.lstrip('*')
+            if clean_name in self.modified_tabs or tab_name.startswith("*"):
+                reply = QMessageBox.question(
+                    self, "Unsaved Changes",
+                    f"Save changes to '{clean_name}' before closing?",
+                    QMessageBox.StandardButton.Save |
+                    QMessageBox.StandardButton.Discard |
+                    QMessageBox.StandardButton.Cancel
+                )
+                if reply == QMessageBox.StandardButton.Cancel:
+                    return
+                if reply == QMessageBox.StandardButton.Save:
+                    self.save_current_file()
+            if clean_name in self.open_files:
+                del self.open_files[clean_name]
+            if clean_name in self.modified_tabs:
+                self.modified_tabs.remove(clean_name)
             self.tab_widget.removeTab(index)
-            self.term(f"[TAB] Closed {tab_name}")
+            self.term(f"[TAB] Closed {clean_name}")
 
     def close_current_tab(self):
         index = self.tab_widget.currentIndex()
@@ -3176,22 +3608,29 @@ class CrackedCodeGUI(QMainWindow):
 
     def rename_tab(self, index):
         tab_name = self.tab_widget.tabText(index)
-        new_name, ok = QInputDialog.getText(self, "Rename Tab", "New name:", text=tab_name)
-        if ok and new_name:
+        clean_old = tab_name.lstrip('*')
+        new_name, ok = QInputDialog.getText(self, "Rename Tab", "New name:", text=clean_old)
+        if ok and new_name and new_name != clean_old:
+            # Avoid overwriting existing tab
+            if new_name in self.open_files:
+                QMessageBox.warning(self, "Rename", f"A tab named '{new_name}' already exists.")
+                return
             self.tab_widget.setTabText(index, new_name)
-            if tab_name in self.open_files:
-                self.open_files[new_name] = self.open_files.pop(tab_name)
-            if tab_name in self.modified_tabs:
-                self.modified_tabs.remove(tab_name)
+            if clean_old in self.open_files:
+                self.open_files[new_name] = self.open_files.pop(clean_old)
+            if clean_old in self.modified_tabs:
+                self.modified_tabs.remove(clean_old)
                 self.modified_tabs.add(new_name)
             self.term(f"[TAB] Renamed to {new_name}")
 
     def on_tab_changed(self, index):
         tab_name = self.tab_widget.tabText(index)
-        self.editor = self.tab_widget.widget(index)
-        if self.editor and not hasattr(self.editor, '_has_event_filter'):
-            self.editor.installEventFilter(self)
-            self.editor._has_event_filter = True
+        widget = self.tab_widget.widget(index)
+        if isinstance(widget, QTextEdit):
+            self.editor = widget
+            if not hasattr(self.editor, '_has_event_filter'):
+                self.editor.installEventFilter(self)
+                self.editor._has_event_filter = True
         self.set_status(f"Editing: {tab_name}")
         self.update_tab_count()
 
@@ -3304,6 +3743,7 @@ class CrackedCodeGUI(QMainWindow):
         self.open_files[name] = editor
         self.tab_widget.setCurrentWidget(editor)
         self.editor = editor
+        self.current_file = None
         self.term(f"[TAB] Created {name}")
 
     def new_file(self):
@@ -3320,7 +3760,7 @@ class CrackedCodeGUI(QMainWindow):
         dlg.setWindowTitle("CrackedCode Help")
         dlg.setTextFormat(Qt.TextFormat.RichText)
         dlg.setText("""
-        <h2 style='color: #00FF41;'>CrackedCode v2.9.6</h2>
+        <h2 style='color: #00FF41;'>CrackedCode v2.10.0</h2>
         <b>Keyboard Shortcuts:</b><br>
         <table>
         <tr><td><b>Ctrl+N</b></td><td>New File</td></tr>
@@ -3585,11 +4025,6 @@ class CrackedCodeGUI(QMainWindow):
             except Exception as e:
                 self.term(f"[VISION ERROR: {e}]")
 
-    def _is_code_snippet(self, text: str) -> bool:
-        code_indicators = ['def ', 'class ', 'function ', 'import ', 'from ', 'const ', 'let ', 'var ',
-                         'if (', 'if(', 'for (', 'for(', 'while (', 'while(', 'print(', 'return ', 'async ', 'await ']
-        return any(text.lstrip().startswith(ind) for ind in code_indicators) or text.count('\n') > 2
-
     def copy_output(self):
         text = self.terminal.toPlainText()
         if text:
@@ -3635,6 +4070,138 @@ class CrackedCodeGUI(QMainWindow):
             status = self.orchestrator.get_queue_status()
             total = len(self.orchestrator.tasks)
             self.task_status_lbl.setText(f"Tasks: {status['completed']}/{total}")
+
+    def update_working_context_status(self):
+        """Update the status bar with current working context info."""
+        if not self.engine:
+            return
+        try:
+            wc = self.engine.working_context
+            if not wc:
+                return
+            status = wc.get_status()
+            if ENHANCEMENTS_AVAILABLE and isinstance(self.statusBar(), EnhancedStatusBar):
+                self.statusBar().set_working_context(
+                    exchanges=status["exchange_count"],
+                    files=len(status["active_files"]),
+                    task=status.get("current_task", ""),
+                )
+        except Exception as e:
+            logger.debug(f"Failed to update working context status: {e}")
+
+    def show_working_context(self):
+        """Display current working context in the terminal."""
+        if not self.engine or not self.engine.working_context:
+            self.term("[WORKING CONTEXT] Not available", level="warning")
+            return
+        try:
+            status = self.engine.working_context.get_status()
+            self.term("=== Working Context ===", level="info")
+            self.term(f"Exchanges: {status['exchange_count']}", level="info")
+            task = status.get("current_task", "") or "(none)"
+            self.term(f"Task: {task}", level="info")
+            files = status.get("active_files", [])
+            if files:
+                self.term(f"Active files ({len(files)}):", level="info")
+                for f in files:
+                    self.term(f"  - {f}", level="info")
+            else:
+                self.term("Active files: (none)", level="info")
+            if status["exchange_count"] > 0:
+                self.term(f"Session: {time.strftime('%Y-%m-%d %H:%M', time.localtime(status.get('session_start', 0)))}", level="info")
+                last = status.get("last_interaction", 0)
+                if last:
+                    delta = int(time.time() - last)
+                    self.term(f"Last interaction: {delta}s ago", level="info")
+            self.term("======================", level="info")
+        except Exception as e:
+            self.term(f"[WORKING CONTEXT ERROR] {e}", level="error")
+
+    def set_working_task_dialog(self):
+        """Prompt the user to set the current working task."""
+        if not self.engine:
+            return
+        current = ""
+        try:
+            wc = self.engine.working_context
+            if wc:
+                current = wc.get_status().get("current_task", "")
+        except Exception:
+            pass
+        task, ok = QInputDialog.getText(
+            self, "Set Working Task", "Describe your current task:",
+            text=current,
+        )
+        if ok and task:
+            try:
+                self.engine.set_working_task(task)
+                self.term(f"[WORKING CONTEXT] Task set: {task}", level="success")
+                self.update_working_context_status()
+                self.show_toast(f"Working task set", ToastType.SUCCESS)
+            except Exception as e:
+                self.term(f"[WORKING CONTEXT ERROR] {e}", level="error")
+
+    def reset_working_context(self):
+        """Reset the working context with confirmation."""
+        if not self.engine or not self.engine.working_context:
+            return
+        reply = QMessageBox.question(
+            self, "Reset Working Context",
+            "Clear all working context?\n(Recent exchanges, active files, and current task)",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            try:
+                self.engine.working_context.reset()
+                self.term("[WORKING CONTEXT] Reset complete", level="warning")
+                self.update_working_context_status()
+                self.show_toast("Working context cleared", ToastType.INFO)
+            except Exception as e:
+                self.term(f"[WORKING CONTEXT ERROR] {e}", level="error")
+
+    def _on_feedback(self, rating: int):
+        """Handle thumbs up/down feedback from the user."""
+        if not self._last_prompt or not self._last_response:
+            return
+        if self.engine:
+            try:
+                self.engine.record_feedback(
+                    prompt=self._last_prompt,
+                    response=self._last_response,
+                    rating=rating,
+                    metadata=self._last_response_metadata,
+                )
+                label = "Good" if rating == 1 else "Bad" if rating == -1 else "Neutral"
+                self.term(f"[FEEDBACK] {label} response recorded", level="info")
+                self.show_toast(f"Feedback recorded: {label}", ToastType.SUCCESS)
+                self.feedback_bar.hide()
+            except Exception as e:
+                self.term(f"[FEEDBACK ERROR] {e}", level="error")
+
+    def _on_correction(self):
+        """Handle user correction dialog."""
+        if not self._last_prompt or not self._last_response:
+            return
+        corrected, ok = QInputDialog.getMultiLineText(
+            self, "Correct Response",
+            f"How should the response be corrected?\n\nOriginal prompt: {self._last_prompt[:80]}...",
+            text=self._last_response,
+        )
+        if ok and corrected and corrected != self._last_response:
+            if self.engine:
+                try:
+                    self.engine.record_correction(
+                        original=self._last_response,
+                        corrected=corrected,
+                        context=self._last_prompt,
+                        reason="User correction via GUI",
+                    )
+                    self.term("[FEEDBACK] Correction recorded", level="info")
+                    self.show_toast("Correction recorded", ToastType.SUCCESS)
+                except Exception as e:
+                    self.term(f"[FEEDBACK ERROR] {e}", level="error")
+            self.feedback_bar.hide()
 
     def init_matrix(self):
         self.matrix = MatrixOverlay(self)
@@ -3779,11 +4346,20 @@ class CrackedCodeGUI(QMainWindow):
             if filename:
                 try:
                     content = self.editor.toPlainText()
-                    Path(filename).write_text(content)
-                    self.current_file = Path(filename)
-                    self.term(f"Saved {filename}", level="success")
-                    self.show_notification(f"Saved {filename}", NotificationType.SUCCESS)
-                    self.show_toast(f"Saved {filename}", ToastType.SUCCESS)
+                    path = Path(filename)
+                    path.write_text(content)
+                    # Update current_file and sync tab name + open_files dict
+                    old_name = self.tab_widget.tabText(self.tab_widget.currentIndex())
+                    clean_old = old_name.lstrip('*')
+                    if clean_old in self.open_files:
+                        del self.open_files[clean_old]
+                    self.current_file = path
+                    self.open_files[path.name] = self.editor
+                    current = self.tab_widget.currentIndex()
+                    self.tab_widget.setTabText(current, path.name)
+                    self.term(f"Saved {path.name}", level="success")
+                    self.show_notification(f"Saved {path.name}", NotificationType.SUCCESS)
+                    self.show_toast(f"Saved {path.name}", ToastType.SUCCESS)
                 except Exception as e:
                     self.term(f"Cannot save - {e}", level="error")
                     self.show_toast(f"Save failed: {e}", ToastType.ERROR)
@@ -3861,7 +4437,7 @@ class CrackedCodeGUI(QMainWindow):
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
 
-        subtitle = QLabel("AUTONOMOUS NEURAL SYSTEM v2.9.6")
+        subtitle = QLabel("AUTONOMOUS NEURAL SYSTEM v2.10.0")
         subtitle.setStyleSheet(f"font-size: 12px; color: {ATLAN_GOLD}; font-family: Consolas;")
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(subtitle)
@@ -4545,7 +5121,7 @@ class CrackedCodeGUI(QMainWindow):
             self.term("[VOICE: not available]")
             return
 
-        if not self.voice.stt.is_available:
+        if not self.voice.stt or not self.voice.stt.is_available:
             self.term("[VOICE: STT not available - install faster-whisper and sounddevice]")
             self.show_toast("Speech-to-Text not available", ToastType.ERROR)
             return
@@ -4629,7 +5205,7 @@ class CrackedCodeGUI(QMainWindow):
             total_chunks: list = []
             partials = 0
             frames_per_chunk = int(sr * 1.0)  # 1s chunks
-            self.term("[VOICE] Recording... (click VOICE again to stop)")
+            self.voice_status.emit("[VOICE] Recording... (click VOICE again to stop)")
 
             with sd.InputStream(samplerate=sr, channels=1, dtype='float32') as stream:
                 while self.voice_recording:
@@ -4648,9 +5224,9 @@ class CrackedCodeGUI(QMainWindow):
                 if result.success and result.text:
                     self.voice_transcribed.emit(result.text.strip())
                 else:
-                    self.term("[VOICE] No speech detected")
+                    self.voice_status.emit("[VOICE] No speech detected")
             else:
-                self.term("[VOICE] No audio captured")
+                self.voice_status.emit("[VOICE] No audio captured")
         except Exception as e:
             logger.error(f"Voice recording error: {e}")
             self.voice_transcribed.emit(f"[ERROR] {e}")
@@ -4673,10 +5249,15 @@ class CrackedCodeGUI(QMainWindow):
             self._handle_voice_result(text)
         except Exception as e:
             logger.error(f"Voice handler error: {e}")
-            self.term(f"[VOICE ERROR] {e}", level="error")
-            self.voice_recording = False
-            self.voice_btn.setChecked(False)
-            self.set_status("READY")
+
+    def _on_voice_status(self, text: str):
+        """Thread-safe handler for voice status messages (runs on main thread)."""
+        self.term(text, level="voice")
+
+    def _on_stream_chunk(self, chunk: str):
+        """Thread-safe handler for streaming text chunks (runs on main thread)."""
+        self.terminal.insertPlainText(chunk)
+        self.terminal.moveCursor(QTextCursor.MoveOperation.End)
 
     def _handle_voice_result(self, transcribed: str):
         """Process voice result on main thread."""
@@ -4737,9 +5318,52 @@ class CrackedCodeGUI(QMainWindow):
             self.term_input.clear_attachments()
         self.process_prompt(cmd)
 
+    def _process_via_swarm(self, text: str):
+        """Process a prompt through the Swarm Mode coordinator."""
+        self.term("[SWARM] Starting swarm decomposition...", level="stage")
+        self.term(f"[SWARM] Analyzing prompt: {text[:100]}", level="info")
+
+        try:
+            swarm_coord = self.engine.swarm_coordinator
+            result = swarm_coord.process(text, fast=False)
+
+            self.term(f"[SWARM] Completed: {result.success_count}/{len(result.tasks)} tasks", level="stage")
+
+            # Show per-task results
+            for task in result.tasks:
+                status_icon = "\u2713" if task.status == "completed" else "\u2717"
+                color = ATLAN_GREEN if task.status == "completed" else ATLAN_RED
+                preview = task.output[:200] if task.output else "(empty)"
+                self.term(f"  [{status_icon}] {task.agent_role.upper()}: {preview}", level="info")
+
+            # Show aggregated output
+            if result.aggregated_output:
+                self.term(f"\n[SWARM] Merged output:", level="stage")
+                self.term(f"< {result.aggregated_output[:2000]}", level="ai")
+                if len(result.aggregated_output) > 2000:
+                    self.term(f"[... {len(result.aggregated_output) - 2000} more chars]")
+
+            self.term(f"[SWARM] Finished in {result.execution_time:.2f}s ({result.consensus_score:.0%} success)", level="success")
+            self.set_status("READY")
+
+        except Exception as e:
+            self.term(f"[SWARM ERROR] {type(e).__name__}: {e}", level="error")
+            self.set_status("ERROR")
+
+        self.progress_bar.setValue(100)
+        QTimer.singleShot(500, lambda: self.progress_bar.setValue(0))
+        self.update_task_status()
+        self.update_working_context_status()
+
     def process_prompt(self, text):
         self.set_status("PROCESSING...")
         self.progress_bar.setValue(10)
+        
+        # Store prompt for potential feedback
+        self._last_prompt = text
+        self._last_response = ""
+        self._last_response_metadata = {}
+        self.feedback_bar.hide()
 
         if not self.plan_btn.isChecked():
             self.term("[PLAN MODE OFF - processing skipped]")
@@ -4751,6 +5375,18 @@ class CrackedCodeGUI(QMainWindow):
             self.term("[ERROR] No engine available")
             self.set_status("ERROR")
             self.progress_bar.setValue(0)
+            return
+
+        # Check for swarm mode
+        use_swarm = self.swarm_mode
+        if use_swarm and self.engine:
+            is_complex = self.engine._is_complex_prompt(text) if hasattr(self.engine, '_is_complex_prompt') else False
+            if not is_complex:
+                self.term("[SWARM] Prompt is simple, using single agent instead", level="info")
+                use_swarm = False
+
+        if use_swarm:
+            self._process_via_swarm(text)
             return
 
         try:
@@ -4769,7 +5405,9 @@ class CrackedCodeGUI(QMainWindow):
                         intent=intent_prompt.intent.value,
                     )
                     task_id = task.id if hasattr(task, 'id') else None
-                except Exception:
+                except Exception as e:
+                    logger.warning(f"Orchestrator task creation failed: {e}")
+                    self.term(f"[WARN] Orchestrator unavailable: {e}")
                     task_id = None
                 self.update_orchestrator_display()
 
@@ -4804,8 +5442,8 @@ class CrackedCodeGUI(QMainWindow):
                 def stream_callback(chunk):
                     nonlocal full_response
                     full_response += chunk
-                    self.terminal.insertPlainText(chunk)
-                    self.terminal.moveCursor(QTextCursor.MoveOperation.End)
+                    # Thread-safe: emit signal so Qt marshals to main thread
+                    self.stream_chunk.emit(chunk)
                     QApplication.processEvents()
                 
                 response = asyncio.run(self.engine.process(text, streaming=True, callback=stream_callback, stage_callback=stage_callback))
@@ -4815,13 +5453,23 @@ class CrackedCodeGUI(QMainWindow):
             
             self.progress_bar.setValue(80)
             
+            # Store response for feedback
+            resp_text = getattr(response, 'text', '')
+            self._last_response = resp_text
+            self._last_response_metadata = {
+                "intent": intent_prompt.intent.value if hasattr(intent_prompt, 'intent') else "chat",
+                "model": getattr(response, 'model_used', ''),
+                "success": getattr(response, 'success', False),
+            }
+            
             if hasattr(response, 'success') and response.success:
                 if not streaming:
-                    resp_text = getattr(response, 'text', '')
                     self.term(f"< {resp_text[:800]}")
                     if len(resp_text) > 800:
                         self.term(f"< ... [{len(resp_text) - 800} more chars]")
                 self.show_notification("Response complete", NotificationType.SUCCESS)
+                # Show feedback bar for successful responses
+                self.feedback_bar.show()
             else:
                 error_msg = getattr(response, 'error', 'Unknown error')
                 self.term(f"[ERROR] {error_msg}")
@@ -4840,6 +5488,7 @@ class CrackedCodeGUI(QMainWindow):
         QTimer.singleShot(500, lambda: self.progress_bar.setValue(0))
         QTimer.singleShot(3000, lambda: self.stage_indicator.hide() if hasattr(self, 'stage_indicator') else None)
         self.update_task_status()
+        self.update_working_context_status()
 
     def _insert_syntax_highlighted(self, cursor, code: str, lang: str = ""):
         """Insert code with basic syntax highlighting into the terminal."""
@@ -5013,6 +5662,20 @@ class CrackedCodeGUI(QMainWindow):
         
         self.terminal.setTextCursor(cursor)
         self.terminal.ensureCursorVisible()
+        self._trim_terminal()
+
+    def _trim_terminal(self, max_lines: int = 10000):
+        """Limit terminal to max_lines by removing oldest blocks."""
+        doc = self.terminal.document()
+        if doc.blockCount() > max_lines:
+            cursor = self.terminal.textCursor()
+            cursor.beginEditBlock()
+            cursor.movePosition(QTextCursor.MoveOperation.Start)
+            cursor.movePosition(QTextCursor.MoveOperation.Down,
+                               QTextCursor.MoveOperation.KeepAnchor,
+                               doc.blockCount() - max_lines)
+            cursor.removeSelectedText()
+            cursor.endEditBlock()
 
     def toggle_full(self):
         if self.isFullScreen():
@@ -5061,10 +5724,36 @@ class CrackedCodeGUI(QMainWindow):
         if self.git_panel:
             self.git_panel.shutdown()
         
+        # Stop all timers to prevent post-shutdown firing
+        timers_to_stop = [
+            self._auto_save_timer,
+        ]
+        if hasattr(self, 'timer') and self.timer:
+            timers_to_stop.append(self.timer)
+        if hasattr(self, 'stats_timer') and self.stats_timer:
+            timers_to_stop.append(self.stats_timer)
+        if hasattr(self, 'agent_panel') and self.agent_panel:
+            timers_to_stop.append(self.agent_panel.update_timer)
+        if hasattr(self, 'task_queue') and self.task_queue:
+            timers_to_stop.append(self.task_queue.update_timer)
+        if hasattr(self, 'reasoning_panel') and self.reasoning_panel:
+            timers_to_stop.append(self.reasoning_panel.update_timer)
+        if hasattr(self, 'tool_log') and self.tool_log:
+            timers_to_stop.append(self.tool_log.update_timer)
+        if hasattr(self, 'swarm_panel') and self.swarm_panel:
+            timers_to_stop.append(self.swarm_panel.update_timer)
+        if hasattr(self, 'matrix') and self.matrix:
+            if hasattr(self.matrix, 'timer') and self.matrix.timer:
+                timers_to_stop.append(self.matrix.timer)
+
+        for timer in timers_to_stop:
+            if timer and timer.isActive():
+                timer.stop()
+
         # Stop voice engine
         if self.voice:
             self.voice.shutdown()
-        
+
         logger.info("CrackedCode GUI closing")
         e.accept()
 

@@ -76,6 +76,7 @@ class Intent(Enum):
     VISION = "vision"
     SECURITY = "security"
     BROWSE = "browse"
+    TEST = "test"
 
 
 @dataclass
@@ -523,10 +524,12 @@ Tool usage:
         self._mcp_client = None
         self._long_term_memory = None
         self._conversation_manager = None
+        self._working_context = None
         self._metrics = None
         self._init_mcp()
         self._init_long_term_memory()
         self._init_conversation_manager()
+        self._init_working_context()
         self._init_metrics()
         self._load_custom_intents()
         self._check()
@@ -640,6 +643,54 @@ Tool usage:
         """Get the conversation manager instance."""
         return self._conversation_manager
 
+    def _init_working_context(self):
+        """Initialize working context for persistent session context."""
+        try:
+            from src.working_context import get_working_context
+            storage = str(Path(self.project_root) / ".crackedcode" / "working_context.json")
+            self._working_context = get_working_context(storage_path=storage)
+            status = self._working_context.get_status()
+            if status["exchange_count"] > 0:
+                logger.info(f"Working context restored: {status['exchange_count']} exchanges, "
+                           f"{len(status['active_files'])} files")
+            else:
+                logger.info("Working context initialized (fresh)")
+        except Exception as e:
+            logger.warning(f"Working context initialization failed: {e}")
+            self._working_context = None
+
+    @property
+    def working_context(self):
+        """Get the working context instance."""
+        return self._working_context
+
+    def get_working_context_status(self) -> Dict:
+        """Get the working context status summary."""
+        if not self._working_context:
+            return {"enabled": False, "exchange_count": 0}
+        try:
+            status = self._working_context.get_status()
+            status["enabled"] = True
+            return status
+        except Exception:
+            return {"enabled": False, "exchange_count": 0}
+
+    def set_working_task(self, task: str):
+        """Set the current working task description."""
+        if self._working_context:
+            try:
+                self._working_context.set_task(task)
+            except Exception as e:
+                logger.warning(f"Failed to set working task: {e}")
+
+    def add_working_file(self, file_path: str):
+        """Add a file to the active working files list."""
+        if self._working_context:
+            try:
+                self._working_context.add_active_file(file_path)
+            except Exception as e:
+                logger.debug(f"Failed to add working file: {e}")
+
     def _load_custom_intents(self):
         """Load custom agent intents for intent parsing."""
         try:
@@ -683,7 +734,7 @@ Tool usage:
                 pass
         
         return {
-            "version": "2.9.6",
+            "version": "2.10.0",
             "model": self.model,
             "vision_model": self.vision_model,
             "secondary_model": self.secondary_model,
@@ -697,6 +748,7 @@ Tool usage:
             "cache_size": cache_stats["size"],
             "context_length": cache_stats["context_length"],
             "mcp": mcp_status,
+            "working_context": self._working_context.get_status() if self._working_context else {"exchange_count": 0, "active_files": []},
         }
 
     def _select_model_for_intent(self, intent: Intent) -> str:
@@ -1400,9 +1452,38 @@ Requirements:
                     execution_reasoning.append({"type": "observation", "content": "Retrieved relevant past experiences from long-term memory", "confidence": 0.75})
             except Exception as e:
                 logger.warning(f"Memory retrieval failed: {e}")
-        
+
+        # Inject adaptive learning context (user preferences and corrections)
+        adaptive_block = ""
+        if self.config.get("adaptive_learning_enabled", True):
+            try:
+                from src.adaptive_learning import get_adaptive_learning_engine
+                adaptive_engine = get_adaptive_learning_engine()
+                adaptive_block = adaptive_engine.get_context_for_prompt(request.text, max_prefs=5)
+                if adaptive_block:
+                    formatted_prompt = adaptive_block + "\n" + formatted_prompt
+                    execution_reasoning.append({"type": "observation", "content": "Injected learned user preferences", "confidence": 0.75})
+            except Exception as e:
+                logger.debug(f"Adaptive learning injection failed: {e}")
+
+        # Inject working context (recent exchanges, active files, current task)
+        working_block = ""
+        if self._working_context:
+            try:
+                working_block = self._working_context.get_context_for_prompt(max_exchanges=3)
+                if working_block:
+                    formatted_prompt = working_block + "\n" + formatted_prompt
+                    execution_reasoning.append({"type": "observation", "content": "Injected working context (recent exchanges + active files)", "confidence": 0.80})
+            except Exception as e:
+                logger.debug(f"Working context injection failed: {e}")
+
         if stage_callback:
-            stage_callback("context", f"Loading context ({'codebase' if context_block else 'none'}, {'memory' if memory_block else 'none'})")
+            ctx_parts = []
+            if context_block: ctx_parts.append("codebase")
+            if memory_block: ctx_parts.append("memory")
+            if adaptive_block: ctx_parts.append("adaptive")
+            if working_block: ctx_parts.append("working_context")
+            stage_callback("context", f"Loading context ({', '.join(ctx_parts) or 'none'})")
         
         # Model selection reasoning
         selected_model = self._select_model_for_intent(request.intent)
@@ -1440,6 +1521,17 @@ Requirements:
         if response.success:
             execution_reasoning.append({"type": "reflection", "content": f"LLM responded successfully via {response.processing_path}", "confidence": 0.9})
             self.session.add_turn(request, response)
+            
+            # Record in working context
+            if self._working_context:
+                try:
+                    self._working_context.record_exchange(
+                        prompt=request.text,
+                        response=response.text,
+                        intent=request.intent.value,
+                    )
+                except Exception as e:
+                    logger.debug(f"Failed to record working context: {e}")
             
             # Store in conversation manager
             if self._conversation_manager:
@@ -1481,6 +1573,17 @@ Requirements:
                     )
                 except Exception as e:
                     logger.warning(f"Failed to store error conversation: {e}")
+            
+            # Record error in working context
+            if self._working_context:
+                try:
+                    self._working_context.record_exchange(
+                        prompt=request.text,
+                        response=f"[ERROR] {response.error}",
+                        intent=request.intent.value,
+                    )
+                except Exception as e:
+                    logger.debug(f"Failed to record error in working context: {e}")
             
             # Store error in long-term memory
             if self._long_term_memory:
@@ -1919,6 +2022,124 @@ Requirements:
     def cancel_task(self, task_id: str) -> bool:
         """Cancel a running or queued task."""
         return self.orchestrator.cancel_task(task_id)
+
+    # ------------------------------------------------------------------ #
+    # Swarm Mode Integration
+    # ------------------------------------------------------------------ #
+
+    @property
+    def swarm_coordinator(self):
+        """Get or create the SwarmCoordinator."""
+        from src.swarm import get_swarm_coordinator
+        return get_swarm_coordinator(
+            engine=self,
+            orchestrator=self.orchestrator,
+            max_workers=self.config.get("max_concurrent_agents", 4),
+        )
+
+    def _is_complex_prompt(self, prompt: str) -> bool:
+        """Heuristic to detect if a prompt warrants swarm mode."""
+        indicators = 0
+        prompt_lower = prompt.lower()
+
+        multi_requirement_patterns = [
+            r'(?:and|also|then|plus)\s+(?:create|build|make|write|implement|add|setup)',
+            r'(?:frontend|backend|api|database|auth|login|deploy)',
+            r'(?:both|multiple|several|various|separate)',
+            r'(?:first|second|third|finally|meanwhile)',
+        ]
+        for pattern in multi_requirement_patterns:
+            if re.search(pattern, prompt_lower):
+                indicators += 1
+
+        if len(prompt.split()) > 30:
+            indicators += 1
+        if prompt.count(",") > 3:
+            indicators += 1
+        if prompt.count("\n") > 3:
+            indicators += 1
+
+        return indicators >= 2
+
+    def process_via_swarm(
+        self,
+        prompt: str,
+        fast: bool = False,
+        force: bool = False,
+    ) -> Any:
+        """Process a prompt through the SwarmCoordinator.
+
+        Automatically detects complex prompts and dispatches them to
+        parallel agents. Simple prompts fall through to normal processing.
+
+        Args:
+            prompt: User prompt
+            fast: Skip LLM-based aggregation for speed
+            force: Force swarm mode even for simple prompts
+
+        Returns:
+            SwarmResult with per-task results and aggregated output
+        """
+        if not force and not self._is_complex_prompt(prompt):
+            return None
+
+        swarm = self.swarm_coordinator
+        result = swarm.process(prompt, fast=fast)
+        return result
+
+    def get_swarm_status(self) -> Dict:
+        """Get swarm coordinator status."""
+        return self.swarm_coordinator.get_stats()
+
+    def get_swarm_result(self, swarm_id: str) -> Any:
+        """Get a specific swarm result."""
+        return self.swarm_coordinator.get_swarm(swarm_id)
+
+    # ------------------------------------------------------------------ #
+    # Adaptive Learning Integration
+    # ------------------------------------------------------------------ #
+
+    @property
+    def adaptive_learning(self):
+        """Get or create the AdaptiveLearningEngine."""
+        from src.adaptive_learning import get_adaptive_learning_engine
+        return get_adaptive_learning_engine()
+
+    def record_feedback(self, prompt: str, response: str, rating: int, metadata: Dict = None) -> None:
+        """Record user feedback on a prompt-response pair.
+
+        Args:
+            prompt: The user's original prompt
+            response: The AI's response
+            rating: -1 (bad), 0 (neutral), 1 (good)
+            metadata: Optional extra data (intent, model, etc.)
+        """
+        try:
+            self.adaptive_learning.record_feedback(prompt, response, rating, metadata)
+        except Exception as e:
+            logger.warning(f"Failed to record feedback: {e}")
+
+    def record_correction(self, original: str, corrected: str, context: str = "", reason: str = "") -> None:
+        """Record an explicit user correction.
+
+        Args:
+            original: The AI's original (wrong) response
+            corrected: What it should have been
+            context: Surrounding conversation context
+            reason: Why the correction was needed
+        """
+        try:
+            self.adaptive_learning.record_correction(original, corrected, context, reason)
+        except Exception as e:
+            logger.warning(f"Failed to record correction: {e}")
+
+    def get_adaptive_learning_status(self) -> Dict:
+        """Get adaptive learning engine statistics."""
+        try:
+            return self.adaptive_learning.get_stats()
+        except Exception as e:
+            logger.warning(f"Failed to get adaptive learning status: {e}")
+            return {}
 
 
 _engine: Optional[CrackedCodeEngine] = None
