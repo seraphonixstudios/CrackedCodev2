@@ -210,13 +210,13 @@ class PluginRegistry:
         return self._hook_manager.execute(hook_point, *args, **kwargs)
     
     def load_plugins_from_directory(self, directory: str):
-        """Load all plugins from a directory."""
+        """Load all plugins from a directory (recursive)."""
         self._plugins_dir = Path(directory)
         if not self._plugins_dir.exists():
             logger.warning(f"Plugins directory not found: {directory}")
             return
         
-        for file_path in self._plugins_dir.glob("*.py"):
+        for file_path in self._plugins_dir.rglob("*.py"):
             if file_path.name.startswith("_"):
                 continue
             self._load_plugin_file(file_path)
@@ -248,11 +248,11 @@ class PluginRegistry:
             logger.error(f"Failed to load plugin {file_path}: {e}")
     
     def check_hot_reload(self):
-        """Check for modified plugin files and reload them."""
+        """Check for modified plugin files and reload them (recursive)."""
         if not self._plugins_dir:
             return
         
-        for file_path in self._plugins_dir.glob("*.py"):
+        for file_path in self._plugins_dir.rglob("*.py"):
             if file_path.name.startswith("_"):
                 continue
             
@@ -337,6 +337,11 @@ class HookManager:
 def get_plugin_registry() -> PluginRegistry:
     """Get the global plugin registry."""
     return PluginRegistry.get_instance()
+
+
+def reset_plugin_registry():
+    """Reset the global plugin registry (for testing)."""
+    PluginRegistry.reset()
 
 
 # Convenience function for executing hooks

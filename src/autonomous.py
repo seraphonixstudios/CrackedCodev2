@@ -1949,9 +1949,11 @@ class AutonomousAppProducer:
         self.max_iterations = 5
         self._progress_callback: Optional[Callable] = None
         self._phase_callback: Optional[Callable] = None
+        self._confirm_callback: Optional[Callable[[Phase, str], bool]] = None
         self._running = False
         self._cancelled = False
         self._start_time = 0.0
+        self.debug_mode = False
         
         # Reasoning
         self._reasoning_engine = get_reasoning_engine() if _reasoning_available else None
@@ -1997,6 +1999,25 @@ class AutonomousAppProducer:
 
     def set_phase_callback(self, callback: Callable[[Phase, str], None]):
         self._phase_callback = callback
+
+    def set_confirm_callback(self, callback: Callable[[Phase, str], bool]):
+        """Set callback for debug mode phase confirmation.
+        
+        Args:
+            callback: Called before each phase. Returns True to continue, False to skip.
+        """
+        self._confirm_callback = callback
+
+    def _confirm_phase(self, phase: Phase, description: str) -> bool:
+        """In debug mode, wait for user confirmation before proceeding."""
+        if not self.debug_mode:
+            return True
+        if self._confirm_callback:
+            try:
+                return self._confirm_callback(phase, description)
+            except Exception:
+                return True
+        return True
 
     def cancel(self):
         self._cancelled = True
@@ -2202,15 +2223,21 @@ class AutonomousAppProducer:
         try:
             self.workspace.update_project(project_name, spec, architecture.value)
 
-            if not self._phase_analyze(spec, project_name, result):
+            if not self._confirm_phase(Phase.ANALYZING, "Analyze requirements and extract specifications"):
+                self._log_reasoning("observation", "User skipped analyze phase", 0.5)
+            elif not self._phase_analyze(spec, project_name, result):
                 self._log_reasoning("correction", "Analysis phase failed, aborting pipeline", 0.3, ["phase: analyze", "status: failed"])
                 return self._finalize(result)
 
-            if not self._phase_architect(spec, project_name, architecture, result):
+            if not self._confirm_phase(Phase.ARCHITECTING, "Design system architecture"):
+                self._log_reasoning("observation", "User skipped architect phase", 0.5)
+            elif not self._phase_architect(spec, project_name, architecture, result):
                 self._log_reasoning("correction", "Architecture phase failed, aborting pipeline", 0.3, ["phase: architect", "status: failed"])
                 return self._finalize(result)
 
-            if not self._phase_scaffold(project_name, architecture, output_dir, result):
+            if not self._confirm_phase(Phase.SCAFFOLDING, "Create project file structure"):
+                self._log_reasoning("observation", "User skipped scaffold phase", 0.5)
+            elif not self._phase_scaffold(project_name, architecture, output_dir, result):
                 self._log_reasoning("correction", "Scaffold phase failed, aborting pipeline", 0.3, ["phase: scaffold", "status: failed"])
                 return self._finalize(result)
 
@@ -2226,15 +2253,22 @@ class AutonomousAppProducer:
                 except Exception as e:
                     logger.debug(f"Codebase indexing skipped: {e}")
 
-            if not self._phase_code(spec, project_name, architecture, output_dir, result, codebase_context=codebase_context):
+            if not self._confirm_phase(Phase.CODING, "Generate production code for all files"):
+                self._log_reasoning("observation", "User skipped code phase", 0.5)
+            elif not self._phase_code(spec, project_name, architecture, output_dir, result, codebase_context=codebase_context):
                 self._log_reasoning("correction", "Code phase failed, aborting pipeline", 0.3, ["phase: code", "status: failed"])
                 return self._finalize(result)
 
-            if not self._phase_test(project_name, output_dir, result):
+            if not self._confirm_phase(Phase.TESTING, "Generate and run tests"):
+                self._log_reasoning("observation", "User skipped test phase", 0.5)
+            elif not self._phase_test(project_name, output_dir, result):
                 self._log_reasoning("analysis", "Tests failed, initiating self-correction", 0.6, ["phase: test", "status: failed"])
-                self._phase_correct(project_name, output_dir, result)
+                if self._confirm_phase(Phase.CORRECTING, "Self-correct test failures"):
+                    self._phase_correct(project_name, output_dir, result)
 
-            if not self._phase_deliver(project_name, output_dir, spec, architecture, result):
+            if not self._confirm_phase(Phase.DELIVERING, "Generate documentation and finalize delivery"):
+                self._log_reasoning("observation", "User skipped deliver phase", 0.5)
+            elif not self._phase_deliver(project_name, output_dir, spec, architecture, result):
                 self._log_reasoning("correction", "Delivery phase failed", 0.3, ["phase: deliver", "status: failed"])
                 return self._finalize(result)
 

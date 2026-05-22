@@ -38,6 +38,33 @@ class ToastMessage:
     text: str
     toast_type: ToastType = ToastType.INFO
     duration: int = 3000  # ms
+    action_label: str = ""
+    action_callback: Optional[Callable] = None
+
+
+class NotificationQueue:
+    """Manages a queue of toast notifications, showing them one at a time."""
+
+    def __init__(self, toast: "ToastNotification"):
+        self._toast = toast
+        self._queue: List[ToastMessage] = []
+        self._showing = False
+
+    def enqueue(self, msg: ToastMessage):
+        self._queue.append(msg)
+        if not self._showing:
+            self._show_next()
+
+    def _show_next(self):
+        if not self._queue:
+            self._showing = False
+            return
+        self._showing = True
+        msg = self._queue.pop(0)
+        self._toast.show_message(msg.text, msg.toast_type, msg.duration,
+                                 msg.action_label, msg.action_callback)
+        # Wait for duration + callback, then show next
+        QTimer.singleShot(msg.duration + 500, self._show_next)
 
 
 class ToastNotification(QWidget):
@@ -79,6 +106,12 @@ class ToastNotification(QWidget):
         self.text_label.setWordWrap(True)
         self.layout.addWidget(self.text_label)
         
+        self.action_button = QPushButton(self)
+        self.action_button.setFont(QFont("Consolas", 9, QFont.Weight.Bold))
+        self.action_button.setFixedHeight(24)
+        self.action_button.hide()
+        self.layout.addWidget(self.action_button)
+        
         self.setStyleSheet(f"""
             ToastNotification {{
                 background-color: #0f0f0f;
@@ -86,12 +119,24 @@ class ToastNotification(QWidget):
                 border-radius: 8px;
             }}
             QLabel {{ color: {ATLAN_GREEN}; }}
+            QPushButton {{
+                background-color: {ATLAN_GREEN}33;
+                color: {ATLAN_GREEN};
+                border: 1px solid {ATLAN_GREEN};
+                border-radius: 4px;
+                padding: 2px 10px;
+            }}
+            QPushButton:hover {{
+                background-color: {ATLAN_GREEN};
+                color: {ATLAN_DARK};
+            }}
         """)
         self.setMinimumWidth(280)
         self.setMaximumWidth(480)
     
-    def show_message(self, text: str, toast_type: ToastType = ToastType.INFO, duration: int = 3000):
-        """Show a toast message."""
+    def show_message(self, text: str, toast_type: ToastType = ToastType.INFO, duration: int = 3000,
+                     action_label: str = "", action_callback: Optional[Callable] = None):
+        """Show a toast message with optional action button."""
         icons = {
             ToastType.INFO: "â„¹",
             ToastType.SUCCESS: "âœ“",
@@ -102,6 +147,15 @@ class ToastNotification(QWidget):
         self.icon_label.setText(icons.get(toast_type, "â†’"))
         self.text_label.setText(text)
         
+        # Action button
+        if action_label and action_callback:
+            self.action_button.setText(action_label)
+            self.action_button.show()
+            self.action_button.clicked.disconnect()
+            self.action_button.clicked.connect(action_callback)
+        else:
+            self.action_button.hide()
+        
         color = toast_type.value
         self.setStyleSheet(f"""
             ToastNotification {{
@@ -110,6 +164,17 @@ class ToastNotification(QWidget):
                 border-radius: 8px;
             }}
             QLabel {{ color: {color}; }}
+            QPushButton {{
+                background-color: {color}33;
+                color: {color};
+                border: 1px solid {color};
+                border-radius: 4px;
+                padding: 2px 10px;
+            }}
+            QPushButton:hover {{
+                background-color: {color};
+                color: #0f0f0f;
+            }}
         """)
         
         # Position at bottom-right of parent
@@ -897,6 +962,7 @@ __all__ = [
     "ToastNotification",
     "ToastType",
     "ToastMessage",
+    "NotificationQueue",
     "QuickActionsDialog",
     "QuickActionItem",
     "WelcomeWidget",

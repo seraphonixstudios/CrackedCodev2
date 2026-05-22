@@ -1,4 +1,4 @@
-﻿"""Advanced Agent Memory v2.9.6 - Per-agent persistent memory with summarization.
+"""Advanced Agent Memory v2.10.0 - Per-agent persistent memory with summarization.
 
 Each agent role (architect, security, coder, etc.) maintains its own memory
 namespace with facts, preferences, decisions, errors, and fixes. Automatic
@@ -37,7 +37,7 @@ from src.logger_config import get_logger
 logger = get_logger("AgentMemory")
 
 
-# â”€â”€ Data Models â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Data Models ────────────────────────────────────────────────────────────
 
 @dataclass
 class MemoryEntry:
@@ -81,7 +81,7 @@ class ExperiencePattern:
     examples: List[str] = field(default_factory=list)
 
 
-# â”€â”€ Agent Memory System â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Agent Memory System ────────────────────────────────────────────────────
 
 class AgentMemorySystem:
     """Per-agent persistent memory with automatic summarization."""
@@ -481,6 +481,23 @@ class AgentMemorySystem:
 
         summary = "\n".join(summary_parts)
 
+        # LLM-enhanced summarization if engine available
+        if engine and hasattr(engine, "ollama"):
+            try:
+                llm_prompt = f"""Analyze this agent's experience data and produce a concise, actionable summary.
+Focus on: recurring patterns, critical lessons, and recommendations for future tasks.
+
+{summary}
+
+Provide a 3-4 sentence executive summary followed by 3 key recommendations."""
+
+                llm_response = engine.ollama.chat(llm_prompt, system="You are an expert analyst summarizing agent experience.", use_cache=False)
+                if llm_response.success:
+                    summary = f"# {agent.upper()} Agent Experience Summary (LLM-Enhanced)\n\n{llm_response.text}\n\n---\n\n## Raw Data\n{summary}"
+                    logger.info(f"LLM-enhanced summary generated for agent {agent}")
+            except Exception as e:
+                logger.warning(f"LLM summarization failed for {agent}: {e}")
+
         # Update profile
         profile.summary = summary
         profile.last_summarized = datetime.utcnow().isoformat()
@@ -556,7 +573,7 @@ class AgentMemorySystem:
         return context
 
 
-# â”€â”€ Integration helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Integration helpers ────────────────────────────────────────────────────
 
 def get_agent_memory_system(storage_dir: str = ".crackedcode/agent_memory") -> AgentMemorySystem:
     """Get the global agent memory system."""

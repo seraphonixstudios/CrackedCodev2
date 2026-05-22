@@ -1426,7 +1426,7 @@ def scroll_page(direction: str = "down", amount: int = 500) -> Dict[str, Any]:
 # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class ReActLoop:
-    """ReAct reasoning loop: Thought â†’ Action â†’ Observation â†’ Reflection."""
+    """ReAct reasoning loop: Thought → Action → Observation → Reflection."""
     
     def __init__(self, agent_id: str = "react_agent", max_iterations: int = 10):
         self.agent_id = agent_id
@@ -1546,6 +1546,155 @@ class ReActLoop:
             "tool_calls": tool_calls,
             "history": self.history,
         }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# NEW UTILITY TOOLS
+# ─────────────────────────────────────────────────────────────────────────────
+
+@tool(description="Search the web for information", permission=ToolPermission.READ, category=ToolCategory.SYSTEM,
+      examples=["web_search(query='Python async best practices', num_results=5)"])
+def web_search(query: str, num_results: int = 5) -> Dict[str, Any]:
+    """Search the web using DuckDuckGo HTML interface (no API key needed)."""
+    try:
+        import urllib.request
+        import urllib.parse
+        import re
+
+        url = f"https://html.duckduckgo.com/html/?q={urllib.parse.quote(query)}"
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            html = resp.read().decode("utf-8", errors="ignore")
+
+        results = []
+        for match in re.finditer(
+            r'class="result__title">.*?<a[^>]*href="([^"]*)"[^>]*>(.*?)</a>.*?'
+            r'class="result__snippet">(.*?)</div>',
+            html, re.DOTALL
+        ):
+            link = match.group(1)
+            title = re.sub(r"<[^>]+>", "", match.group(2)).strip()
+            snippet = re.sub(r"<[^>]+>", "", match.group(3)).strip()
+            results.append({"title": title, "url": link, "snippet": snippet})
+            if len(results) >= num_results:
+                break
+
+        if not results:
+            return {"success": True, "query": query, "results": [], "note": "No results found"}
+
+        return {
+            "success": True,
+            "query": query,
+            "results": results,
+            "result_count": len(results),
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@tool(description="Compare two files and show differences", permission=ToolPermission.READ, category=ToolCategory.CODE,
+      examples=["diff_file(file1='src/main.py', file2='src/main_backup.py')"])
+def diff_file(file1: str, file2: str, context_lines: int = 3) -> Dict[str, Any]:
+    """Generate a unified diff between two files."""
+    try:
+        import difflib
+        from pathlib import Path
+
+        p1 = Path(file1)
+        p2 = Path(file2)
+
+        if not p1.exists():
+            return {"success": False, "error": f"File not found: {file1}"}
+        if not p2.exists():
+            return {"success": False, "error": f"File not found: {file2}"}
+
+        lines1 = p1.read_text(encoding="utf-8", errors="ignore").splitlines(keepends=True)
+        lines2 = p2.read_text(encoding="utf-8", errors="ignore").splitlines(keepends=True)
+
+        diff = list(difflib.unified_diff(
+            lines1, lines2,
+            fromfile=str(p1),
+            tofile=str(p2),
+            n=context_lines,
+        ))
+
+        if not diff:
+            return {"success": True, "files_identical": True, "file1": str(p1), "file2": str(p2)}
+
+        added = sum(1 for line in diff if line.startswith("+") and not line.startswith("+++"))
+        removed = sum(1 for line in diff if line.startswith("-") and not line.startswith("---"))
+
+        return {
+            "success": True,
+            "files_identical": False,
+            "file1": str(p1),
+            "file2": str(p2),
+            "diff": "".join(diff),
+            "lines_added": added,
+            "lines_removed": removed,
+            "diff_length": len(diff),
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@tool(description="Format Python code using black or autopep8", permission=ToolPermission.WRITE, category=ToolCategory.CODE,
+      examples=["format_code(file_path='src/main.py')", "format_code(code='def foo( x,y ): return x+y')"])
+def format_code(file_path: str = None, code: str = None, formatter: str = "black") -> Dict[str, Any]:
+    """Format Python code to PEP 8 standards."""
+    try:
+        if file_path:
+            from pathlib import Path
+            p = Path(file_path)
+            if not p.exists():
+                return {"success": False, "error": f"File not found: {file_path}"}
+            code = p.read_text(encoding="utf-8")
+        elif code is None:
+            return {"success": False, "error": "Provide either file_path or code"}
+
+        formatted = None
+
+        if formatter == "black":
+            try:
+                import black
+                mode = black.Mode(line_length=88)
+                formatted = black.format_str(code, mode=mode)
+            except ImportError:
+                logger.warning("black not installed, falling back to autopep8")
+                formatter = "autopep8"
+
+        if formatted is None and formatter == "autopep8":
+            try:
+                import autopep8
+                formatted = autopep8.fix_code(code, options={"aggressive": 1})
+            except ImportError:
+                logger.warning("autopep8 not installed, falling back to basic formatting")
+
+        if formatted is None:
+            # Basic fallback: strip trailing whitespace, ensure final newline
+            lines = code.splitlines()
+            formatted = "\n".join(line.rstrip() for line in lines)
+            if not formatted.endswith("\n"):
+                formatted += "\n"
+
+        if file_path:
+            from pathlib import Path
+            Path(file_path).write_text(formatted, encoding="utf-8")
+
+        changes = sum(1 for a, b in zip(code.splitlines(), formatted.splitlines()) if a != b)
+        if len(code.splitlines()) != len(formatted.splitlines()):
+            changes += abs(len(code.splitlines()) - len(formatted.splitlines()))
+
+        return {
+            "success": True,
+            "formatter": formatter,
+            "lines_changed": changes,
+            "file_path": file_path,
+            "formatted_code": formatted if not file_path else None,
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 
 # Convenience function

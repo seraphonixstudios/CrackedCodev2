@@ -231,7 +231,6 @@ class Task:
         return end - self.started_at
     
     @property
-    @property
     def wait_time(self) -> float:
         """Time spent waiting before execution."""
         if not self.queued_at:
@@ -444,6 +443,7 @@ class UnifiedOrchestrator:
         self._task_queue = PriorityQueue()
         self._running_tasks: Dict[str, threading.Thread] = {}
         self._completed_tasks: List[str] = []
+        self._preempted_tasks: Set[str] = set()
         
         # Agent management
         self._agents: Dict[AgentRole, AgentWorker] = {}
@@ -715,6 +715,10 @@ class UnifiedOrchestrator:
         
         logger.info(f"Task {task.id} queued (priority: {task.priority.name})")
         
+        # Preempt lower-priority running tasks for HIGH/CRITICAL
+        if task.priority in (TaskPriority.HIGH, TaskPriority.CRITICAL):
+            self._preempt_tasks(task)
+        
         if self.on_queue_changed:
             self.on_queue_changed()
         
@@ -724,6 +728,23 @@ class UnifiedOrchestrator:
             self.start()
         
         return task.id
+    
+    def _preempt_tasks(self, high_task: Task):
+        """Mark lower-priority running tasks for preemption when HIGH/CRITICAL arrives.
+        
+        Preemption is cooperative — running tasks check the flag and yield.
+        """
+        with self._lock:
+            for task_id, task in self._tasks.items():
+                if (task.status == TaskStatus.RUNNING and
+                    task.priority in (TaskPriority.LOW, TaskPriority.NORMAL) and
+                    task_id not in self._running_tasks):
+                    continue
+                if (task.status == TaskStatus.RUNNING and
+                    task.priority in (TaskPriority.LOW, TaskPriority.NORMAL)):
+                    self._preempted_tasks.add(task_id)
+                    logger.info(f"Task {task_id} ({task.priority.name}) marked for preemption by {high_task.id} ({high_task.priority.name})")
+                    task.add_reasoning("observation", f"Preempted by higher-priority task {high_task.id}", 0.5)
     
     def submit_and_wait(self, task: Task) -> Task:
         """Submit a task and block until completion.
@@ -776,13 +797,13 @@ class UnifiedOrchestrator:
                     time.sleep(0.1)
                     continue
                 
-                # Check if we have capacity
+                # Check if we have capacity (with lock to avoid race)
                 with self._lock:
                     if len(self._running_tasks) >= self.max_workers:
                         time.sleep(0.1)
                         continue
                 
-                # Get next task
+                # Get next task (PriorityQueue returns highest priority first)
                 _, _, task_id = self._task_queue.get(timeout=1)
                 
                 with self._lock:
@@ -793,6 +814,16 @@ class UnifiedOrchestrator:
                 # Check if already terminal
                 if task.is_terminal:
                     continue
+                
+                # Check if task was preempted — re-queue for later
+                with self._lock:
+                    if task_id in self._preempted_tasks:
+                        self._preempted_tasks.discard(task_id)
+                        task.set_status(TaskStatus.PENDING)
+                        self._task_queue.put((-task.priority.value, task.created_at, task.id))
+                        logger.info(f"Task {task_id} re-queued after preemption yield")
+                        time.sleep(0.1)
+                        continue
                 
                 # Check dependencies
                 if not self._check_dependencies(task):
@@ -1230,6 +1261,57 @@ class UnifiedOrchestrator:
         return first_id or ""
 
 
+    # ------------------------------------------------------------------ #
+    # Swarm Mode Integration
+    # ------------------------------------------------------------------ #
+
+    @property
+    def swarm_coordinator(self):
+        """Get or create the SwarmCoordinator for this orchestrator."""
+        from src.swarm import get_swarm_coordinator
+        return get_swarm_coordinator(
+            engine=self.engine,
+            orchestrator=self,
+            max_workers=self.max_workers,
+        )
+
+    def process_via_swarm(
+        self,
+        prompt: str,
+        fast: bool = False,
+        force: bool = False,
+    ) -> Any:
+        """Process a prompt through the Swarm Mode coordinator.
+
+        Args:
+            prompt: User prompt
+            fast: Skip LLM aggregation for speed
+            force: Force swarm mode
+
+        Returns:
+            SwarmResult
+        """
+        swarm = self.swarm_coordinator
+        result = swarm.process(prompt, fast=fast)
+        return result
+
+    def process_via_swarm_serial(self, prompt: str) -> Any:
+        """Process via serial swarm (sequential task execution)."""
+        return self.swarm_coordinator.process_serial(prompt)
+
+    def process_via_swarm_debate(self, prompt: str, rounds: int = 2) -> Any:
+        """Process via debate swarm (coder + reviewer rounds)."""
+        return self.swarm_coordinator.process_with_debate(prompt, rounds)
+
+    def get_swarm_status(self) -> Dict:
+        """Get swarm coordinator stats."""
+        return self.swarm_coordinator.get_stats()
+
+    def get_all_swarms(self) -> List[Dict]:
+        """Get all swarm results."""
+        return self.swarm_coordinator.get_all_swarms()
+
+
 # Singleton instance
 _orchestrator: Optional[UnifiedOrchestrator] = None
 
@@ -1240,4 +1322,12 @@ def get_orchestrator(engine=None, max_workers: int = 4) -> UnifiedOrchestrator:
     if _orchestrator is None:
         _orchestrator = UnifiedOrchestrator(engine, max_workers)
     return _orchestrator
+
+
+def reset_orchestrator():
+    """Reset the global orchestrator instance (for testing)."""
+    global _orchestrator
+    if _orchestrator:
+        _orchestrator.stop()
+    _orchestrator = None
 
