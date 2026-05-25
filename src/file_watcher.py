@@ -39,12 +39,17 @@ class FileWatcher:
         root: str = ".",
         ignored: Set[str] | None = None,
         debounce: float = 0.5,
-        on_change: Callable[[FileChange], None] | None = None
+        on_change: Callable[[FileChange], None] | None = None,
+        review_on_change: bool = False,
+        review_extensions: Optional[Set[str]] = None,
     ):
         self.root = Path(root)
         self.ignored = self.DEFAULT_IGNORED | (ignored or set())
         self.debounce = debounce
         self.on_change = on_change
+        self.review_on_change = review_on_change
+        self.review_extensions = review_extensions or {".py", ".js", ".ts", ".java", ".go", ".rs"}
+        self._review_callback: Optional[Callable[[str], None]] = None
 
         self._running = False
         self._thread: Optional[threading.Thread] = None
@@ -137,14 +142,7 @@ class FileWatcher:
             if changes:
                 for change in changes:
                     self.stats["changes"] += 1
-                    self.changes.append(change)
-                    logger.info(f"Change: {change.change_type.name} {change.path}")
-
-                    if self.on_change:
-                        try:
-                            self.on_change(change)
-                        except Exception as e:
-                            logger.error(f"Callback error: {e}")
+                    self._notify_change(change)
 
             time.sleep(self.debounce)
 
@@ -170,6 +168,24 @@ class FileWatcher:
             "watching": len(self._file_hashes),
             "root": str(self.root)
         }
+
+    def set_review_callback(self, callback: Callable[[str], None]):
+        """Set a callback to auto-review changed files (suffix-filtered)."""
+        self._review_callback = callback
+
+    def _notify_change(self, change: FileChange):
+        self.changes.append(change)
+        logger.info(f"Change: {change.change_type.name} {change.path}")
+        if self.on_change:
+            try:
+                self.on_change(change)
+            except Exception as e:
+                logger.error(f"Callback error: {e}")
+        if self.review_on_change and self._review_callback and change.path.suffix in self.review_extensions:
+            try:
+                self._review_callback(str(change.path))
+            except Exception as e:
+                logger.error(f"Review callback error: {e}")
 
     def clear_changes(self) -> None:
         self.changes.clear()

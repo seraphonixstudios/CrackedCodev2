@@ -51,7 +51,8 @@ try:
     from src.gui_enhancements import (
         ToastNotification, ToastType, QuickActionsDialog,
         QuickActionItem, WelcomeWidget, EnhancedStatusBar,
-        KeyboardShortcutHelper, AttachmentInput, AttachmentChip
+        KeyboardShortcutHelper, AttachmentInput, AttachmentChip,
+        NotificationQueue, ToastMessage
     )
     ENHANCEMENTS_AVAILABLE = True
 except ImportError as e:
@@ -2766,13 +2767,16 @@ class CrackedCodeGUI(QMainWindow):
             self.quick_actions.activateWindow()
     
     def show_toast(self, text: str, toast_type=None, duration: int = 3000):
-        """Show a toast notification."""
-        if ENHANCEMENTS_AVAILABLE and self.toast:
+        """Show a toast notification via the notification queue."""
+        if ENHANCEMENTS_AVAILABLE and self.notification_queue:
+            if toast_type is None:
+                toast_type = ToastType.INFO
+            self.notification_queue.enqueue(ToastMessage(text, toast_type, duration))
+        elif ENHANCEMENTS_AVAILABLE and self.toast:
             if toast_type is None:
                 toast_type = ToastType.INFO
             self.toast.show_message(text, toast_type, duration)
         else:
-            # Fallback to terminal
             self.term(f"[NOTIFY] {text}")
 
     def create_menu_bar(self):
@@ -3478,8 +3482,10 @@ class CrackedCodeGUI(QMainWindow):
         
         if ENHANCEMENTS_AVAILABLE:
             self.toast = ToastNotification(self)
+            self.notification_queue = NotificationQueue(self.toast)
         else:
             self.toast = None
+            self.notification_queue = None
         self.update_time()
         
         self.stats_timer = QTimer()
@@ -4039,8 +4045,8 @@ class CrackedCodeGUI(QMainWindow):
         <tr><td><b>Ctrl+Shift+V</b></td><td>Toggle Voice</td></tr>
         <tr><td><b>Ctrl+T</b></td><td>New Tab</td></tr>
         <tr><td><b>Ctrl+W</b></td><td>Close Tab</td></tr>
-        <tr><td><b>Ctrl+Tab / Ctrl+PgDn</b></td><td>Next Tab â–¶</td></tr>
-        <tr><td><b>Ctrl+Shift+Tab / Ctrl+PgUp</b></td><td>Prev Tab â—€</td></tr>
+        <tr><td><b>Ctrl+Tab / Ctrl+PgDn</b></td><td>Next Tab ▶</td></tr>
+        <tr><td><b>Ctrl+Shift+Tab / Ctrl+PgUp</b></td><td>Prev Tab ◀</td></tr>
         <tr><td><b>Ctrl+Shift+P</b></td><td>Command Palette</td></tr>
         <tr><td><b>Ctrl+Shift+F</b></td><td>Search Codebase</td></tr>
         <tr><td><b>Ctrl+Shift+S</b></td><td>Save As / Analyze Screen</td></tr>
@@ -4057,9 +4063,13 @@ class CrackedCodeGUI(QMainWindow):
         <b>Toolbar Groups:</b> MODE &nbsp;|&nbsp; ACTION &nbsp;|&nbsp; TERMINAL &nbsp;|&nbsp; FEATURES<br>
         <br>
         <b>Models:</b> qwen3:8b-gpu (Code) | dolphin-llama3:8b-gpu (Chat) | llava:13b-gpu (Vision)<br>
-        <b>100% Local</b> â€” All AI processing runs via Ollama on your machine.
+        <b>100% Local</b> — All AI processing runs via Ollama on your machine.
         """)
-        dlg.exec()
+        # Use non-blocking show() with auto-close so tests don't hang in offscreen mode.
+        # The dialog auto-closes after 15s in case the user walks away.
+        dlg.setModal(False)
+        QTimer.singleShot(15000, dlg.close)
+        dlg.show()
 
     def open_file_in_tab(self, filepath: Path):
         name = filepath.name

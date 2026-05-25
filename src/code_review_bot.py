@@ -1,4 +1,4 @@
-﻿"""Code Review Bot v2.9.6 - Automated PR/code review that runs continuously.
+"""Code Review Bot v2.10.0 - Automated PR/code review that runs continuously.
 
 Monitors git repositories for changes and automatically runs code reviews
 using the reviewer agent. Can run on push, PR, or on a schedule.
@@ -20,12 +20,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from src.custom_rules import get_rules_engine
 from src.logger_config import get_logger
 
 logger = get_logger("CodeReviewBot")
 
 
-# â”€â”€ Data Models â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Data Models ────────────────────────────────────────────────────────────
 
 @dataclass
 class ReviewIssue:
@@ -66,7 +67,7 @@ class ReviewRule:
     enabled: bool = True
 
 
-# â”€â”€ Code Review Bot â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Code Review Bot ────────────────────────────────────────────────────────
 
 class CodeReviewBot:
     """Automated code review bot."""
@@ -363,6 +364,21 @@ class CodeReviewBot:
                         suggestion=rule.suggestion,
                     ))
         
+        # Also run custom rules engine
+        try:
+            custom_findings = get_rules_engine().review_file(str(full_path))
+            for finding in custom_findings:
+                issues.append(ReviewIssue(
+                    file=file_path,
+                    line=finding.line,
+                    severity=finding.severity,
+                    category="custom",
+                    message=finding.message,
+                    suggestion=finding.snippet,
+                ))
+        except Exception:
+            pass
+        
         return issues
     
     def _run_ai_review(self, files: List[str], repo_path: str) -> List[ReviewIssue]:
@@ -503,11 +519,11 @@ SUGGESTION: <how to fix>
         if report.issues:
             comment += "### Issues\n\n"
             for issue in sorted(report.issues, key=lambda i: ["critical", "high", "medium", "low", "info"].index(i.severity))[:10]:
-                emoji = {"critical": "ðŸ”´", "high": "ðŸŸ ", "medium": "ðŸŸ¡", "low": "ðŸ”µ", "info": "âšª"}.get(issue.severity, "âšª")
+                emoji = {"critical": "🔴", "high": "🟠", "medium": "🟡", "low": "🔵", "info": "⚪"}.get(issue.severity, "⚪")
                 comment += f"{emoji} **{issue.severity.upper()}** `{issue.file}:{issue.line}`\n"
                 comment += f"   {issue.message}\n"
                 if issue.suggestion:
-                    comment += f"   ðŸ’¡ {issue.suggestion}\n"
+                    comment += f"   💡 {issue.suggestion}\n"
                 comment += "\n"
         
         return comment

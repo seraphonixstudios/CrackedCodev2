@@ -311,6 +311,38 @@ class GitIntegration:
 
         return commits
 
+    def stash_push(self, message: str = "") -> bool:
+        """Stash working directory changes."""
+        args = ["stash", "push", "-u"]
+        if message:
+            args.extend(["-m", message])
+        code, _, _ = self._run(args)
+        return code == 0
+
+    def stash_pop(self) -> bool:
+        """Pop the most recent stash."""
+        code, _, _ = self._run(["stash", "pop"])
+        return code == 0
+
+    def stash_list(self) -> List[str]:
+        """List all stashes."""
+        _, out, _ = self._run(["stash", "list"])
+        if not out:
+            return []
+        return [line.strip() for line in out.split("\n") if line.strip()]
+
+    def stash_drop(self, index: int = 0) -> bool:
+        """Drop a specific stash by index (0 = most recent)."""
+        ref = f"stash@{{{index}}}"
+        code, _, _ = self._run(["stash", "drop", ref])
+        return code == 0
+
+    def stash_apply(self, index: int = 0) -> bool:
+        """Apply a specific stash without dropping it."""
+        ref = f"stash@{{{index}}}"
+        code, _, _ = self._run(["stash", "apply", ref])
+        return code == 0
+
     def format_status(self) -> str:
         info = self.get_status()
 
