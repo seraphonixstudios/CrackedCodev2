@@ -1,4 +1,4 @@
-﻿"""Notification System v2.9.6 - Multi-backend alerts for CrackedCode.
+"""Notification System v2.10.0 - Multi-backend alerts for CrackedCode.
 
 Backends:
   - Email (SMTP)
@@ -23,7 +23,7 @@ from src.logger_config import get_logger
 logger = get_logger("Notifications")
 
 
-# â”€â”€ Data Models â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Data Models ────────────────────────────────────────────────────────────
 
 @dataclass
 class Notification:
@@ -36,7 +36,7 @@ class Notification:
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 
-# â”€â”€ Backends â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Backends ───────────────────────────────────────────────────────────────
 
 class EmailBackend:
     """Send notifications via SMTP email."""
@@ -186,6 +186,38 @@ class DesktopBackend:
             return False
 
 
+class GuiBackend:
+    """Send notifications to the GUI toast system."""
+
+    def __init__(self, toast_callback=None):
+        self._toast_callback = toast_callback
+
+    def set_toast_callback(self, callback):
+        self._toast_callback = callback
+
+    def send(self, notification: Notification) -> bool:
+        """Send notification to GUI toast."""
+        if not self._toast_callback:
+            return False
+        try:
+            level_map = {
+                "info": "info",
+                "success": "success",
+                "warning": "warning",
+                "error": "error",
+                "debug": "info",
+            }
+            self._toast_callback(
+                text=notification.message,
+                toast_type=level_map.get(notification.level, "info"),
+                duration=5000,
+            )
+            return True
+        except Exception as e:
+            logger.error(f"GUI notification failed: {e}")
+            return False
+
+
 class LogBackend:
     """Log notifications to the structured log."""
     
@@ -196,7 +228,7 @@ class LogBackend:
         return True
 
 
-# â”€â”€ Notification Manager â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Notification Manager ───────────────────────────────────────────────────
 
 class NotificationManager:
     """Orchestrates multiple notification backends."""
@@ -244,6 +276,15 @@ class NotificationManager:
             self.backends.append(DesktopBackend(
                 enabled=desktop_config.get("enabled", True),
             ))
+
+        # GUI backend — always added (callback set later by gui.py)
+        self._gui_backend = GuiBackend()
+        self.backends.append(self._gui_backend)
+
+    def set_gui_toast_callback(self, callback):
+        """Set the callback for GUI toast notifications (called by gui.py)."""
+        if hasattr(self, '_gui_backend'):
+            self._gui_backend.set_toast_callback(callback)
         
         logger.info(f"NotificationManager initialized with {len(self.backends)} backends")
     
@@ -303,7 +344,7 @@ def create_notification_manager(config: Optional[Dict[str, Any]] = None) -> Noti
     return NotificationManager(config=config)
 
 
-# â”€â”€ Singleton â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Singleton ──────────────────────────────────────────────────────────────
 
 _notification_manager: Optional[NotificationManager] = None
 

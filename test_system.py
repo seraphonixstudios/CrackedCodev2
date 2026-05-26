@@ -7313,9 +7313,213 @@ def test_notification_queue_with_toast() -> bool:
         return FAIL("NotificationQueue with toast", str(e)[:80])
 
 
+def test_self_healing_fix_revert() -> bool:
+    """Test self-healing fix application and revert with original content storage."""
+    try:
+        from src.self_healing import SelfHealingAgent, DetectedError
+        import tempfile
+
+        tmpdir = tempfile.mkdtemp(prefix="crackedcode_test_")
+        testfile = Path(tmpdir) / "buggy.py"
+        original = "def add(a, b):\n    return a - b  # bug: should be a + b\n"
+        testfile.write_text(original)
+
+        agent = SelfHealingAgent(repo_path=tmpdir)
+        error = DetectedError(
+            id="err1",
+            timestamp="0",
+            error_type="ValueError",
+            message="wrong result",
+            file=str(testfile),
+            line=2,
+        )
+
+        # Simulate applying a fix directly
+        fix_code = "def add(a, b):\n    return a + b\n"
+        diff = agent._apply_fix(str(testfile), fix_code)
+        assert diff, "No diff generated"
+        content_after = testfile.read_text()
+        assert "a + b" in content_after, "Fix not applied"
+        # Original should be stored on the dummy fix, but we need a real AppliedFix. Add one.
+        from src.self_healing import AppliedFix
+        fix_record = AppliedFix(
+            id="fix-err1", error_id="err1", file=str(testfile),
+            diff=diff, tests_passed=True, applied_at="0",
+            original_content=original,
+        )
+        agent.applied_fixes.append(fix_record)
+
+        # Revert
+        assert agent.revert_fix("fix-err1"), "Revert failed"
+        assert testfile.read_text() == original, "Revert did not restore original"
+
+        import shutil
+        shutil.rmtree(tmpdir)
+        PASS("Self-healing fix and revert work")
+        return True
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return FAIL("Self-healing fix/revert", str(e)[:80])
+
+
+def test_notification_gui_backend() -> bool:
+    """Test GuiBackend bridges notifications to GUI toast callback."""
+    try:
+        from src.notifications import GuiBackend, Notification
+
+        received = []
+
+        def fake_toast(text, toast_type, duration):
+            received.append((text, toast_type, duration))
+
+        backend = GuiBackend(toast_callback=fake_toast)
+        notif = Notification(title="Test", message="Hello", level="warning")
+        assert backend.send(notif), "Send failed"
+        assert len(received) == 1
+        assert received[0][0] == "Hello"
+        assert received[0][1] == "warning"
+
+        # Test set_toast_callback
+        received.clear()
+        backend2 = GuiBackend()
+        backend2.set_toast_callback(fake_toast)
+        assert backend2.send(notif)
+        assert len(received) == 1
+
+        PASS("GuiBackend bridges to toast callback")
+        return True
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return FAIL("Notification GUI backend", str(e)[:80])
+
+
+def test_cli_subcommands_registered() -> bool:
+    """Test that all 7 new CLI subcommands are defined in main.py source."""
+    try:
+        main_path = Path(__file__).parent / "src" / "main.py"
+        content = main_path.read_text(encoding="utf-8")
+        for cmd in ["benchmark", "knowledge", "finetune", "debate", "heal", "schedule", "dashboard"]:
+            pattern = f'subparsers.add_parser("{cmd}"'
+            assert pattern in content, f"Missing subcommand '{cmd}' in main.py"
+        PASS("CLI subcommands registered")
+        return True
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return FAIL("CLI subcommands", str(e)[:80])
+
+
+def test_knowledge_base_upload_search() -> bool:
+    """Test knowledge base document upload and search."""
+    try:
+        from src.knowledge_base import KnowledgeBase
+        import tempfile
+
+        tmpdir = tempfile.mkdtemp(prefix="crackedcode_test_")
+        kb = KnowledgeBase(storage_dir=str(Path(tmpdir) / "kb"))
+
+        # Upload a text document
+        doc_file = Path(tmpdir) / "test_doc.md"
+        doc_file.write_text("""# Authentication Flow
+
+The authentication flow works as follows:
+1. User submits credentials via POST /auth/login
+2. Server validates against the user database
+3. JWT token is generated and returned
+4. Client stores token in secure storage
+
+## Password Policy
+- Minimum 12 characters
+- Must include uppercase, lowercase, digit, special char
+- Not a previously used password
+""")
+
+        doc = kb.upload_document(str(doc_file), title="Auth Flow")
+        assert doc is not None
+        assert len(doc.chunks) > 0
+
+        # Search
+        results = kb.search("authentication JWT token")
+        assert len(results) >= 1
+        assert results[0].title == "Auth Flow"
+
+        # List
+        docs = kb.list_documents()
+        assert len(docs) == 1
+
+        # Stats
+        stats = kb.get_stats()
+        assert stats["total_documents"] == 1
+
+        import shutil
+        shutil.rmtree(tmpdir)
+        PASS("Knowledge base upload and search work")
+        return True
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return FAIL("Knowledge base", str(e)[:80])
+
+
+def test_scheduler_history_persistence() -> bool:
+    """Test that task scheduler history persists to disk."""
+    try:
+        from src.task_scheduler import TaskScheduler, ScheduledRun
+        import tempfile
+        import json
+
+        tmpdir = tempfile.mkdtemp(prefix="crackedcode_test_")
+        orig_cwd = Path.cwd()
+        import os
+        os.chdir(tmpdir)
+
+        try:
+            # Create a minimal history file
+            history_path = Path(".crackedcode") / "scheduler_history.json"
+            history_path.parent.mkdir(parents=True, exist_ok=True)
+
+            data = {
+                "test_job": [
+                    {
+                        "schedule_name": "test_job",
+                        "timestamp": 1000.0,
+                        "success": True,
+                        "result_text": "ok",
+                        "error": "",
+                        "duration": 1.5,
+                    },
+                    {
+                        "schedule_name": "test_job",
+                        "timestamp": 2000.0,
+                        "success": False,
+                        "result_text": "",
+                        "error": "timeout",
+                        "duration": 60.0,
+                    },
+                ]
+            }
+            history_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+            # Load scheduler - should pick up history
+            scheduler = TaskScheduler(engine=None)
+            hist = scheduler.get_history("test_job")
+            assert len(hist) == 2
+            assert hist[0].success == True
+            assert hist[1].success == False
+            assert hist[1].error == "timeout"
+        finally:
+            os.chdir(str(orig_cwd))
+            import shutil
+            shutil.rmtree(tmpdir)
+
+        PASS("Scheduler history persists to disk")
+        return True
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return FAIL("Scheduler history persistence", str(e)[:80])
+
+
 # ── End v2.10.0 New Features Tests ──────────────────────────────────
 
 if __name__ == "__main__":
     success = main()
-    sys.exit(0 if success >= 158 else 1)
+    sys.exit(0 if success >= 163 else 1)
 

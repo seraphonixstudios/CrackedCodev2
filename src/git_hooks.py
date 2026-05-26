@@ -1,4 +1,4 @@
-﻿"""Git Hooks v2.9.6 - Pre-commit code review and security scanning.
+"""Git Hooks v2.10.0 - Pre-commit code review and security scanning.
 
 Install a pre-commit hook that runs the code review bot on every commit.
 Blocks commits with critical issues, warns on high/medium issues.
@@ -27,7 +27,7 @@ from src.logger_config import get_logger
 logger = get_logger("GitHooks")
 
 
-# â”€â”€ Hook Templates â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Hook Templates ─────────────────────────────────────────────────────────
 
 PRE_COMMIT_TEMPLATE = '''#!/usr/bin/env python3
 """CrackedCode Pre-commit Hook - Auto-installed."""
@@ -36,7 +36,7 @@ import subprocess
 import sys
 
 def main():
-    print("ðŸ” CrackedCode Pre-commit Review...")
+    print("🔍 CrackedCode Pre-commit Review...")
     
     try:
         # Run code review on staged files
@@ -60,14 +60,14 @@ if report.verdict == 'fail':
         
         print(result.stdout)
         if result.returncode != 0:
-            print("âŒ Commit blocked: Critical issues found")
+            print("❌ Commit blocked: Critical issues found")
             print("   Use --no-verify to bypass (not recommended)")
             sys.exit(1)
         
-        print("âœ… Pre-commit review passed")
+        print("✅ Pre-commit review passed")
         sys.exit(0)
     except Exception as e:
-        print(f"âš ï¸  Pre-commit review failed: {e}")
+        print(f"⚠️  Pre-commit review failed: {e}")
         print("   Allowing commit (review could not run)")
         sys.exit(0)
 
@@ -76,7 +76,7 @@ if __name__ == "__main__":
 '''
 
 
-# â”€â”€ Hook Manager â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Hook Manager ───────────────────────────────────────────────────────────
 
 class GitHookManager:
     """Manage Git hooks for CrackedCode."""
@@ -157,7 +157,7 @@ class GitHookManager:
         """Run the pre-commit review manually."""
         from src.code_review_bot import get_review_bot
         
-        print("ðŸ” Running CrackedCode pre-commit review...")
+        print("🔍 Running CrackedCode pre-commit review...")
         
         bot = get_review_bot()
         report = bot.review_commit("HEAD", repo_path=str(self.repo_path))
@@ -173,21 +173,21 @@ class GitHookManager:
             severity_order = ["critical", "high", "medium", "low", "info"]
             sorted_issues = sorted(report.issues, key=lambda i: severity_order.index(i.severity))
             for issue in sorted_issues[:10]:
-                emoji = {"critical": "ðŸ”´", "high": "ðŸŸ ", "medium": "ðŸŸ¡", "low": "ðŸ”µ", "info": "âšª"}.get(issue.severity, "âšª")
+                emoji = {"critical": "🔴", "high": "🟠", "medium": "🟡", "low": "🔵", "info": "⚪"}.get(issue.severity, "⚪")
                 print(f"{emoji} [{issue.severity.upper()}] {issue.file}:{issue.line}")
                 print(f"   {issue.message}")
                 if issue.suggestion:
-                    print(f"   ðŸ’¡ {issue.suggestion}")
+                    print(f"   💡 {issue.suggestion}")
                 print()
         
         if report.verdict == "fail":
-            print("âŒ Commit would be blocked: Critical issues found")
+            print("❌ Commit would be blocked: Critical issues found")
             return False
         elif report.verdict == "conditional":
-            print("âš ï¸  Commit would be warned: High severity issues found")
+            print("⚠️  Commit would be warned: High severity issues found")
             return True
         else:
-            print("âœ… Review passed")
+            print("✅ Review passed")
             return True
     
     def get_status(self) -> dict:

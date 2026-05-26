@@ -1,4 +1,4 @@
-﻿"""GitHub Integration v2.9.6 - Automated PR review and issue analysis.
+"""GitHub Integration v2.10.0 - Automated PR review and issue analysis.
 
 Features:
   - Review pull requests for security/code quality
@@ -22,7 +22,7 @@ from src.logger_config import get_logger
 logger = get_logger("GitHub")
 
 
-# â”€â”€ Data Models â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Data Models ────────────────────────────────────────────────────────────
 
 @dataclass
 class PRReview:
@@ -53,7 +53,7 @@ class IssueAnalysis:
     confidence: float = 0.0
 
 
-# â”€â”€ GitHub API Client â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── GitHub API Client ──────────────────────────────────────────────────────
 
 class GitHubClient:
     """GitHub API client for repository operations."""
@@ -146,7 +146,7 @@ class GitHubClient:
         """Get current rate limit status."""
         return self._request("GET", "/rate_limit")
     
-    # â”€â”€ AI-Powered Analysis â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── AI-Powered Analysis ─────────────────────────────────────────────────
     
     def review_pr(self, repo: str, pr_number: int, engine=None,
                   post_comment: bool = False) -> PRReview:
@@ -356,7 +356,7 @@ Format as JSON:
     def _format_pr_review(self, review: PRReview) -> str:
         """Format PR review as GitHub markdown comment."""
         lines = [
-            f"## ðŸ¤– CrackedCode AI Review",
+            f"## 🤖 CrackedCode AI Review",
             f"",
             f"**Verdict:** {review.overall_verdict} (confidence: {review.confidence:.0%})",
             f"",
@@ -367,12 +367,12 @@ Format as JSON:
         
         if review.security_issues:
             lines.extend([
-                f"### ðŸ”’ Security Issues ({len(review.security_issues)})",
+                f"### 🔒 Security Issues ({len(review.security_issues)})",
                 f"",
             ])
             for issue in review.security_issues:
                 severity = issue.get("severity", "medium").upper()
-                emoji = "ðŸš¨" if severity == "HIGH" else "âš ï¸" if severity == "MEDIUM" else "â„¹ï¸"
+                emoji = "🚨" if severity == "HIGH" else "⚠️" if severity == "MEDIUM" else "ℹ️"
                 lines.extend([
                     f"{emoji} **{severity}** - `{issue.get('file', 'unknown')}` line {issue.get('line', 'N/A')}",
                     f"> {issue.get('description', 'No description')}",
@@ -382,12 +382,12 @@ Format as JSON:
         
         if review.code_issues:
             lines.extend([
-                f"### ðŸ“ Code Quality ({len(review.code_issues)})",
+                f"### 📝 Code Quality ({len(review.code_issues)})",
                 f"",
             ])
             for issue in review.code_issues:
                 severity = issue.get("severity", "medium").upper()
-                emoji = "ðŸš¨" if severity == "HIGH" else "âš ï¸" if severity == "MEDIUM" else "â„¹ï¸"
+                emoji = "🚨" if severity == "HIGH" else "⚠️" if severity == "MEDIUM" else "ℹ️"
                 lines.extend([
                     f"{emoji} **{severity}** - `{issue.get('file', 'unknown')}` line {issue.get('line', 'N/A')}",
                     f"> {issue.get('description', 'No description')}",
@@ -397,13 +397,13 @@ Format as JSON:
         
         if not review.security_issues and not review.code_issues:
             lines.extend([
-                f"### âœ… No issues found",
+                f"### ✅ No issues found",
                 f"",
             ])
         
         lines.extend([
             f"---",
-            f"*Reviewed by CrackedCode v2.9.6*",
+            f"*Reviewed by CrackedCode v2.10.0*",
         ])
         
         return "\n".join(lines)

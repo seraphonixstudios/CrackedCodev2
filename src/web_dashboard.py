@@ -1,4 +1,4 @@
-﻿"""Web Dashboard v2.9.6 - Browser-based UI for CrackedCode.
+"""Web Dashboard v2.10.0 - Browser-based UI for CrackedCode.
 
 A lightweight web interface that works on any device.
 Access via http://localhost:8080/dashboard
@@ -22,7 +22,7 @@ except ImportError:
 
 logger = get_logger("WebDashboard")
 
-# â”€â”€ HTML Templates â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── HTML Templates ─────────────────────────────────────────────────────────
 
 DASHBOARD_HTML = """
 <!DOCTYPE html>
@@ -176,8 +176,8 @@ DASHBOARD_HTML = """
 </head>
 <body>
     <div class="header">
-        <h1>âš¡ CrackedCode Dashboard</h1>
-        <p>Local AI Coding Assistant v2.9.6</p>
+        <h1>⚡ CrackedCode Dashboard</h1>
+        <p>Local AI Coding Assistant v2.10.0</p>
     </div>
     
     <div class="container">
@@ -191,7 +191,7 @@ DASHBOARD_HTML = """
         
         <div class="grid">
             <div class="card">
-                <h3>ðŸ¤– System Status</h3>
+                <h3>🤖 System Status</h3>
                 <div class="stat">
                     <span>Ollama</span>
                     <span class="stat-value"><span class="status-indicator status-{{ 'online' if status.ollama_available else 'offline' }}"></span>{{ 'Online' if status.ollama_available else 'Offline' }}</span>
@@ -211,7 +211,7 @@ DASHBOARD_HTML = """
             </div>
             
             <div class="card">
-                <h3>ðŸ“Š Today's Activity</h3>
+                <h3>📊 Today's Activity</h3>
                 <div class="stat">
                     <span>Requests</span>
                     <span class="stat-value">{{ metrics.requests_total }}</span>
@@ -231,18 +231,35 @@ DASHBOARD_HTML = """
             </div>
             
             <div class="card">
-                <h3>ðŸŽ¯ Quick Actions</h3>
+                <h3>🎯 Quick Actions</h3>
                 <div class="stat">
-                    <a href="/docs" target="_blank" style="color: #00FF41;">ðŸ“š Open API Docs</a>
+                    <a href="/docs" target="_blank" style="color: #00FF41;">📚 Open API Docs</a>
                 </div>
                 <div class="stat">
-                    <a href="/export" style="color: #00FF41;">ðŸ’¾ Export Data</a>
+                    <a href="/export" style="color: #00FF41;">💾 Export Data</a>
                 </div>
                 <div class="stat">
-                    <span style="color: #888;">ðŸ”‘ Auth: {{ 'Enabled' if status.auth_required else 'Disabled' }}</span>
+                    <span style="color: #888;">🔑 Auth: {{ 'Enabled' if status.auth_required else 'Disabled' }}</span>
                 </div>
                 <div class="stat">
-                    <span style="color: #888;">ðŸ“¡ API: {{ status.api_url }}</span>
+                    <span style="color: #888;">📡 API: {{ status.api_url }}</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>⏰ Scheduled Tasks</h3>
+                <div class="stat">
+                    <span>Active Schedules</span>
+                    <span class="stat-value">{{ scheduler_info.total }}</span>
+                </div>
+                {% for s in scheduler_info.schedules %}
+                <div class="stat">
+                    <span>{{ s.name }}</span>
+                    <span style="color: {% if s.enabled %}#00FF41{% else %}#888{% endif %};">{{ s.cron }} ({{ s.agent }})</span>
+                </div>
+                {% endfor %}
+                <div class="stat">
+                    <a href="/api/schedules" target="_blank" style="color: #00FF41; font-size: 0.9rem;">📋 View Full Schedule Data →</a>
                 </div>
             </div>
         </div>
@@ -339,12 +356,15 @@ class WebDashboard:
             total = metrics.get("requests_total", 1)
             success = metrics.get("requests_success", 0)
             success_rate = (success / total * 100) if total > 0 else 0
+
+            scheduler_info = self._get_scheduler_info()
             
             return render_template_string(
                 DASHBOARD_HTML,
                 status=status,
                 metrics=metrics,
                 success_rate=success_rate,
+                scheduler_info=scheduler_info,
             )
         
         @self.app.route("/api/status")
@@ -356,6 +376,23 @@ class WebDashboard:
         def api_metrics():
             """Get metrics as JSON."""
             return jsonify(self._get_metrics())
+
+        @self.app.route("/api/schedules")
+        def api_schedules():
+            """Get scheduler info as JSON."""
+            try:
+                from src.task_scheduler import TaskScheduler
+                sched = TaskScheduler()
+                schedules = sched.list_schedules()
+                history = {name: [{"timestamp": r.timestamp, "success": r.success, "duration": r.duration} for r in runs[-5:]]
+                           for name, runs in sched.history.items()}
+                return jsonify({
+                    "schedules": [{"name": s.name, "cron": s.cron, "agent": s.agent, "enabled": s.enabled} for s in schedules],
+                    "history": history,
+                    "total": len(schedules),
+                })
+            except Exception as e:
+                return jsonify({"error": str(e), "schedules": [], "history": {}})
     
     def _get_status(self) -> Dict[str, Any]:
         """Get system status."""
@@ -399,6 +436,19 @@ class WebDashboard:
         
         return metrics
     
+    def _get_scheduler_info(self) -> Dict[str, Any]:
+        """Get scheduler info for the dashboard."""
+        try:
+            from src.task_scheduler import TaskScheduler
+            sched = TaskScheduler()
+            schedules = sched.list_schedules()
+            return {
+                "schedules": [{"name": s.name, "cron": s.cron, "agent": s.agent, "enabled": s.enabled} for s in schedules],
+                "total": len(schedules),
+            }
+        except Exception:
+            return {"schedules": [], "total": 0}
+
     def start(self) -> bool:
         """Start the web dashboard."""
         if not FLASK_AVAILABLE:

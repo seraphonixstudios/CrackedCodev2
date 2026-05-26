@@ -1,4 +1,4 @@
-﻿"""CrackedCode Python SDK v2.9.6 - Official client for the CrackedCode API.
+"""CrackedCode Python SDK v2.10.0 - Official client for the CrackedCode API.
 
 Provides a clean, typed interface to all API endpoints with automatic
 retries, error handling, and both sync/async support.
@@ -52,7 +52,7 @@ from src.logger_config import get_logger
 logger = get_logger("SDK")
 
 
-# â”€â”€ Response Models â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Response Models ────────────────────────────────────────────────────────
 
 @dataclass
 class ChatResponse:
@@ -130,7 +130,7 @@ class HealingResponse:
     raw: Dict[str, Any] = field(default_factory=dict, repr=False)
 
 
-# â”€â”€ Client â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Client ─────────────────────────────────────────────────────────────────
 
 class Client:
     """Official CrackedCode API client."""
@@ -191,7 +191,7 @@ class Client:
 
         raise last_error or requests.RequestException("Max retries exceeded")
 
-    # â”€â”€ Core API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── Core API ───────────────────────────────────────────────────────────
 
     def chat(
         self,
@@ -260,7 +260,7 @@ class Client:
             return self._request("POST", "/import", files=files, data=data)
 
 
-# â”€â”€ Sub-clients â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Sub-clients ────────────────────────────────────────────────────────────
 
 class _WorkflowClient:
     def __init__(self, client: Client):
@@ -463,7 +463,7 @@ class _ToolClient:
         return self._client._request("POST", "/custom-tools/execute", json=payload)
 
 
-# â”€â”€ Convenience functions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Convenience functions ──────────────────────────────────────────────────
 
 def create_client(
     api_key: Optional[str] = None,

@@ -1,4 +1,4 @@
-﻿"""Self-Healing Agent v2.9.6 - Auto-detect errors and fix them.
+"""Self-Healing Agent v2.10.0 - Auto-detect errors and fix them.
 
 Monitors log files for exceptions, traces them to source code,
 generates patches, and verifies fixes with tests.
@@ -33,7 +33,7 @@ from src.logger_config import get_logger
 logger = get_logger("SelfHealing")
 
 
-# â”€â”€ Data Models â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Data Models ────────────────────────────────────────────────────────────
 
 @dataclass
 class DetectedError:
@@ -59,9 +59,10 @@ class AppliedFix:
     tests_passed: bool
     applied_at: str
     reverted: bool = False
+    original_content: str = ""  # Stored for revert
 
 
-# â”€â”€ Self-Healing Agent â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Self-Healing Agent ─────────────────────────────────────────────────────
 
 class SelfHealingAgent:
     """Auto-detect errors and generate fixes."""
@@ -308,22 +309,38 @@ Provide ONLY the fixed code block. Do not include explanations."""
             return None
 
     def _apply_fix(self, file_path: str, fix_code: str) -> str:
-        """Apply a fix to a file and return the diff."""
-        from src.code_diff import create_diff_applier
+        """Apply a fix to a file and return the diff. Stores original for revert."""
+        from src.code_diff import apply_patch_to_file, generate_patch
 
-        # Read original
         with open(file_path, "r", encoding="utf-8") as f:
             original = f.read()
 
-        # For now, replace the entire file (in production, this would be more surgical)
-        # Generate unified diff
+        # Generate unified diff before applying
         diff = self._generate_unified_diff(original, fix_code, file_path)
 
-        # Apply fix
-        with open(file_path, "w", encoding="utf-8") as f:
-            f.write(fix_code)
+        # Apply fix via surgical patch or full replace
+        try:
+            patched = self._try_surgical_apply(file_path, original, fix_code)
+        except Exception:
+            patched = False
+
+        if not patched:
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(fix_code)
+
+        # Store original for revert on the last fix in applied_fixes
+        if self.applied_fixes:
+            self.applied_fixes[-1].original_content = original
 
         return diff
+
+    def _try_surgical_apply(self, file_path: str, original: str, fix_code: str) -> bool:
+        """Try to apply fix surgically if AI returns a diff, otherwise fall back."""
+        # If fix_code looks like a unified diff, apply it surgically
+        if fix_code.startswith("--- ") and "+++" in fix_code[:100]:
+            from src.code_diff import apply_patch_to_file
+            return apply_patch_to_file(file_path, fix_code)
+        return False
 
     def _generate_unified_diff(self, original: str, modified: str,
                                file_path: str) -> str:
@@ -369,15 +386,20 @@ Provide ONLY the fixed code block. Do not include explanations."""
             return False
 
     def revert_fix(self, fix_id: str) -> bool:
-        """Revert a previously applied fix."""
+        """Revert a previously applied fix using stored original content."""
         fix = next((f for f in self.applied_fixes if f.id == fix_id), None)
         if not fix:
             return False
+        if fix.reverted:
+            logger.warning(f"Fix {fix_id} already reverted")
+            return False
+        if not fix.original_content:
+            logger.warning(f"No original content stored for fix {fix_id}")
+            return False
 
-        # Parse diff and reverse it
         try:
-            # Simple approach: we don't store original, so this is a placeholder
-            # In production, store original before applying fix
+            with open(fix.file, "w", encoding="utf-8") as f:
+                f.write(fix.original_content)
             fix.reverted = True
             self._save_state()
             logger.info(f"Reverted fix: {fix_id}")
@@ -408,4 +430,21 @@ Provide ONLY the fixed code block. Do not include explanations."""
 def get_healing_agent(engine=None, repo_path: str = ".") -> SelfHealingAgent:
     """Get the global self-healing agent."""
     return SelfHealingAgent(engine=engine, repo_path=repo_path)
+
+
+_healing_agent: Optional[SelfHealingAgent] = None
+
+
+def get_or_create_healing_agent(engine=None, repo_path: str = ".") -> SelfHealingAgent:
+    """Get or create the singleton healing agent."""
+    global _healing_agent
+    if _healing_agent is None:
+        _healing_agent = SelfHealingAgent(engine=engine, repo_path=repo_path)
+    return _healing_agent
+
+
+def reset_healing_agent():
+    """Reset the singleton (for testing)."""
+    global _healing_agent
+    _healing_agent = None
 

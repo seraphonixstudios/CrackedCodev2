@@ -1,4 +1,4 @@
-﻿"""Execution Tracer v2.9.6 - Capture and replay every system decision.
+"""Execution Tracer v2.10.0 - Capture and replay every system decision.
 
 Trace every engine call, agent decision, tool invocation, memory injection,
 and reasoning step. Searchable, filterable, and replayable.
@@ -35,7 +35,7 @@ from src.logger_config import get_logger
 logger = get_logger("ExecutionTracer")
 
 
-# â”€â”€ Data Models â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Data Models ────────────────────────────────────────────────────────────
 
 @dataclass
 class TraceSpan:
@@ -73,7 +73,7 @@ class ExecutionTrace:
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 
-# â”€â”€ Execution Tracer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Execution Tracer ───────────────────────────────────────────────────────
 
 class ExecutionTracer:
     """Capture and query execution traces."""
@@ -438,15 +438,15 @@ class ExecutionTracer:
             return
         
         print(f"\nTrace: {tree['trace_id']}")
-        print(f"Duration: {tree['total_duration_ms']}ms | Success: {'âœ…' if tree['success'] else 'âŒ'}")
+        print(f"Duration: {tree['total_duration_ms']}ms | Success: {'✅' if tree['success'] else '❌'}")
         print()
         
         def print_node(node: Dict[str, Any], indent: int = 0, is_last: bool = True):
             prefix = "    " * (indent - 1) if indent > 0 else ""
             if indent > 0:
-                prefix += "â””â”€â”€ " if is_last else "â”œâ”€â”€ "
+                prefix += "└── " if is_last else "├── "
             
-            status = "âœ…" if node.get("success") else "âŒ"
+            status = "✅" if node.get("success") else "❌"
             component = f"[{node.get('component', '')}]" if node.get("component") else ""
             agent = f"({node.get('agent', '')})" if node.get("agent") else ""
             duration = f"{node.get('duration_ms', 0)}ms"
@@ -455,7 +455,7 @@ class ExecutionTracer:
             
             if node.get("errors"):
                 for error in node["errors"]:
-                    print(f"{'    ' * indent}    âš ï¸  {error}")
+                    print(f"{'    ' * indent}    ⚠️  {error}")
             
             children = node.get("children", [])
             for i, child in enumerate(children):

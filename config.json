@@ -1,7 +1,7 @@
 {
   "name": "CrackedCode",
-  "version": "2.9.6",
-  "description": "Autonomous AI Coding Agent with Multi-Agent Swarm, Voice I/O, and Production-Ready App Generation",
+  "version": "2.10.0",
+  "description": "Autonomous AI Coding Agent with Swarm Mode, Voice I/O, and Production-Ready App Generation",
   "model": "qwen3:8b-gpu",
   "vision_model": "llava:13b-gpu",
   "secondary_model": "dolphin-llama3:8b-gpu",
@@ -9,6 +9,8 @@
   "autonomous_enabled": true,
   "autonomous_max_corrections": 3,
   "autonomous_workspace": ".autonomous",
+  "swarm_enabled": false,
+  "adaptive_learning_enabled": true,
   "streaming_enabled": true,
   "api_key": null,
   "cache_enabled": true,

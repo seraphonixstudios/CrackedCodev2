@@ -1,4 +1,4 @@
-﻿"""GitHub Action Runner v2.9.6 - Run CrackedCode AI review in CI/CD.
+"""GitHub Action Runner v2.10.0 - Run CrackedCode AI review in CI/CD.
 
 Usage as GitHub Action:
     - uses: actions/checkout@v4
@@ -85,10 +85,10 @@ def format_review_comment(review: dict) -> str:
     code_count = review.get("code_issues_count", 0)
     
     verdict_emoji = {
-        "APPROVE": "âœ…",
-        "COMMENT": "ðŸ’¬",
-        "REQUEST_CHANGES": "ðŸ›‘"
-    }.get(verdict, "ðŸ’¬")
+        "APPROVE": "✅",
+        "COMMENT": "💬",
+        "REQUEST_CHANGES": "🛑"
+    }.get(verdict, "💬")
     
     return f"""## {verdict_emoji} CrackedCode AI Review
 
@@ -98,11 +98,11 @@ def format_review_comment(review: dict) -> str:
 {summary}
 
 ### Findings
-- ðŸ”’ Security issues: {security_count}
-- ðŸ“ Code quality issues: {code_count}
+- 🔒 Security issues: {security_count}
+- 📝 Code quality issues: {code_count}
 
 ---
-*Reviewed by CrackedCode v2.9.6*
+*Reviewed by CrackedCode v2.10.0*
 """
 
 

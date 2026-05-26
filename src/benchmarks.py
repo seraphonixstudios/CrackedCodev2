@@ -1,4 +1,4 @@
-﻿"""Benchmark Suite v2.9.6 - Standardized code generation quality tests.
+"""Benchmark Suite v2.10.0 - Standardized code generation quality tests.
 
 Measure AI performance over time with standardized benchmarks:
 - HumanEval-style function completion
@@ -35,7 +35,7 @@ from src.logger_config import get_logger
 logger = get_logger("Benchmarks")
 
 
-# â”€â”€ Data Models â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Data Models ────────────────────────────────────────────────────────────
 
 @dataclass
 class BenchmarkCase:
@@ -75,7 +75,7 @@ class BenchmarkReport:
     raw: Dict[str, Any] = field(default_factory=dict)
 
 
-# â”€â”€ Benchmark Suites â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Benchmark Suites ───────────────────────────────────────────────────────
 
 HUMANEVAL_CASES = [
     BenchmarkCase(
@@ -238,7 +238,7 @@ BENCHMARK_SUITES = {
 }
 
 
-# â”€â”€ Benchmark Runner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Benchmark Runner ───────────────────────────────────────────────────────
 
 class BenchmarkRunner:
     """Run standardized benchmarks against CrackedCode."""

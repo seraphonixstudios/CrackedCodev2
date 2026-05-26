@@ -1838,6 +1838,147 @@ class LearningPanelWidget(QWidget):
                     self.gui.term(f"[LEARN ERROR] {e}", level="error")
 
 
+class KnowledgePanelWidget(QWidget):
+    """Knowledge Base panel — upload docs, search, browse documents."""
+
+    def __init__(self, gui_ref=None):
+        super().__init__()
+        self.gui = gui_ref
+        self._kb = None
+        self.init_ui()
+
+    def _get_kb(self):
+        if self._kb is None:
+            try:
+                from src.knowledge_base import get_knowledge_base
+                self._kb = get_knowledge_base()
+            except Exception:
+                return None
+        return self._kb
+
+    def init_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        header = QLabel("KNOWLEDGE BASE")
+        header.setStyleSheet(f"font-weight: bold; color: {ATLAN_CYAN}; padding: 2px;")
+        layout.addWidget(header)
+
+        self.stats_lbl = QLabel("No documents")
+        self.stats_lbl.setStyleSheet(f"color: #888; font-size: 9px; padding: 2px 4px;")
+        layout.addWidget(self.stats_lbl)
+
+        search_row = QHBoxLayout()
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Search documents...")
+        self.search_input.setStyleSheet(f"background: {ATLAN_DARK}; color: {ATLAN_GREEN}; border: 1px solid {ATLAN_GREEN}; border-radius: 3px; padding: 2px 6px; font-size: 10px;")
+        self.search_input.returnPressed.connect(self._do_search)
+        search_row.addWidget(self.search_input, 1)
+        search_btn = QPushButton("Go")
+        search_btn.setStyleSheet(f"background: {ATLAN_DARK}; color: {ATLAN_GREEN}; border: 1px solid {ATLAN_GREEN}; border-radius: 3px; padding: 2px 8px; font-size: 9px;")
+        search_btn.clicked.connect(self._do_search)
+        search_row.addWidget(search_btn)
+        layout.addLayout(search_row)
+
+        btn_row = QHBoxLayout()
+        upload_btn = QPushButton("Upload")
+        upload_btn.setStyleSheet(f"background: {ATLAN_DARK}; color: {ATLAN_CYAN}; border: 1px solid {ATLAN_CYAN}; border-radius: 3px; padding: 2px 8px; font-size: 9px;")
+        upload_btn.clicked.connect(self._upload_doc)
+        btn_row.addWidget(upload_btn)
+        refresh_btn = QPushButton("Refresh")
+        refresh_btn.setStyleSheet(f"background: {ATLAN_DARK}; color: {ATLAN_GOLD}; border: 1px solid {ATLAN_GOLD}; border-radius: 3px; padding: 2px 8px; font-size: 9px;")
+        refresh_btn.clicked.connect(self.refresh)
+        btn_row.addWidget(refresh_btn)
+        btn_row.addStretch()
+        layout.addLayout(btn_row)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setStyleSheet("QScrollArea { border: none; }")
+        self.result_content = QWidget()
+        self.result_layout = QVBoxLayout(self.result_content)
+        self.result_layout.setContentsMargins(4, 4, 4, 4)
+        self.result_layout.setSpacing(2)
+        scroll.setWidget(self.result_content)
+        layout.addWidget(scroll, 1)
+
+        self.empty_lbl = QLabel("Upload documents to build\na searchable knowledge base.")
+        self.empty_lbl.setWordWrap(True)
+        self.empty_lbl.setStyleSheet("color: #555; font-size: 10px; padding: 12px;")
+        self.empty_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.result_layout.addWidget(self.empty_lbl)
+        self.result_layout.addStretch()
+
+    def refresh(self):
+        kb = self._get_kb()
+        if not kb:
+            return
+        self._clear_results()
+        docs = kb.list_documents()
+        self.stats_lbl.setText(f"{len(docs)} document(s)")
+        if not docs:
+            self.empty_lbl.setVisible(True)
+            return
+        self.empty_lbl.setVisible(False)
+        for d in docs:
+            w = QLabel(f"  \u2022 {d.title}  ({d.content_type}, {len(d.chunks)} chunks)")
+            w.setStyleSheet(f"color: #aaa; font-size: 9px; padding: 1px 4px;")
+            w.setWordWrap(True)
+            self.result_layout.addWidget(w)
+        self.result_layout.addStretch()
+
+    def _do_search(self):
+        query = self.search_input.text().strip()
+        if not query:
+            return
+        kb = self._get_kb()
+        if not kb:
+            return
+        self._clear_results()
+        results = kb.search(query, top_k=10)
+        self.stats_lbl.setText(f"Results for \"{query}\"")
+        if not results:
+            lbl = QLabel("No results found")
+            lbl.setStyleSheet("color: #888; font-size: 10px; padding: 8px;")
+            self.result_layout.addWidget(lbl)
+            self.result_layout.addStretch()
+            return
+        for r in results:
+            text = f"  [{r.score:.3f}] {r.title}: {r.content[:120]}..."
+            w = QLabel(text)
+            w.setStyleSheet(f"color: {ATLAN_GREEN}; font-size: 9px; padding: 2px 4px; border-bottom: 1px solid {ATLAN_BORDER};")
+            w.setWordWrap(True)
+            self.result_layout.addWidget(w)
+        self.result_layout.addStretch()
+
+    def _upload_doc(self):
+        if not self.gui:
+            return
+        from PyQt6.QtWidgets import QFileDialog
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Upload Document", "",
+            "Documents (*.pdf *.md *.txt *.html *.docx);;All Files (*)"
+        )
+        if not path:
+            return
+        kb = self._get_kb()
+        if not kb:
+            return
+        try:
+            doc = kb.upload_document(path)
+            if self.gui:
+                self.gui.show_toast(f"Uploaded: {doc.title}", "success")
+            self.refresh()
+        except Exception as e:
+            if self.gui:
+                self.gui.show_toast(f"Upload failed: {e}", "error")
+
+    def _clear_results(self):
+        while self.result_layout.count():
+            item = self.result_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+
 class SearchableTerminal(QTextEdit):
     def __init__(self):
         super().__init__()
@@ -1952,6 +2093,7 @@ class CrackedCodeGUI(QMainWindow):
         self.init_matrix()
         self.init_clipboard()
         self.init_file_watcher()
+        self.init_notifications()
         self.restore_state()
         self.setup_paste_handler()
         
@@ -1980,6 +2122,16 @@ class CrackedCodeGUI(QMainWindow):
             return
         self.file_watcher = None
         logger.info("FileWatcher ready (will activate when project opens)")
+
+    def init_notifications(self):
+        """Initialize notification system and wire GUI toast callback."""
+        try:
+            from src.notifications import get_notification_manager
+            nm = get_notification_manager()
+            nm.set_gui_toast_callback(self.show_toast)
+            logger.info("Notification manager wired to GUI toasts")
+        except Exception as e:
+            logger.warning(f"Notification init failed: {e}")
 
     def _start_watching_project(self, path: str):
         """Start watching a project directory for external changes."""
@@ -3207,7 +3359,19 @@ class CrackedCodeGUI(QMainWindow):
 
         panel_tabs.addTab(learning_tab, "LEARN")
 
-        # --- Tab 6: HISTORY ---
+        # --- Tab 6: KNOWLEDGE ---
+        knowledge_tab = QWidget()
+        knowledge_layout = QVBoxLayout(knowledge_tab)
+        knowledge_layout.setContentsMargins(4, 4, 4, 4)
+        knowledge_layout.setSpacing(4)
+
+        self.knowledge_panel = KnowledgePanelWidget(gui_ref=self)
+        self.knowledge_panel.setToolTip("Knowledge Base - upload documents and search")
+        knowledge_layout.addWidget(self.knowledge_panel)
+
+        panel_tabs.addTab(knowledge_tab, "KNOWLEDGE")
+
+        # --- Tab 7: HISTORY ---
         history_tab = QWidget()
         history_layout = QVBoxLayout(history_tab)
         history_layout.setContentsMargins(4, 4, 4, 4)

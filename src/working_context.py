@@ -192,3 +192,9 @@ def get_working_context(storage_path: str = ".crackedcode/working_context.json")
     if _instance is None:
         _instance = WorkingContext(storage_path=storage_path)
     return _instance
+
+
+def reset_working_context():
+    """Reset the global WorkingContext singleton (for testing)."""
+    global _instance
+    _instance = None

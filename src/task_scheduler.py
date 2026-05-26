@@ -1,4 +1,4 @@
-﻿"""Task Scheduler v2.9.6 - Cron-based recurring AI task execution.
+"""Task Scheduler v2.10.0 - Cron-based recurring AI task execution.
 
 Define recurring tasks that run on a schedule:
   schedules/weekly_security.yaml
@@ -27,7 +27,7 @@ from src.logger_config import get_logger
 logger = get_logger("TaskScheduler")
 
 
-# â”€â”€ Data Models â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Data Models ────────────────────────────────────────────────────────────
 
 @dataclass
 class Schedule:
@@ -58,7 +58,7 @@ class ScheduledRun:
     duration: float = 0.0
 
 
-# â”€â”€ Cron Parser â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Cron Parser ────────────────────────────────────────────────────────────
 
 def parse_cron(cron: str) -> Dict[str, List[int]]:
     """Parse a cron expression into minute/hour/day/month/dow lists.
@@ -120,7 +120,7 @@ def should_run_now(cron_spec: Dict[str, List[int]]) -> bool:
     )
 
 
-# â”€â”€ Task Scheduler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Task Scheduler ─────────────────────────────────────────────────────────
 
 class TaskScheduler:
     """Cron-based recurring task scheduler using the orchestrator."""
@@ -132,11 +132,51 @@ class TaskScheduler:
         self.notifications = notifications
         self.schedules: Dict[str, Schedule] = {}
         self.history: Dict[str, List[ScheduledRun]] = {}
+        self._history_path = Path(".crackedcode") / "scheduler_history.json"
         self._running = False
         self._thread: Optional[threading.Thread] = None
         self._last_run_minute: Optional[str] = None
         self._load_schedules()
+        self._load_history()
     
+    def _history_storage_dir(self) -> Path:
+        return self._history_path.parent
+
+    def _load_history(self):
+        """Load execution history from disk."""
+        try:
+            if self._history_path.exists():
+                data = json.loads(self._history_path.read_text(encoding="utf-8"))
+                for name, runs in data.items():
+                    self.history[name] = [
+                        ScheduledRun(**r) for r in runs
+                    ]
+                logger.debug(f"Loaded history for {len(self.history)} schedules")
+        except Exception as e:
+            logger.warning(f"Failed to load scheduler history: {e}")
+
+    def _save_history(self):
+        """Save execution history to disk."""
+        try:
+            self._history_storage_dir().mkdir(parents=True, exist_ok=True)
+            data = {
+                name: [
+                    {
+                        "schedule_name": r.schedule_name,
+                        "timestamp": r.timestamp,
+                        "success": r.success,
+                        "result_text": r.result_text,
+                        "error": r.error,
+                        "duration": r.duration,
+                    }
+                    for r in runs
+                ]
+                for name, runs in self.history.items()
+            }
+            self._history_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        except Exception as e:
+            logger.warning(f"Failed to save scheduler history: {e}")
+
     def _load_schedules(self):
         """Load schedule definitions from disk."""
         if not self.schedules_dir.exists():
@@ -324,6 +364,8 @@ class TaskScheduler:
             # Trim history
             if len(self.history[schedule.name]) > schedule.max_history:
                 self.history[schedule.name] = self.history[schedule.name][-schedule.max_history:]
+
+            self._save_history()
             
             # Save output to file if specified
             if schedule.output and success:
@@ -376,7 +418,7 @@ def create_task_scheduler(engine=None, schedules_dir: str = "schedules") -> Task
     return TaskScheduler(engine=engine, schedules_dir=schedules_dir)
 
 
-# â”€â”€ CLI Entry Point â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── CLI Entry Point ────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     from src.engine import CrackedCodeEngine

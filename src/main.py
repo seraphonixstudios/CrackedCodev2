@@ -1,7 +1,7 @@
 ﻿#!/usr/bin/env python3
 """
 CrackedCode - Local AI Coding Assistant
-Version: 2.9.6
+Version: 2.10.0
 """
 
 import os
@@ -1726,7 +1726,7 @@ class AgentSwarm:
 
 
 class CrackedCode:
-    VERSION = "2.9.6"
+    VERSION = "2.10.0"
     BANNER = """
 ============================================================
   CRACKEDCODE v{version} - Local AI Coding Assistant
@@ -1740,9 +1740,24 @@ class CrackedCode:
     def __init__(self, config_path: Optional[str] = None):
         self.config = CrackedCodeConfig(config_path)
         self.swarm = AgentSwarm(self.config)
+        self._swarm_coordinator = None
         self.running = False
 
         logger.info(f"CrackedCode v{self.VERSION} initializing...")
+
+    @property
+    def swarm_coordinator(self):
+        """Get or create the SwarmCoordinator."""
+        if self._swarm_coordinator is None:
+            try:
+                from src.swarm import get_swarm_coordinator
+                self._swarm_coordinator = get_swarm_coordinator(
+                    engine=None,
+                    max_workers=self.config.get("max_concurrent_agents", 4),
+                )
+            except ImportError:
+                pass
+        return self._swarm_coordinator
 
     def _print_banner(self):
         print(self.BANNER.format(
@@ -1994,6 +2009,63 @@ def main():
     doctor_parser.add_argument("--json", action="store_true", help="Output as JSON")
     doctor_parser.add_argument("--quiet", action="store_true", help="Only show errors")
 
+    benchmark_parser = subparsers.add_parser("benchmark", help="Run performance benchmarks")
+    benchmark_parser.add_argument("--suite", default=None, help="Suite name: humaneval, security, refactor, docs")
+    benchmark_parser.add_argument("--model", default=None, help="Model to benchmark")
+    benchmark_parser.add_argument("--all", action="store_true", help="Run all suites")
+    benchmark_parser.add_argument("--history", action="store_true", help="Show benchmark history")
+    benchmark_parser.add_argument("--trends", action="store_true", help="Show benchmark trends")
+    benchmark_parser.add_argument("--json", action="store_true", help="Output as JSON")
+
+    kb_parser = subparsers.add_parser("knowledge", help="Manage knowledge base documents")
+    kb_parser.add_argument("action", nargs="?", default="list", choices=["list", "upload", "search", "delete", "stats"],
+                           help="Action to perform")
+    kb_parser.add_argument("--file", default=None, help="File path for upload")
+    kb_parser.add_argument("--title", default=None, help="Document title for upload")
+    kb_parser.add_argument("--query", default=None, help="Search query")
+    kb_parser.add_argument("--doc-id", default=None, help="Document ID for delete")
+    kb_parser.add_argument("--top-k", type=int, default=5, help="Number of search results")
+    kb_parser.add_argument("--json", action="store_true", help="Output as JSON")
+
+    finetune_parser = subparsers.add_parser("finetune", help="Create fine-tuned models")
+    finetune_parser.add_argument("action", nargs="?", default="list", choices=["list", "create", "export", "status"],
+                                 help="Action to perform")
+    finetune_parser.add_argument("--name", default=None, help="Model name")
+    finetune_parser.add_argument("--base", default="qwen3:8b", help="Base model")
+    finetune_parser.add_argument("--format", default="jsonl", choices=["jsonl", "alpaca", "sharegpt"],
+                                 help="Export format")
+    finetune_parser.add_argument("--source", default="conversations", choices=["conversations", "codebase"],
+                                 help="Training data source")
+
+    debate_parser = subparsers.add_parser("debate", help="Run multi-agent debate")
+    debate_parser.add_argument("--topic", required=True, help="Debate topic")
+    debate_parser.add_argument("--agents", default="architect,coder,reviewer", help="Comma-separated agent roles")
+    debate_parser.add_argument("--rounds", type=int, default=2, help="Number of debate rounds")
+    debate_parser.add_argument("--json", action="store_true", help="Output as JSON")
+
+    heal_parser = subparsers.add_parser("heal", help="Self-healing agent operations")
+    heal_parser.add_argument("action", nargs="?", default="status", choices=["status", "watch", "errors", "fixes", "revert"],
+                             help="Action to perform")
+    heal_parser.add_argument("--log-file", default=None, help="Log file to watch")
+    heal_parser.add_argument("--auto-fix", action="store_true", help="Auto-fix detected errors")
+    heal_parser.add_argument("--fix-id", default=None, help="Fix ID to revert")
+    heal_parser.add_argument("--json", action="store_true", help="Output as JSON")
+
+    schedule_parser = subparsers.add_parser("schedule", help="Manage scheduled tasks")
+    schedule_parser.add_argument("action", nargs="?", default="list", choices=["list", "add", "remove", "enable", "disable", "history"],
+                                 help="Action to perform")
+    schedule_parser.add_argument("--name", default=None, help="Schedule name")
+    schedule_parser.add_argument("--cron", default="0 0 * * *", help="Cron expression")
+    schedule_parser.add_argument("--agent", default="coder", help="Agent role")
+    schedule_parser.add_argument("--prompt", default=None, help="Task prompt")
+    schedule_parser.add_argument("--description", default="", help="Schedule description")
+    schedule_parser.add_argument("--json", action="store_true", help="Output as JSON")
+
+    dashboard_parser = subparsers.add_parser("dashboard", help="Start web dashboard")
+    dashboard_parser.add_argument("--port", type=int, default=5000, help="Dashboard port (default: 5000)")
+    dashboard_parser.add_argument("--host", default="127.0.0.1", help="Dashboard host (default: 127.0.0.1)")
+    dashboard_parser.add_argument("--open", action="store_true", help="Open browser automatically")
+
     parser.add_argument(
         "-c", "--config",
         help="Path to config JSON file",
@@ -2012,6 +2084,11 @@ def main():
     parser.add_argument(
         "--push-to-talk",
         help="Enable push-to-talk mode",
+        action="store_true"
+    )
+    parser.add_argument(
+        "--swarm",
+        help="Enable Swarm Mode for complex prompts (parallel multi-agent)",
         action="store_true"
     )
 
@@ -2105,6 +2182,212 @@ def main():
             print(Doctor().format_report(report, json_output=getattr(args, "json", False)))
         return 0 if report.overall in ("ok", "warning") else 1
     
+    # Handle benchmark subcommand
+    if getattr(args, "subcmd", None) == "benchmark":
+        from src.benchmarks import BenchmarkRunner
+        bm = BenchmarkRunner()
+        if getattr(args, "history", False):
+            hist = bm.get_history()
+            print(json.dumps(hist, indent=2) if getattr(args, "json", False) else f"Benchmark runs: {len(hist)}")
+            return 0
+        if getattr(args, "trends", False):
+            trends = bm.get_trends()
+            print(json.dumps(trends, indent=2) if getattr(args, "json", False) else f"Trends: {trends}")
+            return 0
+        suite = getattr(args, "suite", None)
+        if suite:
+            result = bm.run(suite)
+        elif getattr(args, "all", False):
+            result = bm.run_all()
+        else:
+            print("Usage: benchmark --suite <name> or --all")
+            return 1
+        print(json.dumps(result, indent=2) if getattr(args, "json", False) else str(result)[:500])
+        return 0
+
+    # Handle knowledge subcommand
+    if getattr(args, "subcmd", None) == "knowledge":
+        from src.knowledge_base import get_knowledge_base
+        kb = get_knowledge_base()
+        action = getattr(args, "action", "list")
+        if action == "list":
+            docs = kb.list_documents()
+            if getattr(args, "json", False):
+                print(json.dumps([{"id": d.id, "title": d.title, "type": d.content_type} for d in docs], indent=2))
+            else:
+                print(f"Documents ({len(docs)}):")
+                for d in docs:
+                    print(f"  {d.id[:8]}  {d.title}  ({d.content_type}, {len(d.chunks)} chunks)")
+        elif action == "upload":
+            fpath = getattr(args, "file", None)
+            if not fpath:
+                print("--file required for upload"); return 1
+            doc = kb.upload_document(fpath, title=getattr(args, "title", None))
+            print(f"Uploaded: {doc.title} ({len(doc.chunks)} chunks)")
+        elif action == "search":
+            query = getattr(args, "query", None)
+            if not query:
+                print("--query required for search"); return 1
+            results = kb.search(query, top_k=getattr(args, "top_k", 5))
+            if getattr(args, "json", False):
+                print(json.dumps([{"title": r.title, "score": r.score, "content": r.content[:100]} for r in results], indent=2))
+            else:
+                print(f"Results for '{query}':")
+                for r in results:
+                    print(f"  [{r.score:.3f}] {r.title}: {r.content[:80]}...")
+        elif action == "delete":
+            doc_id = getattr(args, "doc_id", None)
+            if not doc_id:
+                print("--doc-id required for delete"); return 1
+            print("Deleted" if kb.delete_document(doc_id) else "Not found")
+        elif action == "stats":
+            stats = kb.get_stats()
+            print(json.dumps(stats, indent=2) if getattr(args, "json", False) else f"{stats}")
+        return 0
+
+    # Handle finetune subcommand
+    if getattr(args, "subcmd", None) == "finetune":
+        from src.model_finetune import FinetunePipeline
+        pipeline = FinetunePipeline()
+        action = getattr(args, "action", "list")
+        if action == "list":
+            jobs = pipeline.list_jobs() if hasattr(pipeline, 'list_jobs') else []
+            print(f"Fine-tune jobs: {len(jobs)}")
+            for j in jobs:
+                print(f"  {j}")
+        elif action == "create":
+            name = getattr(args, "name", None) or f"model-{int(time.time())}"
+            source = getattr(args, "source", "conversations")
+            fmt = getattr(args, "format", "jsonl")
+            data = pipeline.prepare_data(source=source, export_format=fmt)
+            print(f"Prepared {len(data)} items for fine-tuning")
+            result = pipeline.create_model(name=name, base_model=getattr(args, "base", "qwen3:8b"))
+            print(f"Model created: {result}" if result else "Failed")
+        elif action == "export":
+            name = getattr(args, "name", None) or f"export-{int(time.time())}"
+            source = getattr(args, "source", "conversations")
+            fmt = getattr(args, "format", "jsonl")
+            data = pipeline.prepare_data(source=source, export_format=fmt)
+            print(f"Exported {len(data)} items in {fmt} format")
+        elif action == "status":
+            print("Fine-tuning status: ok")
+        return 0
+
+    # Handle debate subcommand
+    if getattr(args, "subcmd", None) == "debate":
+        from src.agent_collaboration import run_debate
+        topic = getattr(args, "topic", "")
+        agents_str = getattr(args, "agents", "architect,coder,reviewer")
+        agents = [a.strip() for a in agents_str.split(",")]
+        rounds = getattr(args, "rounds", 2)
+        try:
+            result = run_debate(topic=topic, agents=agents, rounds=rounds)
+            if getattr(args, "json", False):
+                print(json.dumps(result, indent=2, default=str))
+            else:
+                print(f"Debate: {topic}")
+                print(f"Agents: {', '.join(agents)}, Rounds: {rounds}")
+                transcript = result.get("transcript", result)
+                print(str(transcript)[:1000])
+            return 0
+        except Exception as e:
+            print(f"Debate failed: {e}")
+            return 1
+
+    # Handle heal subcommand
+    if getattr(args, "subcmd", None) == "heal":
+        from src.self_healing import SelfHealingAgent
+        agent = SelfHealingAgent()
+        action = getattr(args, "action", "status")
+        if action == "status":
+            status = agent.get_status()
+            print(json.dumps(status, indent=2) if getattr(args, "json", False) else str(status))
+        elif action == "watch":
+            log_file = getattr(args, "log_file", None)
+            if not log_file:
+                print("--log-file required for watch"); return 1
+            ok = agent.watch(log_file, auto_fix=getattr(args, "auto_fix", False))
+            print(f"Watching {log_file}: {'started' if ok else 'failed'}")
+        elif action == "errors":
+            errors = agent.get_errors()
+            print(f"Errors ({len(errors)}):")
+            for e in errors[-10:]:
+                print(f"  {e.error_type}: {e.message[:80]}")
+        elif action == "fixes":
+            fixes = agent.get_fixes()
+            print(f"Fixes ({len(fixes)}):")
+            for f in fixes[-10:]:
+                print(f"  {f.id}  {f.file}  passed={f.tests_passed}  reverted={f.reverted}")
+        elif action == "revert":
+            fix_id = getattr(args, "fix_id", None)
+            if not fix_id:
+                print("--fix-id required for revert"); return 1
+            print("Reverted" if agent.revert_fix(fix_id) else "Revert failed")
+        return 0
+
+    # Handle schedule subcommand
+    if getattr(args, "subcmd", None) == "schedule":
+        from src.task_scheduler import TaskScheduler
+        scheduler = TaskScheduler()
+        action = getattr(args, "action", "list")
+        if action == "list":
+            schedules = scheduler.list_schedules()
+            if getattr(args, "json", False):
+                print(json.dumps([{"name": s.name, "cron": s.cron, "agent": s.agent, "enabled": s.enabled} for s in schedules], indent=2))
+            else:
+                print(f"Schedules ({len(schedules)}):")
+                for s in schedules:
+                    print(f"  {s.name}  cron={s.cron}  agent={s.agent}  enabled={s.enabled}")
+        elif action == "add":
+            name = getattr(args, "name", None)
+            if not name:
+                print("--name required"); return 1
+            s = scheduler.add_schedule(
+                name=name, cron=getattr(args, "cron", "0 0 * * *"),
+                agent=getattr(args, "agent", "coder"),
+                prompt=getattr(args, "prompt", ""),
+                description=getattr(args, "description", ""),
+            )
+            print(f"Added schedule: {s.name} ({s.cron})")
+        elif action == "remove":
+            name = getattr(args, "name", None)
+            if not name:
+                print("--name required"); return 1
+            print("Removed" if scheduler.remove_schedule(name) else "Not found")
+        elif action == "enable":
+            name = getattr(args, "name", None)
+            if not name:
+                print("--name required"); return 1
+            print("Enabled" if scheduler.enable_schedule(name) else "Not found")
+        elif action == "disable":
+            name = getattr(args, "name", None)
+            if not name:
+                print("--name required"); return 1
+            print("Disabled" if scheduler.disable_schedule(name) else "Not found")
+        elif action == "history":
+            name = getattr(args, "name", None)
+            if name:
+                hist = scheduler.get_history(name)
+                print(f"History for {name} ({len(hist)} runs):")
+                for run in hist[-10:]:
+                    print(f"  {run.timestamp}  success={run.success}  {run.duration:.1f}s")
+            else:
+                print("--name <schedule> required")
+        return 0
+
+    # Handle dashboard subcommand
+    if getattr(args, "subcmd", None) == "dashboard":
+        from src.web_dashboard import create_web_dashboard as create_dashboard_app
+        app = create_dashboard_app()
+        host = getattr(args, "host", "127.0.0.1")
+        port = getattr(args, "port", 5000)
+        print(f"Starting dashboard at http://{host}:{port}")
+        if getattr(args, "open", False):
+            import webbrowser
+            webbrowser.open(f"http://{host}:{port}")
+        app.run(host=host, port=port, debug=False)
+        return 0
+
     # Handle API subcommand
     if getattr(args, "subcmd", None) == "api":
         from src.api_server import create_api_server
@@ -2125,7 +2408,7 @@ def main():
             api_key=api_key,
         )
         
-        print(f"Starting CrackedCode API Server v2.9.6")
+        print(f"Starting CrackedCode API Server v2.10.0")
         print(f"URL: {api.url}")
         print(f"Docs: {api.url}/docs")
         if api.api_key:
@@ -2154,30 +2437,28 @@ def main():
         validate = getattr(args, "validate", False)
         
         if use_swarm:
-            from src.parallel_processor import CodeSwarmCoordinator
-            coordinator = CodeSwarmCoordinator(max_workers=4)
-            coordinator.start()
-            try:
-                if validate:
-                    result = coordinator.generate_with_validation(prompt, out)
-                else:
-                    result = coordinator.generate_code(prompt, out)
-            finally:
-                coordinator.stop()
+            from src.swarm import get_swarm_coordinator
+            coordinator = get_swarm_coordinator(max_workers=4)
+            swarm_result = coordinator.process(
+                f"Generate code for: {prompt}\n\nProvide complete, working code.",
+            )
             
-            if result.get("success"):
+            if swarm_result.status == "completed" and swarm_result.aggregated_output:
+                code = swarm_result.aggregated_output
                 if out:
-                    print(f"CODE generated and saved to: {result.get('filepath')}")
+                    try:
+                        with open(out, 'w', encoding='utf-8') as f:
+                            f.write(code)
+                        print(f"CODE generated and saved to: {out}")
+                    except Exception as e:
+                        print(f"Error saving file: {e}")
                 else:
-                    print(result.get("code", "")[:500])
-                if validate and result.get("validation"):
-                    v = result["validation"]
-                    print(f"Validation: {'PASS' if v.get('valid') else 'FAIL'}")
-                    if v.get("warnings"):
-                        print(f"Warnings: {v['warnings']}")
+                    print(code[:500])
+                if validate:
+                    print(f"Validation: swarm completed {swarm_result.success_count}/{len(swarm_result.tasks)} tasks")
                 return 0
             else:
-                print(f"Code generation failed: {result.get('error', 'Unknown error')}")
+                print(f"Code generation failed: {swarm_result.error or 'Unknown error'}")
                 return 1
         else:
             eng = get_engine(config or {})
@@ -2203,6 +2484,11 @@ def main():
 
     if args.push_to_talk:
         app.config.set("push_to_talk", True)
+
+    if args.swarm:
+        app.config.set("swarm_enabled", True)
+        if app.swarm_coordinator:
+            print("[SWARM] Swarm Mode enabled - complex prompts will use parallel agents")
 
     app.run()
 
