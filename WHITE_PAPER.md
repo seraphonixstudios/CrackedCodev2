@@ -1,7 +1,7 @@
 # CrackedCode White Paper
 ## SOTA Local Multi-Agent Coding Swarm with Agent Reasoning Engine
 
-**Version:** 2.9.0
+**Version:** 2.10.0
 **Date:** May 2026
 **Author:** CrackedCode Team
 **License:** MIT
@@ -10,9 +10,9 @@
 
 ## Executive Summary
 
-CrackedCode is a production-grade local AI coding assistant that operates 100% offline using Ollama for large language model inference and local speech recognition/synthesis for voice I/O. Version 2.9.0 represents a major milestone with 11 specialized agent roles, 36+ tools, multi-model auto-routing, security auditing, web browser automation, screen capture/vision analysis, persistent long-term memory, MCP and A2A protocol support, and a comprehensive plugin system.
+CrackedCode is a production-grade local AI coding assistant that operates 100% offline using Ollama for large language model inference and local speech recognition/synthesis for voice I/O. Version 2.10.0 represents a major milestone with 5 core agent roles (plus backward-compatible aliases for legacy roles), 36+ tools, multi-model auto-routing, security auditing, web browser automation, screen capture/vision analysis, persistent long-term memory, MCP and A2A protocol support, and a comprehensive plugin system.
 
-Key innovations in v2.9.0:
+Key innovations in v2.10.0:
 - **Multi-Model Auto-Routing**: Each intent automatically routed to the optimal model (qwen3/dolphin/llava)
 - **Security Agent**: Dedicated 11th agent role with vulnerability scanning and secret detection
 - **Browser Automation**: Playwright-based web agent for automated testing and research
@@ -22,7 +22,7 @@ Key innovations in v2.9.0:
 - **Screen Capture / Vision**: AI-powered screen understanding with llava:13b-gpu
 - **DevOps Agent**: Docker, deploy, and CI/CD automation
 
-This white paper details the architecture, implementation, and capabilities of CrackedCode v2.9.0.
+This white paper details the architecture, implementation, and capabilities of CrackedCode v2.10.0.
 
 ---
 
@@ -41,7 +41,7 @@ Current AI coding assistants require cloud API access, raising concerns about:
 
 ### 1.2 Solution
 
-CrackedCode v2.9.0 addresses all这些问题 by:
+CrackedCode v2.10.0 addresses all这些问题 by:
 - Running 100% locally with Ollama
 - No network calls after initial model download
 - Free to operate once models are cached
@@ -70,7 +70,7 @@ CrackedCode v2.9.0 addresses all这些问题 by:
 
 ```
 +-----------------------------------------------------------------------------+
-|                           CrackedCode v2.9.0                                |
+|                           CrackedCode v2.10.0                               |
 +-----------------------------------------------------------------------------+
 |  +-------------+     +-------------+     +-----------------------------+   |
 |  |  Voice I/O  |---->|  Unified    |---->|   Agent Reasoning Engine    |   |
@@ -118,73 +118,42 @@ CrackedCode v2.9.0 addresses all这些问题 by:
 
 ### 2.2 Multi-Agent Swarm
 
-CrackedCode implements a parallel multi-agent swarm with 11 specialized agents coordinated by the UnifiedOrchestrator:
+CrackedCode implements a parallel multi-agent swarm with 5 core agent roles (plus backward-compatible aliases for the original 11 roles) coordinated by the UnifiedOrchestrator:
 
-#### 2.2.1 Supervisor Agent
-- **Role**: Orchestrator and task planner
-- **Function**: Analyze requirements, create subtask plan, assign agents, monitor coherence
-- **Output**: Structured task plan with dependencies and reasoning chains
-- **Parallel**: No (coordinates all agents)
+| Role | Backward-Compat Aliases | Capabilities | Parallel |
+|------|------------------------|-------------|----------|
+| **PLAN** | SUPERVISOR, ARCHITECT | Plan, coordinate, delegate, design, structure | No |
+| **BUILD** | CODER, EXECUTOR, TESTER, DEBUGGER, DOCUMENTER | Code, write, generate, run, test, debug, document | Yes |
+| **REVIEW** | REVIEWER | Review, audit, assess | Yes |
+| **EXPLORE** | SEARCHER | Search, find, grep, discover | Yes |
+| **GENERAL** | DEVOPS, SECURITY | Chat, help, devops, security, general tasks | Yes |
 
-#### 2.2.2 Architect Agent
-- **Role**: System design specialist
-- **Function**: Design architecture from 7 SOTA templates, create file structures
-- **Output**: Architecture documents with component reasoning
-- **Parallel**: Yes (with Coder)
+Legacy role names (CODER, SECURITY, DEVOPS, etc.) remain valid as aliases — all existing code and configurations continue to work without changes.
 
-#### 2.2.3 Coder Agent
-- **Role**: Code generation specialist
-- **Function**: Write production-ready code per specifications
-- **Output**: Valid code files with reasoning log
-- **Parallel**: Yes (with Architect)
+#### 2.2.1 PLAN Agent
+- **Role**: Orchestrator, architect, and task planner
+- **Function**: Analyze requirements, create subtask plan, assign agents, design architecture
+- **Output**: Structured task plan with architecture documents and dependencies
 
-#### 2.2.4 Executor Agent
-- **Role**: Command execution specialist
-- **Function**: Run tests, linters, build commands safely
-- **Output**: Execution results with exit codes
-- **Parallel**: Yes (with Reviewer)
+#### 2.2.2 BUILD Agent
+- **Role**: Universal builder (code, test, debug, document, execute)
+- **Function**: Write production-ready code, run tests, debug issues, document code, execute commands
+- **Output**: Valid code files, test results, debug reports, documentation
 
-#### 2.2.5 Reviewer Agent
-- **Role**: Code critique specialist
-- **Function**: Find bugs, security issues, performance problems
-- **Output**: Scored review with issues and correction reasoning
-- **Parallel**: Yes (with Executor)
+#### 2.2.3 REVIEW Agent
+- **Role**: Code critique and quality assurance
+- **Function**: Find bugs, security issues, performance problems, enforce best practices
+- **Output**: Scored review with issues and correction recommendations
 
-#### 2.2.6 Searcher Agent
-- **Role**: Discovery specialist
-- **Function**: Search codebase, find patterns, analyze dependencies
-- **Output**: Search results with relevance reasoning
-- **Parallel**: Yes (with Tester)
+#### 2.2.4 EXPLORE Agent
+- **Role**: Discovery and search specialist
+- **Function**: Search codebase, find patterns, analyze dependencies, semantic code search
+- **Output**: Search results with relevance scoring
 
-#### 2.2.7 Tester Agent
-- **Role**: Validation specialist
-- **Function**: Write and run tests, measure coverage
-- **Output**: Test results with pass/fail reasoning
-- **Parallel**: Yes (with Searcher)
-
-#### 2.2.8 Debugger Agent
-- **Role**: Problem diagnosis specialist
-- **Function**: Trace execution, identify root causes
-- **Output**: Debug reports with fix reasoning
-- **Parallel**: Yes (with Documenter)
-
-#### 2.2.9 Documenter Agent
-- **Role**: Documentation specialist
-- **Function**: Generate docs, comments, README files
-- **Output**: Documentation with clarity reasoning
-- **Parallel**: Yes (with Debugger)
-
-#### 2.2.10 DevOps Agent
-- **Role**: Deployment and infrastructure specialist
-- **Function**: Docker operations, CI/CD, remote deployment, monitoring
-- **Output**: Deployment reports with status
-- **Parallel**: Yes
-
-#### 2.2.11 Security Agent
-- **Role**: Security auditing specialist
-- **Function**: Vulnerability scanning, secret detection, permission auditing
-- **Output**: Security reports with severity ratings
-- **Parallel**: Yes
+#### 2.2.5 GENERAL Agent
+- **Role**: General-purpose agent covering chat, help, DevOps, security, and miscellaneous tasks
+- **Function**: Answer questions, provide help, run Docker/CI/CD operations, perform security audits
+- **Output**: Conversational responses, deployment reports, security reports
 
 ### 2.3 Data Flow
 
@@ -192,7 +161,7 @@ CrackedCode implements a parallel multi-agent swarm with 11 specialized agents c
 User Input
     |
     v
-Intent Parser (11 intents + multi-layer keyword matching)
+Intent Parser (11 intents + multi-layer keyword matching, mapped to 5 roles)
     |
     +---> CHAT/CODE/DEBUG/SEARCH/REVIEW/EXECUTE/BUILD/HELP/VISION/SECURITY/BROWSE
     |
@@ -214,9 +183,88 @@ Output (GUI terminal / voice / file writes)
 
 ---
 
-## 3. Codebase RAG (v2.9.0)
+## 3. Architecture Simplification (v2.10.0)
 
-### 3.1 Architecture
+### 3.1 Motivation
+
+Version 2.10.0 introduces a major architecture simplification inspired by opencode's minimal-core, file-based approach. The goal was to reduce complexity while maintaining full backward compatibility.
+
+### 3.2 Key Changes
+
+#### 3.2.1 Agent Roles: 11 → 5 Core
+
+The original 11 specialized agent roles (SUPERVISOR, ARCHITECT, CODER, EXECUTOR, REVIEWER, SEARCHER, TESTER, DEBUGGER, DOCUMENTER, DEVOPS, SECURITY) have been consolidated into 5 core roles:
+
+- **PLAN** (aliases: SUPERVISOR, ARCHITECT)
+- **BUILD** (aliases: CODER, EXECUTOR, TESTER, DEBUGGER, DOCUMENTER)
+- **REVIEW** (aliases: REVIEWER)
+- **EXPLORE** (aliases: SEARCHER)
+- **GENERAL** (aliases: DEVOPS, SECURITY)
+
+All legacy role names continue to work — existing configurations, tests, and integrations require no changes.
+
+#### 3.2.2 File-Based Agent Definitions
+
+Custom agents are now defined as simple markdown files with YAML frontmatter in `.opencode/agents/`:
+
+```markdown
+---
+name: review-bot
+mode: subagent
+description: Specialized code reviewer
+model: qwen3:8b-gpu
+permission:
+  read_file: allow
+  write_file: deny
+---
+You are a focused code reviewer. Analyze code for bugs, security issues,
+and performance problems. Be concise and provide actionable feedback.
+```
+
+Supported formats: `.md` (frontmatter), `.yaml`, `.yml`, `.json`. Agents auto-discover on startup.
+
+#### 3.2.3 Unified Memory Facade
+
+A new `src/memory.py` module provides a unified import point for all memory systems:
+
+```python
+from src.memory import (
+    get_long_term_memory,
+    get_agent_memory,
+    get_adaptive_learning_engine,
+    LongTermMemory,
+    AgentMemory,
+    AdaptiveLearningEngine,
+)
+```
+
+Old imports (`from src.long_term_memory import ...`) continue to work.
+
+#### 3.2.4 Plugin-Tagged Tools
+
+Non-core tools (Docker, browser, screen capture, security scanning) are marked with `plugin=True`:
+- Visible in `list_tools` with a `[plugin]` badge
+- Filterable via `core_only=True`
+- `PermissionLevel` enum (ALLOW/ASK/DENY) enables granular control
+
+#### 3.2.5 .opencode/ Extensibility Directories
+
+```
+.opencode/
+├── agents/      # File-based agent definitions (*.md, *.yaml, *.json)
+├── tools/       # Drop-in tool definitions
+├── plugins/     # Drop-in plugin files
+├── skills/      # Drop-in skill definitions
+└── commands/    # Drop-in command definitions
+```
+
+Any file placed in these directories is automatically discovered and loaded.
+
+---
+
+## 4. Codebase RAG (v2.9.0)
+
+### 4.1 Architecture
 
 ```
 CodebaseRAG
@@ -227,13 +275,13 @@ CodebaseRAG
     +---> CodebaseIndexer (full project indexing)
 ```
 
-### 3.2 Integration Points
+### 4.2 Integration Points
 
 - **Engine**: Automatic context injection for CODE/DEBUG/REVIEW/SECURITY/BUILD intents
 - **Autonomous**: Existing codebase awareness before generating new code
 - **GUI**: Semantic search dialog (Ctrl+Shift+F)
 
-### 3.3 Performance
+### 4.3 Performance
 
 - Indexing: ~2s per 100 files (with Ollama embeddings)
 - Search: <50ms for top-k results
@@ -242,7 +290,7 @@ CodebaseRAG
 
 ---
 
-## 4. Tool Calling Framework (v2.9.0)
+## 5. Tool Calling Framework (v2.9.0)
 
 ### 4.1 Architecture
 
@@ -289,7 +337,7 @@ ReActLoop (reasoning -> action -> observation)
 
 ---
 
-## 5. Plugin System (v2.9.0)
+## 6. Plugin System (v2.9.0)
 
 ### 5.1 Architecture
 
@@ -333,7 +381,7 @@ HookManager
 
 ---
 
-## 6. DevOps Agent (v2.9.0)
+## 7. DevOps Agent (v2.9.0)
 
 ### 6.1 Architecture
 
@@ -373,7 +421,7 @@ User: "Deploy the API to production"
 
 ---
 
-## 7. Security Agent (v2.9.0)
+## 8. Security Agent (v2.9.0)
 
 ### 7.1 Architecture
 
@@ -409,7 +457,7 @@ User: "Audit this code for vulnerabilities"
 
 ---
 
-## 8. Screen Capture / Vision Analysis (v2.9.0)
+## 9. Screen Capture / Vision Analysis (v2.9.0)
 
 ### 8.1 Architecture
 
@@ -443,7 +491,7 @@ User: "What's on my screen?"
 
 ---
 
-## 9. Browser Automation (v2.9.0)
+## 10. Browser Automation (v2.9.0)
 
 ### 9.1 Architecture
 
@@ -478,7 +526,7 @@ User: "Go to https://example.com and tell me what's wrong"
 
 ---
 
-## 10. MCP Integration (v2.9.0)
+## 11. MCP Integration (v2.9.0)
 
 ### 10.1 Protocol Overview
 
@@ -511,7 +559,7 @@ User: "Search the web for Python best practices"
 
 ---
 
-## 11. A2A Protocol (v2.9.0)
+## 12. A2A Protocol (v2.9.0)
 
 ### 11.1 Protocol Overview
 
@@ -544,7 +592,7 @@ task = client.send_task("Review this code")
 
 ---
 
-## 12. Persistent Long-Term Memory (v2.9.0)
+## 13. Persistent Long-Term Memory (v2.9.0)
 
 ### 12.1 Architecture
 
@@ -582,7 +630,7 @@ Next Request: get_context_for_prompt()
 
 ---
 
-## 13. Multi-Model Auto-Routing (v2.9.0)
+## 14. Multi-Model Auto-Routing (v2.9.0)
 
 ### 13.1 Architecture
 
@@ -757,7 +805,8 @@ save, open, run, build, search, clear, help, exit, debug, test, deploy, git, sta
 - [x] Security agent
 - [x] Persistent Long-Term Memory
 - [x] Multi-Model Auto-Routing
-- [ ] Custom agent definition (YAML/JSON)
+- [x] Architecture simplification (11→5 core agents, opencode-style files)
+- [x] Custom agent definition (markdown/YAML/JSON)
 - [ ] Web UI (Electron/Tkinter)
 - [ ] Multi-language support
 - [ ] Video I/O for screen analysis
@@ -769,18 +818,19 @@ save, open, run, build, search, clear, help, exit, debug, test, deploy, git, sta
 
 ## 19. Conclusion
 
-CrackedCode v2.9.0 represents a mature, production-ready local AI coding assistant with:
+CrackedCode v2.10.0 represents a mature, production-ready local AI coding assistant with:
 
-- **11 specialized agent roles** with coherent reasoning
-- **36+ tools** across 8 categories with ReAct loops
+- **5 core agent roles** (with backward-compat aliases for 11 legacy roles) and coherent reasoning
+- **File-based agent definitions** in `.opencode/agents/` — drop-in markdown/YAML/JSON files
+- **36+ tools** across 8 categories with ReAct loops, plugin-tagged non-core tools
 - **Multi-model auto-routing** for optimal quality per intent
-- **Security auditing** with dedicated agent and 4 tools
+- **Security auditing** with dedicated tools and GENERAL agent support
 - **Web browser automation** for testing and research
 - **Screen capture/vision** for UI understanding
 - **Persistent memory** that learns from every interaction
 - **MCP and A2A protocols** for external integration
 - **Plugin system** with 12 hook points and hot-reload
-- **86/86 passing tests** ensuring reliability
+- **150+ passing tests** ensuring reliability
 
 All running 100% locally with Ollama — no cloud, no API keys, no data leaving the machine.
 
@@ -888,7 +938,7 @@ results = memory.recall("bug fix")
 ---
 
 <p align="center">
-  <strong>CrackedCode v2.9.0</strong> — Neural Coding Interface
+  <strong>CrackedCode v2.10.0</strong> — Neural Coding Interface
   <br>
   <em>100% Local. 100% Powerful. 100% Yours.</em>
 </p>

@@ -31,25 +31,11 @@ from queue import PriorityQueue
 from src.logger_config import get_logger
 
 try:
-    from src.reasoning import (
-        ReasoningEngine, ThoughtChain, ReasoningType,
-        get_reasoning_engine, AgentReasoning
-    )
-    _reasoning_available = True
-except ImportError:
-    _reasoning_available = False
-
-try:
     from src.plugin_system import HookPoint, execute_hook
     _plugins_available = True
 except ImportError:
     _plugins_available = False
     HookPoint = None
-    ReasoningEngine = None
-    ThoughtChain = None
-    ReasoningType = None
-    get_reasoning_engine = None
-    AgentReasoning = None
 
 logger = get_logger("UnifiedOrchestrator")
 
@@ -76,55 +62,69 @@ class TaskPriority(Enum):
 
 
 class AgentRole(Enum):
-    """Agent roles with capabilities."""
-    SUPERVISOR = "supervisor"
-    ARCHITECT = "architect"
-    CODER = "coder"
-    EXECUTOR = "executor"
-    REVIEWER = "reviewer"
-    SEARCHER = "searcher"
-    TESTER = "tester"
-    DEBUGGER = "debugger"
-    DOCUMENTER = "documenter"
-    DEVOPS = "devops"
-    SECURITY = "security"
+    """Agent roles — simplified to mirror opencode's approach.
+    
+    Reduced from 11 to 5 core roles:
+      - BUILD: default development agent, full tool access
+      - PLAN: analysis/planning, no file modification
+      - GENERAL: subagent for multi-step tasks
+      - EXPLORE: read-only codebase exploration
+      - REVIEW: code quality review, read-only
+    """
+    BUILD = "build"
+    PLAN = "plan"
+    GENERAL = "general"
+    EXPLORE = "explore"
+    REVIEW = "review"
+    
+    # Backward-compatible aliases
+    CODER = BUILD
+    ARCHITECT = BUILD
+    EXECUTOR = BUILD
+    DEBUGGER = BUILD
+    DOCUMENTER = BUILD
+    TESTER = BUILD
+    SEARCHER = EXPLORE
+    REVIEWER = REVIEW
+    SUPERVISOR = PLAN
+    DEVOPS = BUILD
+    SECURITY = REVIEW
 
 
 AGENT_CAPABILITIES = {
-    AgentRole.SUPERVISOR: ["plan", "coordinate", "delegate", "summarize"],
-    AgentRole.ARCHITECT: ["design", "plan", "structure", "blueprint"],
-    AgentRole.CODER: ["code", "write", "generate", "implement", "refactor"],
-    AgentRole.EXECUTOR: ["run", "execute", "test", "deploy", "shell"],
-    AgentRole.REVIEWER: ["review", "audit", "assess", "critique"],
-    AgentRole.SEARCHER: ["search", "find", "grep", "locate"],
-    AgentRole.TESTER: ["test", "verify", "validate", "check"],
-    AgentRole.DEBUGGER: ["debug", "fix", "trace", "diagnose"],
-    AgentRole.DOCUMENTER: ["document", "explain", "comment", "readme"],
-    AgentRole.DEVOPS: ["docker", "deploy", "ci", "monitor", "infra", "ssh"],
-    AgentRole.SECURITY: ["scan", "audit", "check", "secure", "vulnerability", "pentest"],
+    AgentRole.BUILD: ["code", "write", "generate", "implement", "refactor", "debug", "design", "test", "deploy", "run", "execute", "shell", "document", "plan"],
+    AgentRole.PLAN: ["plan", "coordinate", "delegate", "analyze", "summarize"],
+    AgentRole.GENERAL: ["research", "analyze", "execute", "multi-step"],
+    AgentRole.EXPLORE: ["search", "find", "grep", "locate", "explore"],
+    AgentRole.REVIEW: ["review", "audit", "assess", "critique", "scan", "check", "secure"],
 }
 
 
 INTENT_TO_AGENT = {
-    "code": AgentRole.CODER,
-    "debug": AgentRole.DEBUGGER,
-    "review": AgentRole.REVIEWER,
-    "build": AgentRole.ARCHITECT,
-    "execute": AgentRole.EXECUTOR,
-    "search": AgentRole.SEARCHER,
-    "chat": AgentRole.CODER,
-    "help": AgentRole.SUPERVISOR,
-    "deploy": AgentRole.DEVOPS,
-    "docker": AgentRole.DEVOPS,
-    "monitor": AgentRole.DEVOPS,
-    "ci": AgentRole.DEVOPS,
-    "infra": AgentRole.DEVOPS,
-    "security": AgentRole.SECURITY,
-    "audit": AgentRole.SECURITY,
-    "scan": AgentRole.SECURITY,
-    "vulnerability": AgentRole.SECURITY,
-    "pentest": AgentRole.SECURITY,
-    "secure": AgentRole.SECURITY,
+    "code": AgentRole.BUILD,
+    "build": AgentRole.BUILD,
+    "debug": AgentRole.BUILD,
+    "execute": AgentRole.BUILD,
+    "chat": AgentRole.BUILD,
+    "help": AgentRole.BUILD,
+    "deploy": AgentRole.BUILD,
+    "docker": AgentRole.BUILD,
+    "monitor": AgentRole.BUILD,
+    "ci": AgentRole.BUILD,
+    "infra": AgentRole.BUILD,
+    "document": AgentRole.BUILD,
+    "test": AgentRole.BUILD,
+    "plan": AgentRole.PLAN,
+    "analyze": AgentRole.PLAN,
+    "review": AgentRole.REVIEW,
+    "security": AgentRole.REVIEW,
+    "audit": AgentRole.REVIEW,
+    "scan": AgentRole.REVIEW,
+    "vulnerability": AgentRole.REVIEW,
+    "pentest": AgentRole.REVIEW,
+    "secure": AgentRole.REVIEW,
+    "search": AgentRole.EXPLORE,
+    "find": AgentRole.EXPLORE,
 }
 
 
@@ -315,16 +315,6 @@ class AgentWorker:
         self.tasks_failed = 0
         self.current_task: Optional[str] = None
         self.capabilities = AGENT_CAPABILITIES.get(role, [])
-        self._reasoning: Optional[Any] = None
-    
-    @property
-    def reasoning(self) -> Optional[Any]:
-        """Get agent reasoning state."""
-        return self._reasoning
-    
-    @reasoning.setter
-    def reasoning(self, value: Any):
-        self._reasoning = value
     
     def can_handle(self, intent: str) -> bool:
         """Check if this agent can handle an intent."""
@@ -337,21 +327,6 @@ class AgentWorker:
         
         self.status = "active"
         self.current_task = task.id
-        
-        # Log reasoning about task execution
-        task.add_reasoning(
-            "action",
-            f"Agent {self.role.value} executing task {task.id}",
-            0.8,
-            [f"capabilities: {self.capabilities}", f"intent: {task.intent}"]
-        )
-        
-        if self._reasoning:
-            self._reasoning.add_action(
-                f"Executing task {task.id} with intent '{task.intent}'",
-                0.8,
-                [f"Agent: {self.role.value}"],
-            )
         
         try:
             from src.engine import Intent
@@ -375,12 +350,6 @@ class AgentWorker:
             use_tools = task.metadata.get("use_tools", False) or task.intent in ("debug", "review", "build", "search")
             
             if use_tools and hasattr(self.engine, 'process_with_tools'):
-                task.add_reasoning(
-                    "decision",
-                    f"Using ReAct tool loop for {task.intent} task",
-                    0.85,
-                    ["tool_framework: enabled", f"intent: {task.intent}"]
-                )
                 response = self.engine.process_with_tools(task.prompt, max_iterations=task.metadata.get("max_iterations", 5))
             else:
                 response = await self.engine.process(
@@ -390,36 +359,10 @@ class AgentWorker:
                 )
             
             self.tasks_completed += 1
-            
-            # Log completion reasoning
-            task.add_reasoning(
-                "reflection",
-                f"Task execution completed successfully",
-                0.9 if response and getattr(response, 'success', False) else 0.5,
-            )
-            
-            if self._reasoning:
-                self._reasoning.reflect(
-                    f"Task {task.id} completed. Success: {getattr(response, 'success', False)}",
-                    0.9 if response and getattr(response, 'success', False) else 0.5,
-                )
-            
             return response
             
         except Exception as e:
             self.tasks_failed += 1
-            task.add_reasoning(
-                "correction",
-                f"Task execution failed: {str(e)}",
-                0.3,
-                [f"error: {str(e)}"]
-            )
-            if self._reasoning:
-                self._reasoning.correct(
-                    f"Task {task.id} failed: {str(e)}",
-                    str(e),
-                    0.3,
-                )
             raise
             
         finally:
@@ -451,13 +394,6 @@ class UnifiedOrchestrator:
         # Shared state
         self.blackboard = Blackboard()
         
-        # Reasoning - must be before _init_agents
-        self._reasoning_engine = get_reasoning_engine() if _reasoning_available else None
-        
-        # Register orchestrator itself for reasoning
-        if _reasoning_available and self._reasoning_engine:
-            self._reasoning_engine.register_agent("orchestrator", "orchestrator")
-        
         self._init_agents()
         
         # Execution
@@ -473,16 +409,11 @@ class UnifiedOrchestrator:
         self.on_queue_changed: Optional[Callable[[], None]] = None
     
     def _init_agents(self):
-        """Initialize all agent workers and register with reasoning engine."""
+        """Initialize all agent workers."""
         # Built-in agents
         for role in AgentRole:
             agent = AgentWorker(role, self.engine)
             self._agents[role] = agent
-            
-            # Register with reasoning engine
-            if _reasoning_available and self._reasoning_engine:
-                reasoning = self._reasoning_engine.register_agent(agent.agent_id, role.value)
-                agent.reasoning = reasoning
         
         # Custom agents from YAML/JSON configs
         try:
@@ -506,14 +437,7 @@ class UnifiedOrchestrator:
                 # Store in agents dict with custom key
                 self._agents[custom_role_value] = custom_agent
                 
-                # Register with reasoning engine
-                if _reasoning_available and self._reasoning_engine:
-                    reasoning = self._reasoning_engine.register_agent(
-                        custom_agent.agent_id, custom_def.role
-                    )
-                    custom_agent.reasoning = reasoning
-                
-                logger.info(f"Custom agent registered: {custom_def.name} ({custom_def.role})")
+                logger.info(f"Custom agent registered: {custom_def.name}")
         except Exception as e:
             logger.warning(f"Custom agent loading failed: {e}")
     
@@ -544,16 +468,6 @@ class UnifiedOrchestrator:
             context: Shared context for the task
             metadata: Additional metadata
         """
-        # Start reasoning chain for task creation
-        reasoning_chain = None
-        if _reasoning_available and self._reasoning_engine:
-            reasoning_chain = self._reasoning_engine.create_reasoning_chain(
-                agent_id="orchestrator",
-                title=f"Task Creation: {intent}",
-                context=f"Prompt: {prompt[:100]}..." if len(prompt) > 100 else f"Prompt: {prompt}",
-                tags=["task_creation", intent],
-            )
-        
         # Auto-select agent based on intent with reasoning
         if agent is None:
             # Check custom agents first (higher priority)
@@ -606,43 +520,8 @@ class UnifiedOrchestrator:
             # Fall back to built-in agent mapping
             agent = INTENT_TO_AGENT.get(intent.lower(), AgentRole.CODER)
             
-            # Log agent selection reasoning
-            agent_reasoning = f"Selected agent '{agent.value}' based on intent '{intent}'"
-            agent_evidence = [f"intent: {intent}", f"mapped_to: {agent.value}"]
-            
-            # Check capability match
-            capabilities = AGENT_CAPABILITIES.get(agent, [])
-            if intent.lower() in capabilities:
-                agent_reasoning += f" (capability match: {intent} in {capabilities})"
-                agent_evidence.append(f"capabilities: {capabilities}")
-            else:
-                agent_reasoning += f" (fallback: default agent for unmatched intent)"
-                agent_evidence.append("fallback: true")
-            
-            if reasoning_chain:
-                reasoning_chain.add_analysis(agent_reasoning, 0.75, agent_evidence, "orchestrator")
         else:
-            agent_reasoning = f"Agent '{agent.value}' explicitly specified"
-            if reasoning_chain:
-                reasoning_chain.add_observation(agent_reasoning, ["explicit_assignment"], "orchestrator")
-        
-        # Reasoning about priority
-        priority_reasoning = f"Priority set to {priority.name}"
-        priority_evidence = []
-        if parent_id:
-            priority_reasoning += " (inherited from parent task)"
-            priority_evidence.append(f"parent_id: {parent_id}")
-        if depends_on:
-            priority_reasoning += f" with {len(depends_on)} dependencies"
-            priority_evidence.append(f"dependencies: {len(depends_on)}")
-        if reasoning_chain:
-            reasoning_chain.add_analysis(priority_reasoning, 0.7, priority_evidence, "orchestrator")
-        
-        # Reasoning about dependencies
-        if depends_on:
-            dep_reasoning = f"Task depends on {len(depends_on)} prerequisite task(s): {', '.join(depends_on)}"
-            if reasoning_chain:
-                reasoning_chain.add_observation(dep_reasoning, depends_on, "orchestrator")
+            pass  # agent explicitly specified
         
         task = Task(
             intent=intent,
@@ -656,21 +535,6 @@ class UnifiedOrchestrator:
             context=context or {},
             metadata=metadata or {},
         )
-        
-        # Link reasoning chain to task
-        if reasoning_chain:
-            task.reasoning_chain_id = reasoning_chain.id
-            task.add_reasoning(
-                "decision",
-                f"Task created with agent={agent.value}, priority={priority.name}",
-                0.8,
-                [f"agent_selection: {agent_reasoning}", f"priority: {priority_reasoning}"]
-            )
-            self._reasoning_engine.complete_reasoning_chain(
-                "orchestrator",
-                f"Created task {task.id} -> {agent.value}",
-                0.8,
-            )
         
         with self._lock:
             self._tasks[task.id] = task
@@ -697,16 +561,6 @@ class UnifiedOrchestrator:
         """
         task.set_status(TaskStatus.QUEUED)
         
-        # Reasoning about queue submission
-        queue_reasoning = f"Task submitted to queue with priority {task.priority.name}"
-        queue_evidence = [f"priority_value: {-task.priority.value}", f"queue_size: {self._task_queue.qsize()}"]
-        
-        if task.depends_on:
-            queue_reasoning += f". Will wait for {len(task.depends_on)} dependencies."
-            queue_evidence.append(f"dependencies: {task.depends_on}")
-        
-        task.add_reasoning("action", queue_reasoning, 0.75, queue_evidence)
-        
         # Priority: higher value = higher priority
         # Negative because PriorityQueue is min-heap
         priority_value = -task.priority.value
@@ -724,7 +578,6 @@ class UnifiedOrchestrator:
         
         # Auto-start if not running
         if not self._running:
-            task.add_reasoning("action", "Auto-starting orchestrator executor", 0.9)
             self.start()
         
         return task.id
@@ -744,7 +597,6 @@ class UnifiedOrchestrator:
                     task.priority in (TaskPriority.LOW, TaskPriority.NORMAL)):
                     self._preempted_tasks.add(task_id)
                     logger.info(f"Task {task_id} ({task.priority.name}) marked for preemption by {high_task.id} ({high_task.priority.name})")
-                    task.add_reasoning("observation", f"Preempted by higher-priority task {high_task.id}", 0.5)
     
     def submit_and_wait(self, task: Task) -> Task:
         """Submit a task and block until completion.
@@ -898,15 +750,6 @@ class UnifiedOrchestrator:
             f"agent_capabilities: {agent.capabilities}",
         ]
         task.add_reasoning("action", assignment_reasoning, 0.85, assignment_evidence)
-        
-        # Start reasoning chain for agent execution
-        if _reasoning_available and self._reasoning_engine and agent.reasoning:
-            self._reasoning_engine.create_reasoning_chain(
-                agent.agent_id,
-                title=f"Execute Task {task.id}: {task.intent}",
-                context=f"Task: {task.prompt[:80]}..." if len(task.prompt) > 80 else f"Task: {task.prompt}",
-                tags=["task_execution", task.intent],
-            )
         
         # Start execution thread
         thread = threading.Thread(

@@ -1,4 +1,4 @@
-﻿"""Tool Calling Framework - ReAct-style agent tools with safety and JSON schema.
+"""Tool Calling Framework - ReAct-style agent tools with safety and JSON schema.
 
 Provides a decorator-based tool registry with:
 - Automatic JSON schema generation from type hints
@@ -48,6 +48,13 @@ class ToolPermission(Enum):
     DANGEROUS = "dangerous" # Potentially harmful: shell commands, git push
 
 
+class PermissionLevel(Enum):
+    """Simple allow/ask/deny permission - mirrors opencode's permission model."""
+    ALLOW = "allow"
+    ASK = "ask"
+    DENY = "deny"
+
+
 class ToolCategory(Enum):
     """Categories for organizing tools."""
     FILESYSTEM = "filesystem"
@@ -58,6 +65,7 @@ class ToolCategory(Enum):
     ENGINE = "engine"
     REASONING = "reasoning"
     SYSTEM = "system"
+    PLUGIN = "plugin"  # Marked as non-core, should use MCP instead
 
 
 @dataclass
@@ -93,6 +101,8 @@ class Tool:
     permission: ToolPermission = ToolPermission.READ
     category: ToolCategory = ToolCategory.SYSTEM
     examples: List[str] = field(default_factory=list)
+    plugin: bool = False          # True = non-core, should be loaded via MCP
+    level: PermissionLevel = PermissionLevel.ALLOW  # Simple allow/ask/deny
 
     def get_schema(self) -> Dict[str, Any]:
         """Get JSON schema for this tool."""
@@ -103,6 +113,8 @@ class Tool:
             "permission": self.permission.value,
             "category": self.category.value,
             "examples": self.examples,
+            "plugin": self.plugin,
+            "level": self.level.value,
         }
 
     def execute(self, **kwargs) -> ToolResult:
@@ -182,7 +194,8 @@ def _python_type_to_json_schema(annotation: Any) -> Dict[str, Any]:
 
 
 def tool(name: str = None, description: str = None, permission: ToolPermission = ToolPermission.READ,
-         category: ToolCategory = ToolCategory.SYSTEM, examples: List[str] = None):
+         category: ToolCategory = ToolCategory.SYSTEM, examples: List[str] = None,
+         plugin: bool = False, level: PermissionLevel = PermissionLevel.ALLOW):
     """Decorator to register a function as a tool.
     
     Auto-generates JSON schema from type hints and docstring.
@@ -219,6 +232,8 @@ def tool(name: str = None, description: str = None, permission: ToolPermission =
             permission=permission,
             category=category,
             examples=examples or [],
+            plugin=plugin,
+            level=level,
         ))
         
         @wraps(func)
@@ -257,25 +272,28 @@ class ToolRegistry:
         self._tools[tool.name] = tool
         # Default: all permissions granted except DANGEROUS
         self._permissions[tool.name] = tool.permission != ToolPermission.DANGEROUS
-        logger.info(f"Registered tool: {tool.name} ({tool.permission.value})")
+        logger.info(f"Registered tool: {tool.name} ({tool.permission.value}){' [plugin]' if tool.plugin else ''}")
         return tool
     
     def get(self, name: str) -> Optional[Tool]:
         """Get a tool by name."""
         return self._tools.get(name)
     
-    def list_tools(self, category: ToolCategory = None, permission: ToolPermission = None) -> List[Tool]:
+    def list_tools(self, category: ToolCategory = None, permission: ToolPermission = None,
+                   core_only: bool = False) -> List[Tool]:
         """List all tools with optional filtering."""
         tools = list(self._tools.values())
         if category:
             tools = [t for t in tools if t.category == category]
         if permission:
             tools = [t for t in tools if t.permission == permission]
+        if core_only:
+            tools = [t for t in tools if not t.plugin]
         return tools
     
-    def get_schemas(self, category: ToolCategory = None) -> List[Dict[str, Any]]:
+    def get_schemas(self, category: ToolCategory = None, core_only: bool = False) -> List[Dict[str, Any]]:
         """Get JSON schemas for all tools."""
-        return [t.get_schema() for t in self.list_tools(category)]
+        return [t.get_schema() for t in self.list_tools(category, core_only=core_only)]
     
     def set_permission(self, tool_name: str, allowed: bool):
         """Enable or disable a tool."""
@@ -285,6 +303,28 @@ class ToolRegistry:
     def is_allowed(self, tool_name: str) -> bool:
         """Check if a tool is allowed to execute."""
         return self._permissions.get(tool_name, False)
+    
+    def set_level(self, tool_name: str, level: PermissionLevel):
+        """Set allow/ask/deny level for a tool (mirrors opencode's permission model)."""
+        tool = self.get(tool_name)
+        if tool:
+            tool.level = level
+            if level == PermissionLevel.DENY:
+                self._permissions[tool_name] = False
+            elif level == PermissionLevel.ALLOW:
+                self._permissions[tool_name] = True
+            # ASK level doesn't change _permissions flag; handled at UI layer
+    
+    def get_level(self, tool_name: str) -> PermissionLevel:
+        """Get the permission level for a tool."""
+        tool = self.get(tool_name)
+        if tool:
+            return tool.level
+        return PermissionLevel.DENY
+    
+    def get_core_tools(self) -> List[str]:
+        """List names of core (non-plugin) tools — mirrors opencode's ~13 built-in tools."""
+        return [t.name for t in self._tools.values() if not t.plugin]
     
     def execute(self, tool_name: str, **kwargs) -> ToolResult:
         """Execute a tool by name with parameters."""
@@ -520,7 +560,7 @@ def grep_files(pattern: str, path: str = ".", extension: str = ".py") -> Dict[st
         return {"success": False, "error": str(e)}
 
 
-@tool(description="Get function/class signature from source", permission=ToolPermission.READ, category=ToolCategory.CODE,
+@tool(description="Get function/class signature from source", permission=ToolPermission.READ, category=ToolCategory.CODE, plugin=True,
       examples=["get_signature(path='src/engine.py', name='CrackedCodeEngine')"])
 def get_signature(path: str, name: str) -> Dict[str, Any]:
     """Extract signature of a function or class from a file."""
@@ -580,7 +620,7 @@ def run_tests(path: str = ".", verbose: bool = False) -> Dict[str, Any]:
         return {"success": False, "error": str(e)}
 
 
-@tool(description="Run ruff linter on code", permission=ToolPermission.EXECUTE, category=ToolCategory.SHELL,
+@tool(description="Run ruff linter on code", permission=ToolPermission.EXECUTE, category=ToolCategory.SHELL, plugin=True,
       examples=["run_linter(path='src')"])
 def run_linter(path: str = ".") -> Dict[str, Any]:
     """Run ruff linter on code files."""
@@ -721,7 +761,7 @@ def get_context(query: str, project_path: str = ".", top_k: int = 3) -> Dict[str
         return {"success": False, "error": str(e)}
 
 
-@tool(description="Log an observation to the reasoning engine", permission=ToolPermission.READ, category=ToolCategory.REASONING,
+@tool(description="Log an observation to the reasoning engine", permission=ToolPermission.READ, category=ToolCategory.REASONING, plugin=True,
       examples=["log_observation(agent_id='coder', content='Found 3 bugs', confidence=0.8)"])
 def log_observation(agent_id: str, content: str, confidence: float = 0.5, evidence: List[str] = None) -> Dict[str, Any]:
     """Log an observation step to the reasoning engine."""
@@ -736,7 +776,7 @@ def log_observation(agent_id: str, content: str, confidence: float = 0.5, eviden
         return {"success": False, "error": str(e)}
 
 
-@tool(description="Log a decision to the reasoning engine", permission=ToolPermission.READ, category=ToolCategory.REASONING,
+@tool(description="Log a decision to the reasoning engine", permission=ToolPermission.READ, category=ToolCategory.REASONING, plugin=True,
       examples=["log_decision(agent_id='coder', content='Use FastAPI', confidence=0.9)"])
 def log_decision(agent_id: str, content: str, confidence: float = 0.7, evidence: List[str] = None) -> Dict[str, Any]:
     """Log a decision step to the reasoning engine."""
@@ -777,7 +817,7 @@ def list_tools() -> Dict[str, Any]:
 # DEVOPS TOOLS
 # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-@tool(description="Build a Docker image", permission=ToolPermission.DANGEROUS, category=ToolCategory.SHELL,
+@tool(description="Build a Docker image", plugin=True, permission=ToolPermission.DANGEROUS, category=ToolCategory.SHELL,
       examples=["docker_build(dockerfile_path='.', tag='myapp:latest')"])
 def docker_build(dockerfile_path: str = ".", tag: str = "latest") -> Dict[str, Any]:
     """Build a Docker image from a Dockerfile."""
@@ -797,7 +837,7 @@ def docker_build(dockerfile_path: str = ".", tag: str = "latest") -> Dict[str, A
         return {"success": False, "error": str(e)}
 
 
-@tool(description="Run a Docker container", permission=ToolPermission.DANGEROUS, category=ToolCategory.SHELL,
+@tool(description="Run a Docker container", plugin=True, permission=ToolPermission.DANGEROUS, category=ToolCategory.SHELL,
       examples=["docker_run(image='myapp:latest', ports={'8080': '80'})", "docker_run(image='nginx', detach=True)"])
 def docker_run(image: str, ports: Dict[str, str] = None, env: Dict[str, str] = None,
                detach: bool = False, name: str = None, volumes: Dict[str, str] = None) -> Dict[str, Any]:
@@ -833,7 +873,7 @@ def docker_run(image: str, ports: Dict[str, str] = None, env: Dict[str, str] = N
         return {"success": False, "error": str(e)}
 
 
-@tool(description="Get Docker container logs", permission=ToolPermission.READ, category=ToolCategory.SHELL,
+@tool(description="Get Docker container logs", plugin=True, permission=ToolPermission.READ, category=ToolCategory.SHELL,
       examples=["docker_logs(container='myapp', tail=50)"])
 def docker_logs(container: str, tail: int = 100, follow: bool = False) -> Dict[str, Any]:
     """Get logs from a Docker container."""
@@ -857,7 +897,7 @@ def docker_logs(container: str, tail: int = 100, follow: bool = False) -> Dict[s
         return {"success": False, "error": str(e)}
 
 
-@tool(description="Deploy to a remote server via SSH", permission=ToolPermission.DANGEROUS, category=ToolCategory.SHELL,
+@tool(description="Deploy to a remote server via SSH", plugin=True, permission=ToolPermission.DANGEROUS, category=ToolCategory.SHELL,
       examples=["deploy_to_server(host='192.168.1.100', user='ubuntu', local_path='dist/', remote_path='/var/www/')"])
 def deploy_to_server(host: str, user: str, local_path: str, remote_path: str,
                      key_path: str = None, port: int = 22, pre_commands: List[str] = None) -> Dict[str, Any]:
@@ -892,7 +932,7 @@ def deploy_to_server(host: str, user: str, local_path: str, remote_path: str,
         return {"success": False, "error": str(e)}
 
 
-@tool(description="Monitor log files for patterns", permission=ToolPermission.READ, category=ToolCategory.SHELL,
+@tool(description="Monitor log files for patterns", plugin=True, permission=ToolPermission.READ, category=ToolCategory.SHELL,
       examples=["monitor_logs(path='/var/log/app.log', pattern='ERROR', tail=50)"])
 def monitor_logs(path: str, pattern: str = None, tail: int = 50) -> Dict[str, Any]:
     """Monitor a log file and optionally grep for patterns."""
@@ -922,7 +962,7 @@ def monitor_logs(path: str, pattern: str = None, tail: int = 50) -> Dict[str, An
         return {"success": False, "error": str(e)}
 
 
-@tool(description="Run a CI pipeline (GitHub Actions, GitLab CI, or local script)", permission=ToolPermission.DANGEROUS, category=ToolCategory.SHELL,
+@tool(description="Run a CI pipeline, plugin=True (GitHub Actions, GitLab CI, or local script)", permission=ToolPermission.DANGEROUS, category=ToolCategory.SHELL,
       examples=["run_ci_pipeline(type='local', script='./run_tests.sh')", "run_ci_pipeline(type='github', workflow='ci.yml')"])
 def run_ci_pipeline(pipeline_type: str = "local", script: str = None, workflow: str = None, branch: str = "main") -> Dict[str, Any]:
     """Run a CI pipeline - local script, GitHub Actions, or GitLab CI trigger."""
@@ -985,7 +1025,7 @@ def run_ci_pipeline(pipeline_type: str = "local", script: str = None, workflow: 
 # SECURITY TOOLS
 # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-@tool(description="Scan Python dependencies for known CVEs", permission=ToolPermission.READ, category=ToolCategory.SYSTEM,
+@tool(description="Scan Python dependencies for known CVEs", plugin=True, permission=ToolPermission.READ, category=ToolCategory.SYSTEM,
       examples=["scan_dependencies(requirements_path='requirements.txt')"])
 def scan_dependencies(requirements_path: str = "requirements.txt") -> Dict[str, Any]:
     """Scan requirements.txt for packages with known security vulnerabilities."""
@@ -1037,7 +1077,7 @@ def scan_dependencies(requirements_path: str = "requirements.txt") -> Dict[str, 
         return {"success": False, "error": str(e)}
 
 
-@tool(description="Audit project for hardcoded secrets and API keys", permission=ToolPermission.READ, category=ToolCategory.SYSTEM,
+@tool(description="Audit project for hardcoded secrets and API keys", plugin=True, permission=ToolPermission.READ, category=ToolCategory.SYSTEM,
       examples=["audit_secrets(scan_path='.')"])
 def audit_secrets(scan_path: str = ".") -> Dict[str, Any]:
     """Scan for hardcoded secrets, API keys, and passwords in code."""
@@ -1099,7 +1139,7 @@ def audit_secrets(scan_path: str = ".") -> Dict[str, Any]:
         return {"success": False, "error": str(e)}
 
 
-@tool(description="Check file permissions for security issues", permission=ToolPermission.READ, category=ToolCategory.SYSTEM,
+@tool(description="Check file permissions for security issues", plugin=True, permission=ToolPermission.READ, category=ToolCategory.SYSTEM,
       examples=["check_permissions(scan_path='.')"])
 def check_permissions(scan_path: str = ".") -> Dict[str, Any]:
     """Check for overly permissive file modes and sensitive file exposure."""
@@ -1157,7 +1197,7 @@ def check_permissions(scan_path: str = ".") -> Dict[str, Any]:
         return {"success": False, "error": str(e)}
 
 
-@tool(description="Analyze code for common security vulnerabilities", permission=ToolPermission.READ, category=ToolCategory.SYSTEM,
+@tool(description="Analyze code for common security vulnerabilities", plugin=True, permission=ToolPermission.READ, category=ToolCategory.SYSTEM,
       examples=["analyze_vulnerabilities(file_path='src/main.py')"])
 def analyze_vulnerabilities(file_path: str = None, scan_path: str = ".") -> Dict[str, Any]:
     """Static analysis for common security issues (SQL injection, XSS, etc.)."""
@@ -1217,7 +1257,7 @@ def analyze_vulnerabilities(file_path: str = None, scan_path: str = ".") -> Dict
 # SCREEN CAPTURE / VISION TOOLS
 # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-@tool(description="Capture a screenshot of the entire screen", permission=ToolPermission.READ, category=ToolCategory.SYSTEM,
+@tool(description="Capture a screenshot of the entire screen", plugin=True, permission=ToolPermission.READ, category=ToolCategory.SYSTEM,
       examples=["screen_capture(save_path='screenshot.png')"])
 def screen_capture(save_path: str = None) -> Dict[str, Any]:
     """Capture the entire screen and optionally save it."""
@@ -1245,7 +1285,7 @@ def screen_capture(save_path: str = None) -> Dict[str, Any]:
         return {"success": False, "error": str(e)}
 
 
-@tool(description="Capture screen and analyze with vision model", permission=ToolPermission.READ, category=ToolCategory.SYSTEM,
+@tool(description="Capture screen and analyze with vision model", plugin=True, permission=ToolPermission.READ, category=ToolCategory.SYSTEM,
       examples=["analyze_screen(prompt='What errors do you see?')"])
 def analyze_screen(prompt: str = "Describe what you see on this screen.", save_path: str = None) -> Dict[str, Any]:
     """Capture screen and analyze with the vision model (llava)."""
@@ -1258,7 +1298,7 @@ def analyze_screen(prompt: str = "Describe what you see on this screen.", save_p
         return {"success": False, "error": str(e)}
 
 
-@tool(description="Detect UI errors and warnings on screen", permission=ToolPermission.READ, category=ToolCategory.SYSTEM,
+@tool(description="Detect UI errors and warnings on screen", plugin=True, permission=ToolPermission.READ, category=ToolCategory.SYSTEM,
       examples=["detect_screen_errors()"])
 def detect_screen_errors() -> Dict[str, Any]:
     """Capture screen and look for error messages or warnings."""
@@ -1271,7 +1311,7 @@ def detect_screen_errors() -> Dict[str, Any]:
         return {"success": False, "error": str(e)}
 
 
-@tool(description="Extract all text from the screen (OCR)", permission=ToolPermission.READ, category=ToolCategory.SYSTEM,
+@tool(description="Extract all text from the screen (OCR)", plugin=True, permission=ToolPermission.READ, category=ToolCategory.SYSTEM,
       examples=["ocr_screen()"])
 def ocr_screen() -> Dict[str, Any]:
     """Capture screen and extract all visible text."""
@@ -1288,7 +1328,7 @@ def ocr_screen() -> Dict[str, Any]:
 # BROWSER AUTOMATION TOOLS
 # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-@tool(description="Navigate to a URL in the browser", permission=ToolPermission.EXECUTE, category=ToolCategory.SYSTEM,
+@tool(description="Navigate to a URL in the browser", plugin=True, permission=ToolPermission.EXECUTE, category=ToolCategory.SYSTEM,
       examples=["browse_url(url='https://example.com')"])
 def browse_url(url: str, wait_until: str = "networkidle") -> Dict[str, Any]:
     """Open a URL in the browser agent."""
@@ -1308,7 +1348,7 @@ def browse_url(url: str, wait_until: str = "networkidle") -> Dict[str, Any]:
         return {"success": False, "error": str(e)}
 
 
-@tool(description="Click an element on the current page", permission=ToolPermission.EXECUTE, category=ToolCategory.SYSTEM,
+@tool(description="Click an element on the current page", plugin=True, permission=ToolPermission.EXECUTE, category=ToolCategory.SYSTEM,
       examples=["click_element(selector='#submit-button')"])
 def click_element(selector: str) -> Dict[str, Any]:
     """Click an element by CSS selector."""
@@ -1328,7 +1368,7 @@ def click_element(selector: str) -> Dict[str, Any]:
         return {"success": False, "error": str(e)}
 
 
-@tool(description="Fill a form field", permission=ToolPermission.EXECUTE, category=ToolCategory.SYSTEM,
+@tool(description="Fill a form field", plugin=True, permission=ToolPermission.EXECUTE, category=ToolCategory.SYSTEM,
       examples=["fill_form(selector='#username', text='admin')"])
 def fill_form(selector: str, text: str) -> Dict[str, Any]:
     """Fill a form input field."""
@@ -1348,7 +1388,7 @@ def fill_form(selector: str, text: str) -> Dict[str, Any]:
         return {"success": False, "error": str(e)}
 
 
-@tool(description="Take a screenshot of the current page", permission=ToolPermission.READ, category=ToolCategory.SYSTEM,
+@tool(description="Take a screenshot of the current page", plugin=True, permission=ToolPermission.READ, category=ToolCategory.SYSTEM,
       examples=["screenshot_page(full_page=True)"])
 def screenshot_page(full_page: bool = False, save_path: str = None) -> Dict[str, Any]:
     """Capture a screenshot of the current browser page."""
@@ -1378,7 +1418,7 @@ def screenshot_page(full_page: bool = False, save_path: str = None) -> Dict[str,
         return {"success": False, "error": str(e)}
 
 
-@tool(description="Extract text from the current page", permission=ToolPermission.READ, category=ToolCategory.SYSTEM,
+@tool(description="Extract text from the current page", plugin=True, permission=ToolPermission.READ, category=ToolCategory.SYSTEM,
       examples=["extract_page_text(selector='article')"])
 def extract_page_text(selector: str = None) -> Dict[str, Any]:
     """Get text content from the page or a specific element."""
@@ -1401,7 +1441,7 @@ def extract_page_text(selector: str = None) -> Dict[str, Any]:
         return {"success": False, "error": str(e)}
 
 
-@tool(description="Scroll the page", permission=ToolPermission.READ, category=ToolCategory.SYSTEM,
+@tool(description="Scroll the page", plugin=True, permission=ToolPermission.READ, category=ToolCategory.SYSTEM,
       examples=["scroll_page(direction='down', amount=500)"])
 def scroll_page(direction: str = "down", amount: int = 500) -> Dict[str, Any]:
     """Scroll the browser page."""
@@ -1426,7 +1466,7 @@ def scroll_page(direction: str = "down", amount: int = 500) -> Dict[str, Any]:
 # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class ReActLoop:
-    """ReAct reasoning loop: Thought → Action → Observation → Reflection."""
+    """ReAct reasoning loop: Thought ? Action ? Observation ? Reflection."""
     
     def __init__(self, agent_id: str = "react_agent", max_iterations: int = 10):
         self.agent_id = agent_id
@@ -1548,11 +1588,11 @@ class ReActLoop:
         }
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # NEW UTILITY TOOLS
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 
-@tool(description="Search the web for information", permission=ToolPermission.READ, category=ToolCategory.SYSTEM,
+@tool(description="Search the web for information", plugin=True, permission=ToolPermission.READ, category=ToolCategory.SYSTEM,
       examples=["web_search(query='Python async best practices', num_results=5)"])
 def web_search(query: str, num_results: int = 5) -> Dict[str, Any]:
     """Search the web using DuckDuckGo HTML interface (no API key needed)."""

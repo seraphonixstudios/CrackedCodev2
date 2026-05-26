@@ -1,0 +1,156 @@
+name: CrackedCode AI Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '**.py'
+      - '**.js'
+      - '**.ts'
+      - '**.go'
+      - '**.rs'
+      - '**.java'
+      - '**.c'
+      - '**.cpp'
+      - '**.h'
+      - '**.yaml'
+      - '**.yml'
+      - '**.json'
+      - '**.md'
+
+jobs:
+  crackedcode-review:
+    name: AI Code Review
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install requests
+      
+      - name: Run CrackedCode AI Review
+        id: review
+        env:
+          CRACKEDCODE_API_URL: ${{ secrets.CRACKEDCODE_API_URL }}
+          CRACKEDCODE_API_KEY: ${{ secrets.CRACKEDCODE_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          python - << 'EOF'
+          import os
+          import sys
+          import json
+          import requests
+          
+          API_URL = os.environ.get("CRACKEDCODE_API_URL", "")
+          API_KEY = os.environ.get("CRACKEDCODE_API_KEY", "")
+          GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
+          REPO = os.environ.get("GITHUB_REPOSITORY", "")
+          PR_NUMBER = int(os.environ.get("PR_NUMBER", "0"))
+          
+          if not API_URL:
+              print("::warning::CRACKEDCODE_API_URL not set. Skipping AI review.")
+              sys.exit(0)
+          
+          if not PR_NUMBER:
+              print("::warning::No PR number found. Skipping AI review.")
+              sys.exit(0)
+          
+          # Call CrackedCode API
+          review_url = f"{API_URL}/github/review-pr"
+          headers = {"Content-Type": "application/json"}
+          if API_KEY:
+              headers["X-API-Key"] = API_KEY
+          
+          payload = {
+              "repo": REPO,
+              "pr_number": PR_NUMBER,
+              "post_comment": False
+          }
+          
+          try:
+              response = requests.post(review_url, json=payload, headers=headers, timeout=120)
+              response.raise_for_status()
+              review = response.json()
+          except Exception as e:
+              print(f"::error::Failed to get AI review: {e}")
+              sys.exit(1)
+          
+          # Format review comment
+          verdict = review.get("verdict", "COMMENT")
+          confidence = review.get("confidence", 0)
+          summary = review.get("summary", "No summary available")
+          security_count = review.get("security_issues_count", 0)
+          code_count = review.get("code_issues_count", 0)
+          
+          verdict_emoji = {
+              "APPROVE": "✅",
+              "COMMENT": "💬",
+              "REQUEST_CHANGES": "🛑"
+          }.get(verdict, "💬")
+          
+          body = f"""## {verdict_emoji} CrackedCode AI Review
+
+**Verdict:** {verdict} (confidence: {confidence:.0%})
+
+### Summary
+{summary}
+
+### Findings
+- 🔒 Security issues: {security_count}
+- 📝 Code quality issues: {code_count}
+
+---
+*Reviewed by CrackedCode v2.8.0*
+"""
+          
+          # Post comment to PR
+          if GITHUB_TOKEN and REPO and PR_NUMBER:
+              comment_url = f"https://api.github.com/repos/{REPO}/issues/{PR_NUMBER}/comments"
+              comment_headers = {
+                  "Authorization": f"token {GITHUB_TOKEN}",
+                  "Accept": "application/vnd.github.v3+json"
+              }
+              try:
+                  r = requests.post(comment_url, json={"body": body}, headers=comment_headers, timeout=30)
+                  r.raise_for_status()
+                  print(f"::notice::Posted AI review comment to PR #{PR_NUMBER}")
+              except Exception as e:
+                  print(f"::warning::Failed to post comment: {e}")
+          else:
+              print("::warning::No GITHUB_TOKEN available. Printing review to log.")
+              print(body)
+          
+          # Set outputs for subsequent steps
+          with open(os.environ.get("GITHUB_OUTPUT", "/dev/null"), "a") as f:
+              f.write(f"verdict={verdict}\n")
+              f.write(f"security_issues={security_count}\n")
+              f.write(f"code_issues={code_count}\n")
+          
+          # Fail if critical security issues found
+          if security_count > 0 and verdict == "REQUEST_CHANGES":
+              print(f"::error::Found {security_count} security issues. Please address before merging.")
+              sys.exit(1)
+          
+          print("::notice::AI review completed successfully")
+          EOF
+      
+      - name: Review Results
+        if: always()
+        run: |
+          echo "Review completed for PR #${{ github.event.pull_request.number }}"

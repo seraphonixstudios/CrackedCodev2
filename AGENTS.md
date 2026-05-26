@@ -7,7 +7,7 @@ CrackedCode is a 100% local AI coding assistant featuring autonomous application
 **Current Version:** 2.10.0
 **Branch:** main
 **License:** MIT
-**Tests:** 144+ (5 Working Context + 14 Swarm + 5 Adaptive Learning + 99 E2E + 18 GUI + voice engine)
+**Tests:** 150+ (5 Working Context + 14 Swarm + 5 Adaptive Learning + 99 E2E + 18 GUI + voice engine + custom agents)
 
 ## Architecture
 
@@ -21,18 +21,20 @@ crackedcode/
 │   ├── gui_settings.py      # Preferences dialog with Ollama discovery
 │   ├── gui_syntax.py        # Code syntax highlighting (Python, JSON)
 │   ├── engine.py            # CrackedCodeEngine - core logic
-│   ├── orchestrator.py      # UnifiedOrchestrator - task lifecycle, 11 agents
+│   ├── orchestrator.py      # UnifiedOrchestrator - task lifecycle, 5 agents (w/ backward-compat aliases)
 │   ├── autonomous.py        # AutonomousAppProducer - OpenClaw-style agent
+│   ├── custom_agents.py     # Custom Agent Registry - file-based agent definitions
+│   ├── memory.py            # Unified memory facade (re-exports from agent_memory, long_term_memory, adaptive_learning)
 │   ├── reasoning.py         # Agent Reasoning Engine - thought chains, coherence
 │   ├── codebase_rag.py      # Semantic search with local embeddings
-│   ├── tool_framework.py    # Tool Calling Framework - 36+ tools, ReAct loop
+│   ├── tool_framework.py    # Tool Calling Framework - 36+ tools, ReAct loop, PermissionLevel
 │   ├── plugin_system.py     # Plugin System - extensible hooks, hot-reload
 │   ├── voice_engine.py      # UnifiedVoiceEngine - STT/TTS/VAD/commands
 │   ├── screen_capture.py    # Screenshot capture and vision analysis
 │   ├── browser_agent.py     # Web browser automation
 │   ├── mcp_client.py        # MCP (Model Context Protocol) client
 │   ├── a2a_protocol.py      # Agent-to-Agent protocol
-│   ├── long_term_memory.py  # Persistent agent memory
+│   ├── long_term_memory.py  # Persistent agent memory (legacy, re-exported via memory.py)
 │   ├── parallel_processor.py # ParallelExecutor, PipelineProcessor
 │   ├── file_watcher.py      # File system monitoring with auto-save
 │   ├── git_integration.py   # Git operations
@@ -42,8 +44,14 @@ crackedcode/
 │   ├── favicon.png          # Favicon (64x64)
 │   └── banner.png           # Logo banner (1024x256)
 ├── mcp_servers/             # MCP server JSON configs
-├── plugins/                 # Plugin Python files
-├── test_system.py           # Comprehensive E2E test suite (86 tests)
+├── plugins/                 # Plugin Python files (hot-reload)
+├── .opencode/               # Extensibility directories
+│   ├── agents/              # File-based agent definitions (*.md, *.yaml, *.json)
+│   ├── tools/               # Drop-in tool definitions
+│   ├── plugins/             # Drop-in plugin files
+│   ├── skills/              # Drop-in skill definitions
+│   └── commands/            # Drop-in command definitions
+├── test_system.py           # Comprehensive E2E test suite (150+ tests)
 ├── config.json              # Configuration file
 ├── README.md                # User documentation
 └── WHITE_PAPER.md           # Technical white paper
@@ -96,7 +104,7 @@ Swarm Mode is an additional layer that sits on top of UnifiedOrchestrator, provi
 ### UnifiedOrchestrator (src/orchestrator.py)
 - Task lifecycle: PENDING -> QUEUED -> RUNNING -> VERIFYING -> COMPLETED/FAILED/RETRYING
 - Priority queue with dependency resolution (LOW, NORMAL, HIGH, CRITICAL)
-- Agent capability matching and load balancing (11 agent roles)
+- Agent capability matching and load balancing (5 agent roles, with backward-compat aliases for 11 legacy roles)
 - Task timeout, retry with exponential backoff
 - Sub-task delegation (parent/child relationships)
 - Blackboard shared state for agent collaboration
@@ -104,21 +112,15 @@ Swarm Mode is an additional layer that sits on top of UnifiedOrchestrator, provi
 - Real-time status callbacks
 - Singleton pattern with get_orchestrator()
 
-### Agent Roles (11 total)
+### Agent Roles (5 core + backward-compat aliases)
 
-| Role | Capabilities | Intent Mapping |
-|------|-------------|----------------|
-| SUPERVISOR | plan, coordinate, delegate | help |
-| ARCHITECT | design, plan, structure | build |
-| CODER | code, write, generate | code, chat |
-| EXECUTOR | run, execute, test | execute |
-| REVIEWER | review, audit, assess | review |
-| SEARCHER | search, find, grep | search |
-| TESTER | test, verify, validate | test |
-| DEBUGGER | debug, fix, trace | debug |
-| DOCUMENTER | document, explain | document |
-| DEVOPS | docker, deploy, ci, monitor | deploy, docker, ci |
-| SECURITY | scan, audit, check, secure | security, audit, scan |
+| Role | Capabilities | Intent Mapping | Backward-Compat Aliases |
+|------|-------------|----------------|------------------------|
+| PLAN | plan, coordinate, delegate, design, structure | help, build | SUPERVISOR, ARCHITECT |
+| BUILD | code, write, generate, run, execute, test, debug, document | code, chat, execute, test, debug, document | CODER, EXECUTOR, TESTER, DEBUGGER, DOCUMENTER |
+| REVIEW | review, audit, assess | review | REVIEWER |
+| EXPLORE | search, find, grep | search | SEARCHER |
+| GENERAL | general, chat, help, devops, security | deploy, docker, ci, security, audit, scan | DEVOPS, SECURITY |
 
 ### AutonomousAppProducer (src/autonomous.py)
 - 7-phase pipeline: Analyze -> Architect -> Scaffold -> Code -> Test -> Correct -> Deliver
@@ -144,6 +146,7 @@ Swarm Mode is an additional layer that sits on top of UnifiedOrchestrator, provi
 - ReasoningEngine: Singleton coordinating all reasoning across the system
 - **Persistent memory**: save_reasoning_log() / load_reasoning_log() JSON + REASONING.md
 - **LLM meta-reasoning**: analyze_with_llm() feeds concise coherence report to Ollama for insights
+- **Orchestrator integration removed**: ReasoningEngine is a standalone component; agent reasoning is managed manually where needed.
 
 ### Codebase RAG (src/codebase_rag.py)
 - CodeChunker: Semantic chunking by function/class/module for 15+ languages
@@ -158,6 +161,9 @@ Swarm Mode is an additional layer that sits on top of UnifiedOrchestrator, provi
 ### Tool Calling Framework (src/tool_framework.py)
 - `@tool` decorator: Auto-register functions with JSON schema from type hints
 - ToolRegistry: Central registry with permission levels (READ/WRITE/EXECUTE/DANGEROUS)
+- `PermissionLevel` enum (ALLOW/ASK/DENY) for granular tool-level control
+- `plugin=True` flag: Non-core tools (docker, browser, security, screen) marked as optional plugins
+- `core_only` filter: `list_tools(core_only=True)` hides plugin tools
 - ReActLoop: Full reasoning -> action -> observation cycle with max iterations
 - 36+ built-in tools across 8 categories
 - Safety: Dangerous tools blocked by default, shell command filtering
@@ -178,18 +184,20 @@ Swarm Mode is an additional layer that sits on top of UnifiedOrchestrator, provi
 - **GUI integration**: Plugins menu, reload/manage dialogs, command_palette hook
 - **Tool framework integration**: pre/post execute hooks
 
-### DevOps Agent (src/orchestrator.py)
-- `AgentRole.DEVOPS`: 10th agent role with docker/deploy/ci/monitor/infra/ssh capabilities
-- **Intent mapping**: deploy, docker, monitor, ci, infra -> DEVOPS agent
+### DevOps Agent (src/orchestrator.py — alias: `AgentRole.GENERAL`)
+- **Backward-compat**: `AgentRole.DEVOPS` is an alias for `AgentRole.GENERAL`
+- **Capabilities**: docker, deploy, ci, monitor, infra, ssh
+- **Intent mapping**: deploy, docker, monitor, ci, infra -> GENERAL agent (via DEVOPS alias)
 - **Tools**: docker_build, docker_run, docker_logs, deploy_to_server, monitor_logs, run_ci_pipeline
-- **Orchestrator integration**: Auto-created in _init_agents() alongside other 9 agents
+- **Orchestrator integration**: Auto-created in _init_agents() alongside other agents
 - **Safety**: All DevOps tools marked DANGEROUS (blocked by default), except docker_logs and monitor_logs (READ)
 
-### Security Agent (src/orchestrator.py)
-- `AgentRole.SECURITY`: 11th agent role with scan/audit/check/secure/vulnerability/pentest capabilities
-- **Intent mapping**: security, audit, scan, vulnerability, pentest, secure -> SECURITY agent
+### Security Agent (src/orchestrator.py — alias: `AgentRole.GENERAL`)
+- **Backward-compat**: `AgentRole.SECURITY` is an alias for `AgentRole.GENERAL`
+- **Capabilities**: scan, audit, check, secure, vulnerability, pentest
+- **Intent mapping**: security, audit, scan, vulnerability, pentest, secure -> GENERAL agent (via SECURITY alias)
 - **Tools**: scan_dependencies, audit_secrets, check_permissions, analyze_vulnerabilities
-- **Orchestrator integration**: Auto-created in _init_agents() alongside other 10 agents
+- **Orchestrator integration**: Auto-created in _init_agents() alongside other agents
 - **Engine integration**: SECURITY intent triggers security analysis with all 4 tools + LLM report
 
 ### Screen Capture / Vision Analysis (src/screen_capture.py)
@@ -211,6 +219,17 @@ Swarm Mode is an additional layer that sits on top of UnifiedOrchestrator, provi
 - Semantic search via existing RAG EmbeddingProvider/VectorStore
 - **Engine integration**: Automatic context injection for all code-related intents
 - Storage: .crackedcode/memory/memories.json
+
+### Custom Agent Registry (src/custom_agents.py) — NEW v2.10.0
+- File-based agent definitions in `.opencode/agents/`
+- Supports 3 formats: markdown (frontmatter), YAML, JSON
+- Agents auto-discover on startup from config directories
+- `CustomAgentDef` dataclass: name, mode, description, system_prompt, intents, tools, permission, model
+- `save_example()` method to generate a template
+- `validate()` method for agent definition correctness
+- `get_intent_map()` for routing intents to custom agents
+- Singleton factory: `get_custom_agent_registry()`
+- **Engine integration**: Custom agents can be dispatched for matching intents
 
 ### Working Context (src/working_context.py) — NEW v2.10.0
 - Exchange / WorkingContextData / WorkingContext dataclasses for session context
@@ -266,7 +285,7 @@ Swarm Mode is an additional layer that sits on top of UnifiedOrchestrator, provi
 2. Update version numbers in ALL relevant files if version changes
 3. Update test_system.py with new tests
 4. Update README.md and AGENTS.md
-5. Run `python test_system.py` to verify (144+ tests, all must pass)
+5. Run `python test_system.py` to verify (150+ tests, all must pass)
 6. Commit with descriptive message
 7. Push to origin
 
@@ -375,13 +394,14 @@ Key settings in config.json:
 6. Update README.md
 
 ### Adding Reasoning to a New Component
-1. Import reasoning module with graceful fallback: try: from src.reasoning import ... except ImportError: ...
-2. Register the component with get_reasoning_engine().register_agent(agent_id, role)
-3. Create reasoning chains with engine.create_reasoning_chain(agent_id, title, context, tags)
-4. Log steps using agent_reasoning.observe(), .analyze(), .decide(), .reflect(), .correct()
-5. Complete chains with engine.complete_reasoning_chain(agent_id, decision, confidence)
+1. Import reasoning module: `from src.reasoning import ...`
+2. Register the component with `get_reasoning_engine().register_agent(agent_id, role)`
+3. Create reasoning chains with `engine.create_reasoning_chain(agent_id, title, context, tags)`
+4. Log steps using `agent_reasoning.observe()`, `.analyze()`, `.decide()`, `.reflect()`, `.correct()`
+5. Complete chains with `engine.complete_reasoning_chain(agent_id, decision, confidence)`
 6. Add reasoning fields to result dataclasses
 7. Add tests in test_system.py
+8. **Note**: The orchestrator no longer auto-registers agents or creates reasoning chains — ReasoningEngine is a standalone component used by engine.py and autonomous.py. Add reasoning manually where desired.
 
 ### Adding a New Tool
 1. Define the function in src/tool_framework.py (or a new module)
@@ -391,6 +411,26 @@ Key settings in config.json:
 5. Add examples list for few-shot prompting
 6. Add test in test_system.py
 7. Update README.md tool table
+
+### Adding a Custom Agent
+1. Create a markdown file in `.opencode/agents/` with YAML frontmatter:
+   ```markdown
+   ---
+   name: my-agent
+   mode: subagent
+   description: My custom agent
+   intents: [specialize]
+   permission:
+     write_file: allow
+     run_shell: deny
+   ---
+   You are a specialized agent. Do specific things.
+   ```
+2. Or create a JSON or YAML file in the same directory
+3. Call `registry.reload()` or restart to pick up changes
+4. Verify with `registry.list_agents()`
+5. Add test in test_system.py
+6. Update README.md
 
 ### Adding an MCP Server
 1. Create a JSON config in mcp_servers/ directory (e.g., mcp_servers/myserver.json)

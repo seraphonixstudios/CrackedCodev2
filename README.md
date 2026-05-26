@@ -38,6 +38,7 @@ python test_system.py
 
 | Version | Features |
 |---------|----------|
+| 2.10.0 | **Architecture Simplification** - Reduced 11 agent roles → 5 core (PLAN, BUILD, REVIEW, EXPLORE, GENERAL) with backward-compat aliases. File-based agent definitions in `.opencode/agents/*.md` (opencode-style). Unified `memory.py` facade. Plugin-tagged non-core tools with PermissionLevel (ALLOW/ASK/DENY). `.opencode/` extensibility directories for tools, plugins, skills, commands. Reasoning Engine stripped from orchestrator (kept standalone). |
 | 2.10.0 | **Agent Swarm Mode** - Automatic task decomposition into parallel subtasks, multi-agent parallel dispatch, agent-to-agent messaging bus, result aggregation with LLM merge. GUI dashboard with per-task progress bars, message counters, strategy badges |
 | 2.10.0 | **Adaptive Learning Engine** - Learns from user feedback (thumbs up/down), explicit corrections, and implicit signals. Extracts preferences, tracks topics, builds persistent user profile. Auto-injects learned context into prompts for personalized responses |
 | 2.10.0 | **Adaptive Learning Status Panel** - LEARN tab in sidebar showing preferences, style indicators, topic bar chart, recent corrections, with Refresh/Reset buttons |
@@ -211,7 +212,7 @@ results = indexer.search("authentication middleware", top_k=5)
 
 ## Tool Calling Framework (v2.9.0)
 
-36+ tools with ReAct-style reasoning:
+36+ tools with ReAct-style reasoning. Non-core tools (Docker, browser, screen capture, security) are marked as **plugin** tools — shown with a `[plugin]` badge and filterable via `core_only=True`. Permission levels support ALLOW/ASK/DENY for granular control.
 
 ### Filesystem Tools
 | Tool | Permission | Description |
@@ -307,15 +308,17 @@ class HelloPlugin:
 
 ---
 
-## DevOps Agent (v2.9.0)
+## DevOps Agent (v2.9.0, via GENERAL agent alias)
+
+DevOps functionality is accessed via `AgentRole.GENERAL` (backward-compat alias `AgentRole.DEVOPS`):
 
 ```
 User: "Deploy the API to production"
-  -> Intent: deploy -> AgentRole.DEVOPS
+  -> Intent: deploy -> AgentRole.GENERAL (via DEVOPS alias)
     -> Tool: deploy_to_server(host, path)
 ```
 
-### Capabilities
+### Capabilities (plugin tools)
 
 - **docker**: Build, run, inspect containers
 - **deploy**: Remote deployment via SSH/rsync
@@ -325,16 +328,18 @@ User: "Deploy the API to production"
 
 ---
 
-## Security Agent (v2.9.0)
+## Security Agent (v2.9.0, via GENERAL agent alias)
+
+Security functionality is accessed via `AgentRole.GENERAL` (backward-compat alias `AgentRole.SECURITY`):
 
 ```
 User: "Audit this code for vulnerabilities"
-  -> Intent: security -> AgentRole.SECURITY
+  -> Intent: security -> AgentRole.GENERAL (via SECURITY alias)
     -> Runs: audit_secrets + check_permissions + analyze_vulnerabilities + scan_dependencies
     -> LLM generates security report
 ```
 
-### Capabilities
+### Capabilities (plugin tools)
 
 - **scan**: Dependency vulnerability scanning
 - **audit**: Secret and key detection
@@ -552,6 +557,38 @@ context = wc.get_context_for_prompt(max_exchanges=3)
 
 ---
 
+## Custom Agent Definitions (v2.10.0)
+
+Define custom agents as simple markdown files with YAML frontmatter in `.opencode/agents/`:
+
+```markdown
+---
+name: review-bot
+mode: subagent
+description: Specialized code reviewer
+model: qwen3:8b-gpu
+permission:
+  write_file: deny
+  run_shell: deny
+---
+You are a focused code reviewer. Analyze code for bugs, security issues,
+and performance problems. Be concise and provide actionable feedback.
+```
+
+Formats: `.md` (frontmatter), `.yaml`, `.yml`, `.json`. Agents auto-discover on startup.
+
+### Programmatic Usage
+```python
+from src.custom_agents import get_custom_agent_registry
+
+registry = get_custom_agent_registry()
+registry.reload()
+agents = registry.list_agents()
+agent = registry.get("review-bot")
+```
+
+---
+
 ## Autonomous Application Production
 
 OpenClaw-style 7-phase pipeline:
@@ -618,7 +655,7 @@ crackedcode/
 │   ├── gui_settings.py      # Preferences dialog
 │   ├── gui_syntax.py        # Syntax highlighting
 │   ├── engine.py            # Core logic
-│   ├── orchestrator.py      # Task lifecycle, 11 agents
+│   ├── orchestrator.py      # Task lifecycle, 5 agents (with backward-compat aliases)
 │   ├── autonomous.py        # Autonomous production
 │   ├── reasoning.py         # Agent Reasoning Engine
 │   ├── codebase_rag.py      # Semantic search
@@ -629,7 +666,7 @@ crackedcode/
 │   ├── browser_agent.py     # Web automation
 │   ├── mcp_client.py        # MCP protocol
 │   ├── a2a_protocol.py      # A2A protocol
-│   ├── long_term_memory.py  # Persistent memory
+│   ├── memory.py            # Unified memory facade (re-exports)
 │   ├── atlan_ui.py          # Sci-Fi effects
 │   ├── parallel_processor.py # Parallel execution
 │   ├── file_watcher.py      # File monitoring
@@ -643,8 +680,14 @@ crackedcode/
 │   ├── filesystem.json
 │   ├── fetch.json
 │   └── sqlite.json
-├── plugins/                 # Plugin directory
-├── test_system.py           # 86 E2E tests
+├── plugins/                 # Plugin directory (hot-reload)
+├── .opencode/               # Extensibility directories
+│   ├── agents/              # File-based agent definitions (*.md, *.yaml, *.json)
+│   ├── tools/               # Drop-in tool definitions
+│   ├── plugins/             # Drop-in plugin files
+│   ├── skills/              # Drop-in skill definitions
+│   └── commands/            # Drop-in command definitions
+├── test_system.py           # 150+ E2E tests
 ├── config.json              # Configuration
 ├── README.md                # This file
 ├── AGENTS.md                # Developer guide

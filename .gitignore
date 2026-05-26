@@ -42,6 +42,20 @@ crackedcode.log
 .DS_Store
 Thumbs.db
 
+# Cache and temp
+.cache/
+test_voice_crash.py
+voice_crash_out.txt
+
+# Autonomous production workspace
+.autonomous/
+IDENTITY.md
+MEMORY.md
+PROJECT.md
+REASONING.md
+STANDING_INSTRUCTIONS.md
+TASKS.md
+
 # Models (downloaded separately)
 ~/.cache/whisper/
 ~/.ollama/
